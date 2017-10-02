@@ -3132,8 +3132,9 @@ arguments except where noted.
 The parameter names serve merely as documentation.
 
 
-### dict·clear	<a id='dict·clear'></a>
-
+<a id='dict·clear'></a>
+### dict·clear
+ 
 `D.clear()` removes all the entries of dictionary D and returns `None`.
 It fails if the dictionary is frozen or if there are active iterators.
 
@@ -3146,8 +3147,9 @@ print(x)                                # {}
 <b>Implementation note:</b>
 `dict·clear` is not provided by the Java implementation.
 
-### dict·get	<a id='dict·get'></a>
-
+<a id='dict·get'></a>
+### dict·get
+ 
 `D.get(key[, default])` returns the dictionary value corresponding to the given key.
 If the dictionary contains no such value, `get` returns `None`, or the
 value of the optional `default` parameter if present.
@@ -3161,8 +3163,9 @@ x.get("three")                          # None
 x.get("three", 0)                       # 0
 ```
 
-### dict·items	<a id='dict·items'></a>
-
+<a id='dict·items'></a>
+### dict·items
+ 
 `D.items()` returns a new list of key/value pairs, one per element in
 dictionary D, in the same order as they would be returned by a `for` loop.
 
@@ -3171,8 +3174,9 @@ x = {"one": 1, "two": 2}
 x.items()                               # [("one", 1), ("two", 2)]
 ```
 
-### dict·keys	<a id='dict·keys'></a>
-
+<a id='dict·keys'></a>
+### dict·keys
+ 
 `D.keys()` returns a new list containing the keys of dictionary D, in the
 same order as they would be returned by a `for` loop.
 
@@ -3181,8 +3185,9 @@ x = {"one": 1, "two": 2}
 x.keys()                               # ["one", "two"]
 ```
 
-### dict·pop	<a id='dict·pop'></a>
-
+<a id='dict·pop'></a>
+### dict·pop
+ 
 `D.pop(key[, default])` returns the value corresponding to the specified
 key, and removes it from the dictionary.  If the dictionary contains no
 such value, and the optional `default` parameter is present, `pop`
@@ -3198,8 +3203,9 @@ x.pop("three", 0)                       # 0
 x.pop("four")                           # error: missing key
 ```
 
-### dict·popitem	<a id='dict·popitem'></a>
-
+<a id='dict·popitem'></a>
+### dict·popitem
+ 
 `D.popitem()` returns the first key/value pair, removing it from the dictionary.
 
 `popitem` fails if the dictionary is empty, frozen, or has active iterators.
@@ -3211,8 +3217,9 @@ x.popitem()                             # ("two", 2)
 x.popitem()                             # error: empty dict
 ```
 
-### dict·setdefault	<a id='dict·setdefault'></a>
-
+<a id='dict·setdefault'></a>
+### dict·setdefault
+ 
 `D.setdefault(key[, default])` returns the dictionary value corresponding to the given key.
 If the dictionary contains no such value, `setdefault`, like `get`,
 returns `None` or the value of the optional `default` parameter if
@@ -3229,8 +3236,9 @@ x.setdefault("four")                    # None
 x                                       # {"one": 1, "two": 2, "three": None}
 ```
 
-### dict·update	<a id='dict·update'></a>
-
+<a id='dict·update'></a>
+### dict·update
+ 
 `D.update([pairs][, name=value[, ...])` makes a sequence of key/value
 insertions into dictionary D, then returns `None.`
 
@@ -3254,8 +3262,9 @@ x.update(e=5)
 x                                       # {"a": 1, "b": "2", "c": 3, "d": 4, "e": 5}
 ```
 
-### dict·values	<a id='dict·values'></a>
-
+<a id='dict·values'></a>
+### dict·values
+ 
 `D.values()` returns a new list containing the dictionary's values, in the
 same order as they would be returned by a `for` loop over the
 dictionary.
@@ -3265,8 +3274,9 @@ x = {"one": 1, "two": 2}
 x.values()                              # [1, 2]
 ```
 
-### list·append	<a id='list·append'></a>
-
+<a id='list·append'></a>
+### list·append
+ 
 `L.append(x)` appends `x` to the list L, and returns `None`.
 
 `append` fails if the list is frozen or has active iterators.
@@ -3279,8 +3289,9 @@ x.append(3)                             # None
 x                                       # [1, 2, 3]
 ```
 
-### list·clear	<a id='list·clear'></a>
-
+<a id='list·clear'></a>
+### list·clear
+ 
 `L.clear()` removes all the elements of the list L and returns `None`.
 It fails if the list is frozen or if there are active iterators.
 
@@ -3290,8 +3301,9 @@ x.clear()                               # None
 x                                       # []
 ```
 
-### list·extend	<a id='list·extend'></a>
-
+<a id='list·extend'></a>
+### list·extend
+ 
 `L.extend(x)` appends the elements of `x`, which must be iterable, to
 the list L, and returns `None`.
 
@@ -3304,8 +3316,9 @@ x.extend(["foo"])                       # None
 x                                       # [1, 2, 3, "foo"]
 ```
 
-### list·index	<a id='list·index'></a>
-
+<a id='list·index'></a>
+### list·index
+ 
 `L.insert(x[, start[, end]])` finds `x` within the list L and returns its index.
 
 The optional `start` and `end` parameters restrict the portion of
@@ -3324,8 +3337,9 @@ x.index("a", 2)                         # 3 (banAna)
 x.index("a", -2)                        # 5 (bananA)
 ```
 
-### list·insert	<a id='list·insert'></a>
-
+<a id='list·insert'></a>
+### list·insert
+ 
 `L.insert(i, x)` inserts the value `x` in the list L at index `i`, moving
 higher-numbered elements along by one.  It returns `None`.
 
@@ -3342,8 +3356,9 @@ x.insert(-1, "d")                       # None
 x                                       # ["a", "b", "c", "d", "e"]
 ```
 
-### list·pop	<a id='list·pop'></a>
-
+<a id='list·pop'></a>
+### list·pop
+ 
 `L.pop([index])` removes and returns the last element of the list L, or,
 if the optional index is provided, at that index.
 
@@ -3357,8 +3372,9 @@ x.pop()                                 # 2
 x                                       # [1]
 ```
 
-### list·remove	<a id='list·remove'></a>
-
+<a id='list·remove'></a>
+### list·remove
+ 
 `L.remove(x)` removes the first occurrence of the value `x` from the list L, and returns `None`.
 
 `remove` fails if the list does not contain `x`, is frozen, or has active iterators.
@@ -3370,8 +3386,9 @@ x.remove(2)                             # None (x == [1, 3])
 x.remove(2)                             # error: element not found
 ```
 
-### set·union	<a id='set·union'></a>
-
+<a id='set·union'></a>
+### set·union
+ 
 `S.union(iterable)` returns a new set into which have been inserted
 all the elements of set S and all the elements of the argument, which
 must be iterable.
@@ -3384,8 +3401,9 @@ y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
 ```
 
-### string·bytes	<a id='string·bytes'></a>
-
+<a id='string·bytes'></a>
+### string·bytes
+ 
 `S.bytes()` returns an iterable value containing the
 sequence of numeric bytes values in the string S.
 
@@ -3401,8 +3419,9 @@ See also: `string·split_bytes`.
 
 <b>Implementation note:</b> `bytes` is not provided by the Java implementation.
 
-### string·capitalize	<a id='string·capitalize'></a>
-
+<a id='string·capitalize'></a>
+### string·capitalize
+ 
 `S.capitalize()` returns a copy of string S with all Unicode letters
 that begin words changed to their title case.
 
@@ -3410,8 +3429,9 @@ that begin words changed to their title case.
 "hello, world!".capitalize()		# "Hello, World!"
 ```
 
-### string·codepoints	<a id='string·codepoints'></a>
-
+<a id='string·codepoints'></a>
+### string·codepoints
+ 
 `S.codepoints()` returns an iterable value containing the
 sequence of integer Unicode code points encoded by the string S.
 Each invalid code within the string is treated as if it encodes the
@@ -3436,8 +3456,9 @@ See also: `string·split_codepoints`.
 
 <b>Implementation note:</b> `codepoints` is not provided by the Java implementation.
 
-### string·count	<a id='string·count'></a>
-
+<a id='string·count'></a>
+### string·count
+ 
 `S.count(sub[, start[, end]])` returns the number of occcurences of
 `sub` within the string S, or, if the optional substring indices
 `start` and `end` are provided, within the designated substring of S.
@@ -3448,16 +3469,18 @@ They are interpreted according to Skylark's [indexing conventions](#indexing).
 "hello, world!".count("o", 7, 12)       # 1  (in "world")
 ```
 
-### string·endswith	<a id='string·endswith'></a>
-
+<a id='string·endswith'></a>
+### string·endswith
+ 
 `S.endswith(suffix)` reports whether the string S has the specified suffix.
 
 ```python
 "filename.sky".endswith(".sky")         # True
 ```
 
-### string·find	<a id='string·find'></a>
-
+<a id='string·find'></a>
+### string·find
+ 
 `S.find(sub[, start[, end]])` returns the index of the first
 occurrence of the substring `sub` within S.
 
@@ -3473,8 +3496,9 @@ If no occurrence is found, `found` returns -1.
 "bonbon".find("on", 2, 5)       # -1
 ```
 
-### string·format	<a id='string·format'></a>
-
+<a id='string·format'></a>
+### string·format
+ 
 `S.format(*args, **kwargs)` returns a version of the format string S
 in which bracketed portions `{...}` are replaced
 by arguments from `args` and `kwargs`.
@@ -3518,8 +3542,9 @@ Currently it must be empty, but it is reserved for future use.
 "Is {0!r} {0!s}?".format('heterological')       # 'is "heterological" heterological?'
 ```
 
-### string·index	<a id='string·index'></a>
-
+<a id='string·index'></a>
+### string·index
+ 
 `S.index(sub[, start[, end]])` returns the index of the first
 occurrence of the substring `sub` within S, like `S.find`, except
 that if the substring is not found, the operation fails.
@@ -3530,8 +3555,9 @@ that if the substring is not found, the operation fails.
 "bonbon".index("on", 2, 5)       # error: substring not found  (in "nbo")
 ```
 
-### string·isalnum	<a id='string·isalnum'></a>
-
+<a id='string·isalnum'></a>
+### string·isalnum
+ 
 `S.isalpha()` reports whether the string S is non-empty and consists only
 Unicode letters and digits.
 
@@ -3540,8 +3566,9 @@ Unicode letters and digits.
 "Catch-22".isalnum()            # False
 ```
 
-### string·isalpha	<a id='string·isalpha'></a>
-
+<a id='string·isalpha'></a>
+### string·isalpha
+ 
 `S.isalpha()` reports whether the string S is non-empty and consists only of Unicode letters.
 
 ```python
@@ -3550,8 +3577,9 @@ Unicode letters and digits.
 "".isalpha()                    # False
 ```
 
-### string·isdigit	<a id='string·isdigit'></a>
-
+<a id='string·isdigit'></a>
+### string·isdigit
+ 
 `S.isdigit()` reports whether the string S is non-empty and consists only of Unicode digits.
 
 ```python
@@ -3560,8 +3588,9 @@ Unicode letters and digits.
 "".isdigit()                    # False
 ```
 
-### string·islower	<a id='string·islower'></a>
-
+<a id='string·islower'></a>
+### string·islower
+ 
 `S.islower()` reports whether the string S contains at least one cased Unicode
 letter, and all such letters are lowercase.
 
@@ -3571,8 +3600,9 @@ letter, and all such letters are lowercase.
 "123".islower()                 # False
 ```
 
-### string·isspace	<a id='string·isspace'></a>
-
+<a id='string·isspace'></a>
+### string·isspace
+ 
 `S.isspace()` reports whether the string S is non-empty and consists only of Unicode spaces.
 
 ```python
@@ -3581,8 +3611,9 @@ letter, and all such letters are lowercase.
 "".isspace()                    # False
 ```
 
-### string·istitle	<a id='string·istitle'></a>
-
+<a id='string·istitle'></a>
+### string·istitle
+ 
 `S.istitle()` reports whether the string S contains at least one cased Unicode
 letter, and all such letters that begin a word are in title case.
 
@@ -3593,8 +3624,9 @@ letter, and all such letters that begin a word are in title case.
 "123".istitle()                 # False
 ```
 
-### string·isupper	<a id='string·isupper'></a>
-
+<a id='string·isupper'></a>
+### string·isupper
+ 
 `S.isupper()` reports whether the string S contains at least one cased Unicode
 letter, and all such letters are uppercase.
 
@@ -3604,8 +3636,9 @@ letter, and all such letters are uppercase.
 "123".isupper()                 # False
 ```
 
-### string·join	<a id='string·join'></a>
-
+<a id='string·join'></a>
+### string·join
+ 
 `S.join(iterable)` returns the string formed by concatenating each
 element of its argument, with a copy of the string S between
 successive elements. The argument must be an iterable whose elements
@@ -3616,24 +3649,27 @@ are strings.
 "a".join("ctmrn")                       # "catamaran"
 ```
 
-### string·lower	<a id='string·lower'></a>
-
+<a id='string·lower'></a>
+### string·lower
+ 
 `S.lower()` returns a copy of the string S with letters converted to lowercase.
 
 ```python
 "Hello, World!".lower()                 # "hello, world!"
 ```
 
-### string·lstrip	<a id='string·lstrip'></a>
-
+<a id='string·lstrip'></a>
+### string·lstrip
+ 
 `S.lstrip()` returns a copy of the string S with leading whitespace removed.
 
 ```python
 "  hello  ".lstrip()                    # "  hello"
 ```
 
-### string·partition	<a id='string·partition'></a>
-
+<a id='string·partition'></a>
+### string·partition
+ 
 `S.partition(x)` splits string S into three parts and returns them as
 a tuple: the portion before the first occurrence of string `x`, `x` itself,
 and the portion following it.
@@ -3645,8 +3681,9 @@ If S does not contain `x`, `partition` returns `(S, "", "")`.
 "one/two/three".partition("/")		# ("one", "/", "two/three")
 ```
 
-### string·replace	<a id='string·replace'></a>
-
+<a id='string·replace'></a>
+### string·replace
+ 
 `S.replace(old, new[, count])` returns a copy of string S with all
 occurrences of substring `old` replaced by `new`. If the optional
 argument `count`, which must be an `int`, is non-negative, it
@@ -3657,8 +3694,9 @@ specifies a maximum number of occurrences to replace.
 "banana".replace("a", "o", 2)		# "bonona"
 ```
 
-### string·rfind	<a id='string·rfind'></a>
-
+<a id='string·rfind'></a>
+### string·rfind
+ 
 `S.rfind(sub[, start[, end]])` returns the index of the substring `sub` within
 S, like `S.find`, except that `rfind` returns the index of the substring's
 _last_ occurrence.
@@ -3669,8 +3707,9 @@ _last_ occurrence.
 "bonbon".rfind("on", 2, 5)       # -1
 ```
 
-### string·rindex	<a id='string·rindex'></a>
-
+<a id='string·rindex'></a>
+### string·rindex
+ 
 `S.rindex(sub[, start[, end]])` returns the index of the substring `sub` within
 S, like `S.index`, except that `rindex` returns the index of the substring's
 _last_ occurrence.
@@ -3681,16 +3720,18 @@ _last_ occurrence.
 "bonbon".rindex("on", 2, 5)       # error: substring not found  (in "nbo")
 ```
 
-### string·rpartition	<a id='string·rpartition'></a>
-
+<a id='string·rpartition'></a>
+### string·rpartition
+ 
 `S.rpartition(x)` is like `partition`, but splits `S` at the last occurrence of `x`.
 
 ```python
 "one/two/three".partition("/")		# ("one/two", "/", "three")
 ```
 
-### string·rsplit	<a id='string·rsplit'></a>
-
+<a id='string·rsplit'></a>
+### string·rsplit
+ 
 `S.rsplit([sep[, maxsplit]])` splits a string into substrings like `S.split`,
 except that when a maximum number of splits is specified, `rsplit` chooses the
 rightmost splits.
@@ -3704,16 +3745,18 @@ rightmost splits.
 TODO: `rsplit(None, maxsplit)` where `maxsplit > 0` (as in the last
 example above) is not yet implemented and currently returns an error.
 
-### string·rstrip	<a id='string·rstrip'></a>
-
+<a id='string·rstrip'></a>
+### string·rstrip
+ 
 `S.rstrip()` returns a copy of the string S with trailing whitespace removed.
 
 ```python
 "  hello  ".rstrip()                    # "hello  "
 ```
 
-### string·split	<a id='string·split'></a>
-
+<a id='string·split'></a>
+### string·split
+ 
 `S.split([sep [, maxsplit]])` returns the list of substrings of S,
 splitting at occurrences of `sep`.
 If `sep` is not specified or is `None`, `split` splits the string
@@ -3730,8 +3773,9 @@ If `maxsplit` is given, it specifies the maximum number of splits.
 "banana".split("n", 1)                      # ["ba", "ana"]
 ```
 
-### string·split_bytes	<a id='string·split_bytes'></a>
-
+<a id='string·split_bytes'></a>
+### string·split_bytes
+ 
 `S.split_bytes()` returns an iterable value containing successive
 1-byte substrings of S.
 To materialize the entire sequence, apply `list(...)` to the result.
@@ -3746,8 +3790,9 @@ See also: `string·bytes`.
 
 <b>Implementation note:</b> `split_bytes` is not provided by the Java implementation.
 
-### string·split_codepoints	<a id='string·split_codepoints'></a>
-
+<a id='string·split_codepoints'></a>
+### string·split_codepoints
+ 
 `S.split_codepoints()` returns an iterable value containing the sequence of
 substrings of S that each encode a single Unicode code point.
 Each invalid code within the string is treated as if it encodes the
@@ -3772,8 +3817,9 @@ See also: `string·codepoints`.
 
 <b>Implementation note:</b> `split_codepoints` is not provided by the Java implementation.
 
-### string·splitlines	<a id='string·splitlines'></a>
-
+<a id='string·splitlines'></a>
+### string·splitlines
+ 
 `S.splitlines([keepends])` returns a list whose elements are the
 successive lines of S, that is, the strings formed by splitting S at
 line terminators (currently assumed to be a single newline, `\n`,
@@ -3789,24 +3835,27 @@ the final element does not necessarily end with a line terminator.
 ```
 
 
-### string·startswith	<a id='string·startswith'></a>
-
+<a id='string·startswith'></a>
+### string·startswith
+ 
 `S.startswith(suffix)` reports whether the string S has the specified prefix.
 
 ```python
 "filename.sky".startswith("filename")         # True
 ```
 
-### string·strip	<a id='string·strip'></a>
-
+<a id='string·strip'></a>
+### string·strip
+ 
 `S.strip()` returns a copy of the string S with leading and trailing whitespace removed.
 
 ```python
 "  hello  ".strip()                     # "hello"
 ```
 
-### string·title	<a id='string·title'></a>
-
+<a id='string·title'></a>
+### string·title
+ 
 `S.lower()` returns a copy of the string S with letters converted to titlecase.
 
 Letters are converted to uppercase at the start of words, lowercase elsewhere.
@@ -3815,8 +3864,9 @@ Letters are converted to uppercase at the start of words, lowercase elsewhere.
 "hElLo, WoRlD!".title()                 # "Hello, World!"
 ```
 
-### string·upper	<a id='string·upper'></a>
-
+<a id='string·upper'></a>
+### string·upper
+ 
 `S.lower()` returns a copy of the string S with letters converted to lowercase.
 
 ```python
