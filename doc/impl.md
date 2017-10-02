@@ -4,7 +4,14 @@
 This document describes some of the design choices of the Go
 implementation of Skylark.
 
-[TOC]
+
+  * [Scanner](#scanner)
+  * [Parser](#parser)
+  * [Resolver](#resolver)
+  * [Evaluator](#evaluator)
+    * [Data types](#data-types)
+    * [Testing](#testing)
+
 
 ## Scanner
 

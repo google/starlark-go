@@ -116,6 +116,13 @@ If the copyright holder for your contribution has already completed
 the agreement in connection with another Google open source project,
 it does not need to be completed again.
 
+### Stability
+
+We reserve the right to make breaking language and API changes at this
+stage in the project, although we will endeavor to keep them to a minimum.
+Once the project has its long-term name (see below) and location, and
+the Bazel team has finalized the version 1 language specification,
+we will be more rigorous with interface stability.
 
 ### Credits
 
