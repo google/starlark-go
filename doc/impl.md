@@ -1,16 +1,16 @@
 
 # Skylark in Go: Implementation
 
-This document describes some of the design choices of the Go
-implementation of Skylark.
-
+This document (a work in progress) describes some of the design
+choices of the Go implementation of Skylark.
 
   * [Scanner](#scanner)
   * [Parser](#parser)
   * [Resolver](#resolver)
   * [Evaluator](#evaluator)
     * [Data types](#data-types)
-    * [Testing](#testing)
+    * [Freezing](#freezing)
+  * [Testing](#testing)
 
 
 ## Scanner
@@ -111,13 +111,82 @@ table the list should rarely exceed length 1. In addition, each
 key/value item is part of doubly-linked list that maintains the
 insertion order of the elements for iteration.
 
+<b>Struct:</b>
+The `skylarkstruct` Go package provides a non-standard Skylark
+extension data type, `struct`, that maps fields identifiers to
+arbitrary values. Fields are accessed using dot notation: `y = s.f`.
+This data type is extensively used in Bazel, but its specification is
+currently evolving.
+
+Skylark has no `class` mechanism, nor equivalent of Python's
+`namedtuple`, though it is likely that future versions will support
+some way to define a record data type of several fields, with a
+representation more efficient than a hash table.
+
+
+### Freezing
+
+All mutable values created during module initialization are _frozen_
+upon its completion. It is this property that permits one Skylark
+module to be referenced from two others running concurrently without
+the possibility of a data race.
+
+The Go implementation supports freezing by adding an additional
+"frozen" Boolean to each mutable object. This flag, once set, causes
+all subsequent attempts at mutation to fail. Every value defines a
+Freeze method that sets its own frozen flag if not already set, and
+calls Freeze for each value that it contains.
+For example, when a list is frozen, it freezes each of its elements;
+when a dictionary is frozen, it freezes each of its keys and values;
+and when a function value is frozen, it freezes each of the free
+variables implicitly referenced by its closure.
+Application-defined types must also follow this discipline.
+
+The freeze mechanism in the Go implementation is finer grained than in
+the Java implementations: in effect, that latter has one "frozen" flag
+per module, and every value holds a reference to the frozen flag of
+its module. This makes setting the frozen flag more efficient---a
+simple bit flip, no need to traverse the object graph---but coarser
+grained. Also, it complicates the API slightly because to construct a
+list, say, requires a reference to the frozen variable it should use.
+
+The Go implementation also permits the `freeze` built-in to be exposed
+to the program. (This requires the `-freeze` dialect flag.) This has
+proven valuable in writing tests of the freeze mechanism itself, but
+is mostly a curiosity.
+
+
+### Fail-fast iterators
+
+In some languages (such as Go), a program may mutate a data structure
+while iterating over it; for example, a range loop over a map may
+delete map elements. In other languages (such as Java), iterators do
+extra bookkeeping so that modification of the underlying collection
+invalidates the iterator, and the next attempt to use it fails.
+This often helps to detect subtle mistakes.
+
+Skylark takes this a step further. Instead of mutation of the
+collection invalidating the iterator, the act of iterating makes the
+collection temporarily immutable, so that an attempt to, say, delete a
+dict element while looping over the dict, will fail. The error is
+reported against the delete operation, not the iteration.
+
+This is implemented by having each mutable iterable value record a
+counter of active iterators. Starting a loop increments this counter,
+and completing a loop decrements it. A collection with a nonzero
+counter behaves as if frozen. If the collection is actually frozen,
+the counter bookkeeping is unnecessary. (Consequently, iterator
+bookkeeping is needed only while objects are still mutable, before
+they can have been published to another thread, and thus no
+synchronization is necessary.)
+
+A consequence of this design is that in the Go API, it is imperative
+to call `Done` on each iterator once it is no longer needed.
+
 ```
 TODO
-per object freeze
-fail-fast iterators
-Go extension interfaces
-skylarkstruct
-UnpackArgs
+skylark.Value interface and subinterfaces
+argument passing to builtins: UnpackArgs, UnpackPositionalArgs.
 ```
 
 <b>Evaluation strategy:</b>
@@ -151,7 +220,10 @@ never stored to the heap.
 
 ```
 TODO
-frames, backtrace, errors.
+frames, backtraces, errors.
+threads
+Print
+Load
 ```
 
 ## Testing
