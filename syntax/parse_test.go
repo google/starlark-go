@@ -1,0 +1,398 @@
+// Copyright 2017 The Bazel Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package syntax_test
+
+import (
+	"bytes"
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/google/skylark/internal/chunkedfile"
+	"github.com/google/skylark/skylarktest"
+	"github.com/google/skylark/syntax"
+)
+
+func TestExprParseTrees(t *testing.T) {
+	for _, test := range []struct {
+		input, want string
+	}{
+		{`print(1)`,
+			`(CallExpr Fn=print Args=(1))`},
+		{`x + 1`,
+			`(BinaryExpr X=x Op=+ Y=1)`},
+		{`[x for x in y]`,
+			`(Comprehension Body=x Clauses=((ForClause Vars=x X=y)))`},
+		{`[x for x in (a if b else c)]`,
+			`(Comprehension Body=x Clauses=((ForClause Vars=x X=(CondExpr Cond=b True=a False=c))))`},
+		{`x[i].f(42)`,
+			`(CallExpr Fn=(DotExpr X=(IndexExpr X=x Y=i) Name=f) Args=(42))`},
+		{`x.f()`,
+			`(CallExpr Fn=(DotExpr X=x Name=f))`},
+		{`x+y*z`,
+			`(BinaryExpr X=x Op=+ Y=(BinaryExpr X=y Op=* Y=z))`},
+		{`x%y-z`,
+			`(BinaryExpr X=(BinaryExpr X=x Op=% Y=y) Op=- Y=z)`},
+		{`a + b not in c`,
+			`(BinaryExpr X=(BinaryExpr X=a Op=+ Y=b) Op=not in Y=c)`},
+		{`lambda x, *args, **kwargs: None`,
+			`(LambdaExpr Function=(Function Params=(x (UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)) Body=((ReturnStmt Result=None))))`},
+		{`{"one": 1}`,
+			`(DictExpr List=((DictEntry Key="one" Value=1)))`},
+		{`a[i]`,
+			`(IndexExpr X=a Y=i)`},
+		{`a[i:]`,
+			`(SliceExpr X=a Lo=i)`},
+		{`a[:j]`,
+			`(SliceExpr X=a Hi=j)`},
+		{`a[::]`,
+			`(SliceExpr X=a)`},
+		{`a[::k]`,
+			`(SliceExpr X=a Step=k)`},
+		{`[]`,
+			`(ListExpr)`},
+		{`[1]`,
+			`(ListExpr List=(1))`},
+		{`[1,]`,
+			`(ListExpr List=(1))`},
+		{`[1, 2]`,
+			`(ListExpr List=(1 2))`},
+		{`()`,
+			`(TupleExpr)`},
+		{`(4,)`,
+			`(TupleExpr List=(4))`},
+		{`(4)`,
+			`4`},
+		{`(4, 5)`,
+			`(TupleExpr List=(4 5))`},
+		{`{}`,
+			`(DictExpr)`},
+		{`{"a": 1}`,
+			`(DictExpr List=((DictEntry Key="a" Value=1)))`},
+		{`{"a": 1,}`,
+			`(DictExpr List=((DictEntry Key="a" Value=1)))`},
+		{`{"a": 1, "b": 2}`,
+			`(DictExpr List=((DictEntry Key="a" Value=1) (DictEntry Key="b" Value=2)))`},
+		{`{x: y for (x, y) in z}`,
+			`(Comprehension Curly Body=(DictEntry Key=x Value=y) Clauses=((ForClause Vars=(TupleExpr List=(x y)) X=z)))`},
+		{`{x: y for a in b if c}`,
+			`(Comprehension Curly Body=(DictEntry Key=x Value=y) Clauses=((ForClause Vars=a X=b) (IfClause Cond=c)))`},
+		{`-1 + +2`,
+			`(BinaryExpr X=(UnaryExpr Op=- X=1) Op=+ Y=(UnaryExpr Op=+ X=2))`},
+		{`"foo" + "bar"`,
+			`"foobar"`}, // concatenated
+		{`-1 * 2`, // prec(unary -) > prec(binary *)
+			`(BinaryExpr X=(UnaryExpr Op=- X=1) Op=* Y=2)`},
+		{`-x[i]`, // prec(unary -) < prec(x[i])
+			`(UnaryExpr Op=- X=(IndexExpr X=x Y=i))`},
+		{`a | b & c | d`, // prec(|) < prec(&)
+			`(BinaryExpr X=(BinaryExpr X=a Op=| Y=(BinaryExpr X=b Op=& Y=c)) Op=| Y=d)`},
+		{`a or b and c or d`,
+			`(BinaryExpr X=(BinaryExpr X=a Op=or Y=(BinaryExpr X=b Op=and Y=c)) Op=or Y=d)`},
+		{`a and b or c and d`,
+			`(BinaryExpr X=(BinaryExpr X=a Op=and Y=b) Op=or Y=(BinaryExpr X=c Op=and Y=d))`},
+		{`f(1, x=y)`,
+			`(CallExpr Fn=f Args=(1 (BinaryExpr X=x Op== Y=y)))`},
+		{`f(*args, **kwargs)`,
+			`(CallExpr Fn=f Args=((UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)))`},
+		{`a if b else c`,
+			`(CondExpr Cond=b True=a False=c)`},
+		{`a and not b`,
+			`(BinaryExpr X=a Op=and Y=(UnaryExpr Op=not X=b))`},
+	} {
+		e, err := syntax.ParseExpr("foo.sky", test.input)
+		if err != nil {
+			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
+			continue
+		}
+		if got := treeString(e); test.want != got {
+			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
+		}
+	}
+}
+
+func TestStmtParseTrees(t *testing.T) {
+	for _, test := range []struct {
+		input, want string
+	}{
+		{`print(1)`,
+			`(ExprStmt X=(CallExpr Fn=print Args=(1)))`},
+		{`return 1, 2`,
+			`(ReturnStmt Result=(TupleExpr List=(1 2)))`},
+		{`return`,
+			`(ReturnStmt)`},
+		{`for i in "abc": break`,
+			`(ForStmt Vars=i X="abc" Body=((BranchStmt Token=break)))`},
+		{`for i in "abc": continue`,
+			`(ForStmt Vars=i X="abc" Body=((BranchStmt Token=continue)))`},
+		{`for x, y in z: pass`,
+			`(ForStmt Vars=(TupleExpr List=(x y)) X=z Body=((BranchStmt Token=pass)))`},
+		{`if True: pass`,
+			`(IfStmt Cond=True True=((BranchStmt Token=pass)))`},
+		{`if True: break`,
+			`(IfStmt Cond=True True=((BranchStmt Token=break)))`},
+		{`if True: continue`,
+			`(IfStmt Cond=True True=((BranchStmt Token=continue)))`},
+		{`if True: pass
+else:
+	pass`,
+			`(IfStmt Cond=True True=((BranchStmt Token=pass)) False=((BranchStmt Token=pass)))`},
+		{"if a: pass\nelif b: pass\nelse: pass",
+			`(IfStmt Cond=a True=((BranchStmt Token=pass)) False=((IfStmt Cond=b True=((BranchStmt Token=pass)) False=((BranchStmt Token=pass)))))`},
+		{`x, y = 1, 2`,
+			`(AssignStmt Op== LHS=(TupleExpr List=(x y)) RHS=(TupleExpr List=(1 2)))`},
+		{`x[i] = 1`,
+			`(AssignStmt Op== LHS=(IndexExpr X=x Y=i) RHS=1)`},
+		{`x.f = 1`,
+			`(AssignStmt Op== LHS=(DotExpr X=x Name=f) RHS=1)`},
+		{`(x, y) = 1`,
+			`(AssignStmt Op== LHS=(TupleExpr List=(x y)) RHS=1)`},
+		{`load("", "a", b="c")`,
+			`(LoadStmt Module="" From=(a c) To=(a b))`},
+		{`load = 1`, // load is not a reserved word
+			`(AssignStmt Op== LHS=load RHS=1)`},
+		{`if True: load("", "a", b="c")`, // load needn't be at toplevel
+			`(IfStmt Cond=True True=((LoadStmt Module="" From=(a c) To=(a b))))`},
+		{`def f(x, *args, **kwargs):
+	pass`,
+			`(DefStmt Name=f Function=(Function Params=(x (UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)) Body=((BranchStmt Token=pass))))`},
+		{`def f(**kwargs, *args): pass`,
+			`(DefStmt Name=f Function=(Function Params=((UnaryExpr Op=** X=kwargs) (UnaryExpr Op=* X=args)) Body=((BranchStmt Token=pass))))`},
+		{`def f(a, b, c=d): pass`,
+			`(DefStmt Name=f Function=(Function Params=(a b (BinaryExpr X=c Op== Y=d)) Body=((BranchStmt Token=pass))))`},
+		{`def f(a, b=c, d): pass`,
+			`(DefStmt Name=f Function=(Function Params=(a (BinaryExpr X=b Op== Y=c) d) Body=((BranchStmt Token=pass))))`}, // TODO(adonovan): fix this
+		{`def f():
+	def g():
+		pass
+	pass
+def h():
+	pass`,
+			`(DefStmt Name=f Function=(Function Body=((DefStmt Name=g Function=(Function Body=((BranchStmt Token=pass)))) (BranchStmt Token=pass))))`},
+	} {
+		f, err := syntax.Parse("foo.sky", test.input)
+		if err != nil {
+			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
+			continue
+		}
+		if got := treeString(f.Stmts[0]); test.want != got {
+			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
+		}
+	}
+}
+
+// TestFileParseTrees tests sequences of statements, and particularly
+// handling of indentation, newlines, line continuations, and blank lines.
+func TestFileParseTrees(t *testing.T) {
+	for _, test := range []struct {
+		input, want string
+	}{
+		{`x = 1
+print(x)`,
+			`(AssignStmt Op== LHS=x RHS=1)
+(ExprStmt X=(CallExpr Fn=print Args=(x)))`},
+		{"if cond:\n\tpass",
+			`(IfStmt Cond=cond True=((BranchStmt Token=pass)))`},
+		{"if cond:\n\tpass\nelse:\n\tpass",
+			`(IfStmt Cond=cond True=((BranchStmt Token=pass)) False=((BranchStmt Token=pass)))`},
+		{`def f():
+	pass
+pass
+
+pass`,
+			`(DefStmt Name=f Function=(Function Body=((BranchStmt Token=pass))))
+(BranchStmt Token=pass)
+(BranchStmt Token=pass)`},
+		{`pass; pass`,
+			`(BranchStmt Token=pass)
+(BranchStmt Token=pass)`},
+		{"pass\npass",
+			`(BranchStmt Token=pass)
+(BranchStmt Token=pass)`},
+		{"pass\n\npass",
+			`(BranchStmt Token=pass)
+(BranchStmt Token=pass)`},
+		{`x = (1 +
+2)`,
+			`(AssignStmt Op== LHS=x RHS=(BinaryExpr X=1 Op=+ Y=2))`},
+		{`x = 1 \
++ 2`,
+			`(AssignStmt Op== LHS=x RHS=(BinaryExpr X=1 Op=+ Y=2))`},
+	} {
+		f, err := syntax.Parse("foo.sky", test.input)
+		if err != nil {
+			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
+			continue
+		}
+		var buf bytes.Buffer
+		for i, stmt := range f.Stmts {
+			if i > 0 {
+				buf.WriteByte('\n')
+			}
+			writeTree(&buf, reflect.ValueOf(stmt))
+		}
+		if got := buf.String(); test.want != got {
+			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
+		}
+	}
+}
+
+func stripPos(err error) string {
+	s := err.Error()
+	if i := strings.Index(s, ": "); i >= 0 {
+		s = s[i+len(": "):] // strip file:line:col
+	}
+	return s
+}
+
+// treeString prints a syntax node as a parenthesized tree.
+// Idents are printed as foo and Literals as "foo" or 42.
+// Structs are printed as (type name=value ...).
+// Only non-empty fields are shown.
+func treeString(n syntax.Node) string {
+	var buf bytes.Buffer
+	writeTree(&buf, reflect.ValueOf(n))
+	return buf.String()
+}
+
+func writeTree(out *bytes.Buffer, x reflect.Value) {
+	switch x.Kind() {
+	case reflect.String, reflect.Int, reflect.Bool:
+		fmt.Fprintf(out, "%v", x.Interface())
+	case reflect.Ptr, reflect.Interface:
+		if elem := x.Elem(); elem.Kind() == 0 {
+			out.WriteString("nil")
+		} else {
+			writeTree(out, elem)
+		}
+	case reflect.Struct:
+		switch v := x.Interface().(type) {
+		case syntax.Literal:
+			if v.Token == syntax.STRING {
+				fmt.Fprintf(out, "%q", v.Value)
+			} else if v.Token == syntax.INT {
+				fmt.Fprintf(out, "%d", v.Value)
+			}
+			return
+		case syntax.Ident:
+			out.WriteString(v.Name)
+			return
+		}
+		fmt.Fprintf(out, "(%s", strings.TrimPrefix(x.Type().String(), "syntax."))
+		for i, n := 0, x.NumField(); i < n; i++ {
+			f := x.Field(i)
+			if f.Type() == reflect.TypeOf(syntax.Position{}) {
+				continue // skip positions
+			}
+			name := x.Type().Field(i).Name
+			if f.Type() == reflect.TypeOf(syntax.Token(0)) {
+				fmt.Fprintf(out, " %s=%s", name, f.Interface())
+				continue
+			}
+
+			switch f.Kind() {
+			case reflect.Slice:
+				if n := f.Len(); n > 0 {
+					fmt.Fprintf(out, " %s=(", name)
+					for i := 0; i < n; i++ {
+						if i > 0 {
+							out.WriteByte(' ')
+						}
+						writeTree(out, f.Index(i))
+					}
+					out.WriteByte(')')
+				}
+				continue
+			case reflect.Ptr, reflect.Interface:
+				if f.IsNil() {
+					continue
+				}
+			case reflect.Bool:
+				if f.Bool() {
+					fmt.Fprintf(out, " %s", name)
+				}
+				continue
+			}
+			fmt.Fprintf(out, " %s=", name)
+			writeTree(out, f)
+		}
+		fmt.Fprintf(out, ")")
+	default:
+		fmt.Fprintf(out, "%T", x.Interface())
+	}
+}
+
+func TestParseErrors(t *testing.T) {
+	filename := skylarktest.DataFile("skylark/syntax", "testdata/errors.sky")
+	for _, chunk := range chunkedfile.Read(filename, t) {
+		_, err := syntax.Parse(filename, chunk.Source)
+		switch err := err.(type) {
+		case nil:
+			// ok
+		case syntax.Error:
+			chunk.GotError(int(err.Pos.Line), err.Msg)
+		default:
+			t.Error(err)
+		}
+		chunk.Done()
+	}
+}
+
+func TestWalk(t *testing.T) {
+	const src = `
+for x in y:
+  if x:
+    pass
+  else:
+    f([2*x for x in "abc"])
+`
+	// TODO(adonovan): test that it finds all syntax.Nodes
+	// (compare against a reflect-based implementation).
+	// TODO(adonovan): test that the result of f is used to prune
+	// the descent.
+	f, err := syntax.Parse("hello.go", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	var depth int
+	syntax.Walk(f, func(n syntax.Node) bool {
+		if n == nil {
+			depth--
+			return true
+		}
+		fmt.Fprintf(&buf, "%s%s\n",
+			strings.Repeat("  ", depth),
+			strings.TrimPrefix(reflect.TypeOf(n).String(), "*syntax."))
+		depth++
+		return true
+	})
+	got := buf.String()
+	want := `
+File
+  ForStmt
+    Ident
+    Ident
+    IfStmt
+      Ident
+      BranchStmt
+      ExprStmt
+        CallExpr
+          Ident
+          Comprehension
+            ForClause
+              Ident
+              Literal
+            BinaryExpr
+              Literal
+              Ident`
+	got = strings.TrimSpace(got)
+	want = strings.TrimSpace(want)
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}

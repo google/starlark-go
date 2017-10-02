@@ -1,0 +1,140 @@
+# Tests of Skylark built-in functions
+
+load("assert.sky", "assert")
+
+# len
+assert.eq(len([1, 2, 3]), 3)
+assert.eq(len((1, 2, 3)), 3)
+assert.eq(len({1: 2}), 1)
+assert.fails(lambda: len(1), "int.*has no len")
+
+# and, or
+assert.eq(123 or "foo", 123)
+assert.eq(0 or "foo", "foo")
+assert.eq(123 and "foo", "foo")
+assert.eq(0 and "foo", 0)
+none = None
+_1 = none and none[0]      # rhs is not evaluated
+_2 = (not none) or none[0] # rhs is not evaluated
+
+# any, all
+assert.true(all([]))
+assert.true(all([1, True, "foo"]))
+assert.true(not all([1, True, ""]))
+assert.true(not any([]))
+assert.true(any([0, False, "foo"]))
+assert.true(not any([0, False, ""]))
+
+# in
+assert.true(3 in [1, 2, 3])
+assert.true(4 not in [1, 2, 3])
+assert.true(3 in (1, 2, 3))
+assert.true(4 not in (1, 2, 3))
+assert.fails(lambda: 3 in "foo", "in.*requires string as left operand")
+assert.true(123 in {123: ""})
+assert.true(456 not in {123:""})
+assert.fails(lambda: [] in {123: ""}, "unhashable")
+
+# sorted
+assert.eq(sorted([42, 123, 3]), [3, 42, 123])
+assert.eq(sorted([42, 123, 3], reverse=True), [123, 42, 3])
+assert.eq(sorted(["wiz", "foo", "bar"]), ["bar", "foo", "wiz"])
+assert.eq(sorted(["wiz", "foo", "bar"], reverse=True), ["wiz", "foo", "bar"])
+assert.fails(lambda: sorted([1, 2, None, 3]), "int < NoneType not implemented")
+assert.fails(lambda: sorted([1, "one"]), "string < int not implemented")
+# custom cmp
+def cmplen(x, y): return len(x) - len(y)
+assert.eq(sorted(["two", "three", "four"], cmp=cmplen),
+          ["two", "four", "three"])
+assert.eq(sorted(["two", "three", "four"], cmp=cmplen, reverse=True),
+          ["three", "four", "two"])
+assert.fails(lambda: sorted([1, 2, 3], cmp=None), "got NoneType, want callable")
+
+# reversed
+assert.eq(reversed([1, 144, 81, 16]), [16, 81, 144, 1])
+
+# set
+assert.contains(set([1, 2, 3]), 1)
+assert.true(4 not in set([1, 2, 3]))
+assert.eq(len(set([1, 2, 3])), 3)
+assert.eq(sorted([x for x in set([1, 2, 3])]), [1, 2, 3])
+
+# dict
+assert.eq(dict([(1, 2), (3, 4)]), {1: 2, 3: 4})
+assert.eq(dict([(1, 2), (3, 4)], foo="bar"), {1: 2, 3: 4, "foo": "bar"})
+assert.eq(dict({1:2, 3:4}), {1: 2, 3: 4})
+assert.eq(dict({1:2, 3:4}.items()), {1: 2, 3: 4})
+
+# range
+assert.eq(range(5), [0, 1, 2, 3, 4])
+assert.eq(range(-5), [])
+assert.eq(range(2, 5), [2, 3, 4])
+assert.eq(range(5, 2), [])
+assert.eq(range(-2, -5), [])
+assert.eq(range(-5, -2), [-5, -4, -3])
+assert.eq(range(2, 10, 3), [2, 5, 8])
+assert.eq(range(10, 2, -3), [10, 7, 4])
+assert.eq(range(-2, -10, -3), [-2, -5, -8])
+assert.eq(range(-10, -2, 3), [-10, -7, -4])
+
+# list
+assert.eq(list("abc".split_bytes()), ["a", "b", "c"])
+assert.eq(sorted(list({"a": 1, "b": 2})), ['a', 'b'])
+
+# min, max
+assert.eq(min(5, -2, 1, 7, 3), -2)
+assert.eq(max(5, -2, 1, 7, 3), 7)
+assert.eq(min([5, -2, 1, 7, 3]), -2)
+assert.eq(min("one", "two", "three", "four"), "four")
+assert.eq(max("one", "two", "three", "four"), "two")
+assert.fails(min, "min requires at least one positional argument")
+assert.fails(lambda: min(1), "not iterable")
+assert.fails(lambda: min([]), "empty")
+assert.eq(min(5, -2, 1, 7, 3, key=lambda x: x*x), 1) # min absolute value
+assert.eq(min(5, -2, 1, 7, 3, key=lambda x: -x), 7) # min negated value
+
+# enumerate
+assert.eq(enumerate("abc".split_bytes()), [(0, "a"), (1, "b"), (2, "c")])
+assert.eq(enumerate([False, True, None], 42), [(42, False), (43, True), (44, None)])
+
+# zip
+assert.eq(zip(), [])
+assert.eq(zip([1, 2, 3]), [(1,), (2,), (3,)])
+assert.eq(zip(list("abc".split_bytes()),
+              list("def".split_bytes()),
+              list("hijk".split_bytes())),
+          [("a", "d", "h"), ("b", "e", "i"), ("c", "f", "j")])
+
+# dir for builtins
+assert.eq(dir(None), [])
+assert.eq(dir({})[:3], ["clear", "get", "items"]) # etc
+assert.eq(dir(1), [])
+assert.eq(dir([])[:3], ["append", "clear", "extend"]) # etc
+
+# hasattr, getattr, dir
+# hasfields is an application-defined type defined in eval_test.go.
+hf = hasfields()
+assert.eq(dir(hf), [])
+assert.true(not hasattr(hf, "x"))
+assert.fails(lambda: getattr(hf, "x"), "no .x field or method")
+assert.eq(getattr(hf, "x", 42), 42)
+hf.x = 1
+assert.true(hasattr(hf, "x"))
+assert.eq(getattr(hf, "x"), 1)
+assert.eq(hf.x, 1)
+hf.x = 2
+assert.eq(getattr(hf, "x"), 2)
+assert.eq(hf.x, 2)
+# built-in types can have attributes (methods) too.
+myset = set([])
+assert.eq(dir(myset), ["union"])
+assert.true(hasattr(myset, "union"))
+assert.true(not hasattr(myset, "onion"))
+assert.eq(str(getattr(myset, "union")), "<built-in method union of set value>")
+assert.fails(lambda: getattr(myset, "onion"), "no .onion field or method")
+assert.eq(getattr(myset, "onion", 42), 42)
+
+# repr
+assert.eq(repr(1), "1")
+assert.eq(repr("x"), '"x"')
+assert.eq(repr(["x", 1]), '["x", 1]')
