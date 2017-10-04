@@ -1786,7 +1786,7 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 
 	} else if sep, ok := AsString(sep_); ok {
 		if sep == "" {
-			return nil, fmt.Errorf("split: empty seperator")
+			return nil, fmt.Errorf("split: empty separator")
 		}
 		// usual case: split on non-empty separator
 		if maxsplit == 0 {
@@ -1804,7 +1804,7 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 		}
 
 	} else {
-		return nil, fmt.Errorf("split: got %s for seperator, want string", sep_.Type())
+		return nil, fmt.Errorf("split: got %s for separator, want string", sep_.Type())
 	}
 
 	list := make([]Value, len(res))
