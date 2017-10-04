@@ -126,9 +126,17 @@ we will be more rigorous with interface stability.
 
 ### Credits
 
-Skylark was designed and implemented in Java by Laurent Le Brun,
-Dmitry Lomov, Jon Brandvin, and Damien Martin-Guillerez, standing on
-the shoulders of the Python community.
+Skylark was designed and implemented in Java by
+Ulf Adams,
+Lukács Berki
+Jon Brandvein,
+John Field,
+Laurent Le Brun,
+Dmitry Lomov,
+Damien Martin-Guillerez,
+Vladimir Moskva, and
+Florian Weikert,
+standing on the shoulders of the Python community.
 The Go implementation was written by Alan Donovan and Jay Conrod;
 its scanner was derived from one written by Russ Cox.
 
@@ -137,7 +145,8 @@ its scanner was derived from one written by Russ Cox.
 Skylark in Go is Copyright (c) 2017 The Bazel Authors.
 All rights reserved.
 
-It is provided under a 3-clause BSD license: [LICENSE](license).
+It is provided under a 3-clause BSD license:
+[LICENSE](https://github.com/google/skylark/blob/master/LICENSE).
 
 The name "Skylark" is a code name of the Bazel project.
 We plan to rename the language before the end of 2017 to reflect its
