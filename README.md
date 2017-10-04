@@ -137,7 +137,7 @@ its scanner was derived from one written by Russ Cox.
 Skylark in Go is Copyright (c) 2017 The Bazel Authors.
 All rights reserved.
 
-It is provided under an Apache license.
+It is provided under a 3-clause BSD license: [LICENSE](license).
 
 The name "Skylark" is a code name of the Bazel project.
 We plan to rename the language before the end of 2017 to reflect its
