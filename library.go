@@ -954,13 +954,12 @@ func (s *sortSlice) Less(i, j int) bool {
 		}
 		cmp, ok := res.(Int)
 		return ok && cmp.Sign() < 0
-	} else {
-		ok, err := Compare(syntax.LT, x, y)
-		if err != nil {
-			s.err = err
-		}
-		return ok
 	}
+	ok, err := Compare(syntax.LT, x, y)
+	if err != nil {
+		s.err = err
+	}
+	return ok
 }
 func (s *sortSlice) Swap(i, j int) {
 	s.elems[i], s.elems[j] = s.elems[j], s.elems[i]
@@ -1063,9 +1062,8 @@ func dict_get(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, err
 		return v, nil
 	} else if dflt != nil {
 		return dflt, nil
-	} else {
-		return None, nil
 	}
+	return None, nil
 }
 
 // https://docs.python.org/2/library/stdtypes.html#dict.clear
@@ -1110,9 +1108,8 @@ func dict_pop(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, er
 		return v, nil
 	} else if d != nil {
 		return d, nil
-	} else {
-		return nil, fmt.Errorf("pop: missing key")
 	}
+	return nil, fmt.Errorf("pop: missing key")
 }
 
 // https://docs.python.org/2/library/stdtypes.html#dict.popitem
@@ -1617,11 +1614,11 @@ func string_join(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 		if i > 0 {
 			buf.WriteString(recv)
 		}
-		if s, ok := AsString(x); !ok {
+		s, ok := AsString(x)
+		if !ok {
 			return nil, fmt.Errorf("in list, want string, got %s", x.Type())
-		} else {
-			buf.WriteString(s)
 		}
+		buf.WriteString(s)
 	}
 	return String(buf.String()), nil
 }
