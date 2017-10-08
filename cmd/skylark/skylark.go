@@ -20,6 +20,7 @@ import (
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/syntax"
+	"io"
 )
 
 // flags
@@ -93,7 +94,7 @@ func repl() {
 	sc := bufio.NewScanner(os.Stdin)
 outer:
 	for {
-		fmt.Fprintf(os.Stderr, ">>> ")
+		io.WriteString(os.Stderr, ">>> ")
 		if !sc.Scan() {
 			break
 		}
@@ -118,7 +119,7 @@ outer:
 		var buf bytes.Buffer
 		fmt.Fprintln(&buf, line)
 		for {
-			fmt.Fprintf(os.Stderr, "... ")
+			io.WriteString(os.Stderr, "... ")
 			if !sc.Scan() {
 				break outer
 			}

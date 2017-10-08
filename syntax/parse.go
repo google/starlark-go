@@ -97,9 +97,8 @@ func (p *parser) parseStmt(stmts []Stmt) []Stmt {
 		return append(stmts, p.parseIfStmt())
 	} else if p.tok == FOR {
 		return append(stmts, p.parseForStmt())
-	} else {
-		return p.parseSimpleStmt(stmts)
 	}
+	return p.parseSimpleStmt(stmts)
 }
 
 func (p *parser) parseDefStmt() Stmt {

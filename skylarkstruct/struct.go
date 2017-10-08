@@ -12,7 +12,7 @@ package skylarkstruct
 // TODO(adonovan): the deprecated struct methods "to_json" and
 // "to_proto" do not appear in AttrNames, and hence dir(struct), since
 // that would force the majority to have to ignore them, but they may
-// nontheless be called if the struct does not have fields of these
+// nonetheless be called if the struct does not have fields of these
 // names. Ideally these will go away soon. See b/36412967.
 
 import (
