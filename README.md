@@ -128,7 +128,7 @@ we will be more rigorous with interface stability.
 
 Skylark was designed and implemented in Java by
 Ulf Adams,
-Lukács Berki
+Lukács Berki,
 Jon Brandvein,
 John Field,
 Laurent Le Brun,

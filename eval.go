@@ -22,7 +22,7 @@ const debug = false
 
 // A Thread contains the state of a Skylark thread,
 // such as its call stack and thread-local storage.
-// The Thread is threaded throughout the evaluator
+// The Thread is threaded throughout the evaluator.
 type Thread struct {
 	// frame is the current Skylark execution frame.
 	frame *Frame
@@ -35,6 +35,8 @@ type Thread struct {
 	// Load is the client-supplied implementation of module loading.
 	// Repeated calls with the same module name must return the same
 	// module environment or error.
+	//
+	// See example_test.go for some example implementations of Load.
 	Load func(thread *Thread, module string) (StringDict, error)
 
 	// locals holds arbitrary "thread-local" values belonging to the client.
@@ -222,8 +224,6 @@ func ExecFile(thread *Thread, filename string, src interface{}, globals StringDi
 }
 
 // ExecOptions specifies the arguments to Exec.
-//
-// TODO(adonovan): give Eval the same treatment?
 type ExecOptions struct {
 	// Thread is the state associated with the Skylark thread.
 	Thread *Thread
@@ -271,20 +271,32 @@ func Exec(opts ExecOptions) error {
 		}
 	}
 
-	fr := &Frame{
-		thread:  thread,
-		parent:  thread.frame,
-		globals: globals,
-		locals:  make([]Value, len(f.Locals)),
-	}
-	thread.frame = fr
-	err = execStmts(fr, f.Stmts)
-	thread.frame = fr.parent
+	fr := thread.Push(globals, len(f.Locals))
+	err = fr.ExecStmts(f.Stmts)
+	thread.Pop()
 
 	// Freeze the global environment.
 	globals.Freeze()
 
 	return err
+}
+
+// Push pushes a new Frame on the specified thread's stack, and returns it.
+// It must be followed by a call to Pop when the frame is no longer needed.
+func (thread *Thread) Push(globals StringDict, nlocals int) *Frame {
+	fr := &Frame{
+		thread:  thread,
+		parent:  thread.frame,
+		globals: globals,
+		locals:  make([]Value, nlocals),
+	}
+	thread.frame = fr
+	return fr
+}
+
+// Pop removes the topmost frame from the thread's stack.
+func (thread *Thread) Pop() {
+	thread.frame = thread.frame.parent
 }
 
 // Eval parses, resolves, and evaluates an expression within the
@@ -308,15 +320,9 @@ func Eval(thread *Thread, filename string, src interface{}, globals StringDict) 
 		return nil, err
 	}
 
-	fr := &Frame{
-		thread:  thread,
-		parent:  thread.frame,
-		globals: globals,
-		locals:  make([]Value, len(locals)),
-	}
-	thread.frame = fr
+	fr := thread.Push(globals, len(locals))
 	v, err := eval(fr, expr)
-	thread.frame = fr.parent
+	thread.Pop()
 	return v, err
 }
 
@@ -327,7 +333,11 @@ var (
 	errReturn   = fmt.Errorf("return")
 )
 
-func execStmts(fr *Frame, stmts []syntax.Stmt) error {
+// ExecStmts executes the statements in the context of the specified
+// frame, which must provide sufficient local slots.
+//
+// Most clients do not need this function; use Exec or Eval instead.
+func (fr *Frame) ExecStmts(stmts []syntax.Stmt) error {
 	for _, stmt := range stmts {
 		if err := exec(fr, stmt); err != nil {
 			return err
@@ -358,9 +368,9 @@ func exec(fr *Frame, stmt syntax.Stmt) error {
 			return err
 		}
 		if cond.Truth() {
-			return execStmts(fr, stmt.True)
+			return fr.ExecStmts(stmt.True)
 		} else {
-			return execStmts(fr, stmt.False)
+			return fr.ExecStmts(stmt.False)
 		}
 
 	case *syntax.AssignStmt:
@@ -483,7 +493,7 @@ func exec(fr *Frame, stmt syntax.Stmt) error {
 			if err := assign(fr, stmt.For, stmt.Vars, elem); err != nil {
 				return err
 			}
-			if err := execStmts(fr, stmt.Body); err != nil {
+			if err := fr.ExecStmts(stmt.Body); err != nil {
 				if err == errBreak {
 					break
 				} else if err == errContinue {
@@ -1672,27 +1682,19 @@ func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, err
 	for fr := thread.frame; fr != nil; fr = fr.parent {
 		// We look for the same syntactic function,
 		// not function value, otherwise the user could
-		// defeat it by writing the Y combinator.
+		// defeat the check by writing the Y combinator.
 		if fr.fn != nil && fr.fn.syntax == fn.syntax {
 			return nil, fmt.Errorf("function %s called recursively", fn.Name())
 		}
 	}
 
-	fr := &Frame{
-		thread:  thread,
-		parent:  thread.frame,
-		fn:      fn,
-		globals: fn.globals,
-		locals:  make([]Value, len(fn.syntax.Locals)),
+	fr := thread.Push(fn.globals, len(fn.syntax.Locals))
+	fr.fn = fn
+	err := fn.setArgs(fr, args, kwargs)
+	if err == nil {
+		err = fr.ExecStmts(fn.syntax.Body)
 	}
-
-	if err := fn.setArgs(fr, args, kwargs); err != nil {
-		return nil, err
-	}
-
-	thread.frame = fr
-	err := execStmts(fr, fn.syntax.Body)
-	thread.frame = fr.parent // restore
+	thread.Pop()
 
 	if err != nil {
 		if err == errReturn {

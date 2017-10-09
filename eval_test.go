@@ -16,6 +16,7 @@ import (
 	"github.com/google/skylark/internal/chunkedfile"
 	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/skylarktest"
+	"github.com/google/skylark/syntax"
 )
 
 func init() {
@@ -431,5 +432,41 @@ Error: floored division by zero`
 		t.Error("ExecFile succeeded unexpectedly")
 	default:
 		t.Errorf("ExecFile failed with %v, wanted *EvalError", err)
+	}
+}
+
+// TestRepeatedExec parses and resolves a file syntax tree once then
+// executes it repeatedly with different values of its global variables.
+func TestRepeatedExec(t *testing.T) {
+	f, err := syntax.Parse("repeat.sky", "y = 2 * x")
+	if err != nil {
+		t.Fatal(f) // parse error
+	}
+
+	isPredeclaredGlobal := func(name string) bool { return name == "x" } // x, but not y
+	isBuiltin := func(name string) bool { return skylark.Universe[name] != nil }
+
+	if err := resolve.File(f, isPredeclaredGlobal, isBuiltin); err != nil {
+		t.Fatal(err) // resolve error
+	}
+
+	thread := new(skylark.Thread)
+	for _, test := range []struct {
+		x, want skylark.Value
+	}{
+		{x: skylark.MakeInt(42), want: skylark.MakeInt(84)},
+		{x: skylark.String("mur"), want: skylark.String("murmur")},
+		{x: skylark.Tuple{skylark.None}, want: skylark.Tuple{skylark.None, skylark.None}},
+	} {
+		globals := skylark.StringDict{"x": test.x}
+		fr := thread.Push(globals, len(f.Locals))
+		if err := fr.ExecStmts(f.Stmts); err != nil {
+			t.Errorf("x=%v: %v", test.x, err) // exec error
+		} else if eq, err := skylark.Equal(globals["y"], test.want); err != nil {
+			t.Errorf("x=%v: %v", err) // comparison error
+		} else if !eq {
+			t.Errorf("x=%v: got y=%v, want %v", test.x, globals["y"], test.want)
+		}
+		thread.Pop()
 	}
 }
