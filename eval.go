@@ -846,11 +846,11 @@ func eval(fr *Frame, e syntax.Expr) (Value, error) {
 		// comparisons
 		switch e.Op {
 		case syntax.EQL, syntax.NEQ, syntax.GT, syntax.LT, syntax.LE, syntax.GE:
-			if ok, err := Compare(e.Op, x, y); err != nil {
+			ok, err := Compare(e.Op, x, y)
+			if err != nil {
 				return nil, fr.errorf(e.OpPos, "%s", err)
-			} else {
-				return Bool(ok), nil
 			}
+			return Bool(ok), nil
 		}
 
 		// binary operators

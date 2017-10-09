@@ -198,9 +198,9 @@ func ConvertToInt(x Value) (Int, error) {
 			return zero, fmt.Errorf("cannot convert float infinity to integer")
 		} else if math.IsNaN(f) {
 			return zero, fmt.Errorf("cannot convert float NaN to integer")
-		} else {
-			return finiteFloatToInt(x), nil
 		}
+		return finiteFloatToInt(x), nil
+
 	}
 	return zero, fmt.Errorf("cannot convert %s to int", x.Type())
 }
