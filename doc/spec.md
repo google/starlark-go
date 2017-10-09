@@ -1360,7 +1360,7 @@ the interpreter's Go API.
   Examples: `dict`, `set`, `list`, `tuple`, but not `string`.
 * `Indexable`: an _indexed_ type has a fixed length and provides efficient
   random access to its elements, which are identified by integer indices.
-  Examples: `string`, `tuple`.
+  Examples: `string`, `tuple`, and `list`.
 * `SetIndexable`: a _settable indexed type_ additionally allows us to modify the
   element at a given integer index. Example: `list`.
 * `Mapping`: a mapping is an association of keys to values. Example: `dict`.
@@ -1369,8 +1369,6 @@ Although all of Skylark's core data types for sequences implement at
 least the `Sequence` contract, it's possible for an an application
 that embeds the Skylark interpreter to define additional data types
 representing sequences of unknown length that implement only the `Iterable` contract.
-representing sequences whose length is unknown, or perhaps even infinite, that implement
-only the `Iterable` contract.
 
 Strings are not iterable, though they do support the `len(s)` and
 `s[i]` operations. Skylark deviates from Python here to avoid common
