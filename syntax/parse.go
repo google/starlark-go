@@ -52,6 +52,12 @@ func ParseExpr(filename string, src interface{}) (expr Expr, err error) {
 	p.nextToken() // read first lookahead token
 	expr = p.parseTest()
 
+	// A following newline (e.g. "f()\n") appears outside any brackets,
+	// on a non-blank line, and is thus materialized.
+	if p.tok == NEWLINE {
+		p.nextToken()
+	}
+
 	if p.tok != EOF {
 		p.in.errorf(p.in.pos, "got %#v after expression, want EOF", p.tok)
 	}

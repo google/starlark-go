@@ -22,6 +22,8 @@ func TestExprParseTrees(t *testing.T) {
 	}{
 		{`print(1)`,
 			`(CallExpr Fn=print Args=(1))`},
+		{"print(1)\n",
+			`(CallExpr Fn=print Args=(1))`},
 		{`x + 1`,
 			`(BinaryExpr X=x Op=+ Y=1)`},
 		{`[x for x in y]`,
