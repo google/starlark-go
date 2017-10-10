@@ -74,7 +74,8 @@ func ExampleLoadSequential() {
 
 	cache := make(map[string]*entry)
 
-	load := func(thread *skylark.Thread, module string) (skylark.StringDict, error) {
+	var load func(_ *skylark.Thread, module string) (skylark.StringDict, error)
+	load = func(_ *skylark.Thread, module string) (skylark.StringDict, error) {
 		e, ok := cache[module]
 		if e == nil {
 			if ok {
@@ -85,8 +86,9 @@ func ExampleLoadSequential() {
 			// Add a placeholder to indicate "load in progress".
 			cache[module] = nil
 
-			// Load it.
+			// Load and initialize the module in a new thread.
 			data := fakeFilesystem[module]
+			thread := &skylark.Thread{Load: load}
 			globals := make(skylark.StringDict)
 			err := skylark.ExecFile(thread, module, data, globals)
 			e = &entry{globals, err}
