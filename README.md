@@ -41,6 +41,8 @@ languages and compilers.
 
 * Issue tracker: [https://github.com/google/skylark/issues](https://github.com/google/skylark/issues)
 
+* Travis CI: ![Travis CI](https://travis-ci.org/google/skylark.svg) [https://travis-ci.org/google/skylark](https://travis-ci.org/google/skylark)
+
 ### Getting started
 
 Build the code:
