@@ -129,8 +129,12 @@ outer:
 
 		// If the line contains a well-formed
 		// expression, evaluate it.
-		if expr, err := syntax.ParseExpr("<stdin>", line); err == nil && !isLoad(expr) {
-			if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
+		if expr, err := syntax.ParseExpr("<stdin>", line); err == nil {
+			if isLoad(expr) {
+				if err := execFileNoFreeze(thread, line, globals); err != nil {
+					printError(err)
+				}
+			} else if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
 				printError(err)
 			} else if v != skylark.None {
 				fmt.Println(v)
