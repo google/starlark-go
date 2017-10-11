@@ -53,7 +53,7 @@ func ParseExpr(filename string, src interface{}) (expr Expr, err error) {
 	expr = p.parseTest()
 
 	// A following newline (e.g. "f()\n") appears outside any brackets,
-	// on a non-blank line, and is thus materialized.
+	// on a non-blank line, and thus results in a NEWLINE token.
 	if p.tok == NEWLINE {
 		p.nextToken()
 	}
