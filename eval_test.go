@@ -469,3 +469,23 @@ func TestRepeatedExec(t *testing.T) {
 		thread.Pop()
 	}
 }
+
+// TestUnpackUserDefined tests that user-defined
+// implementations of skylark.Value may be unpacked.
+func TestUnpackUserDefined(t *testing.T) {
+	// success
+	want := new(hasfields)
+	var x *hasfields
+	if err := skylark.UnpackArgs("unpack", skylark.Tuple{want}, nil, "x", &x); err != nil {
+		t.Errorf("UnpackArgs failed: %v", err)
+	}
+	if x != want {
+		t.Errorf("for x, got %v, want %v", x, want)
+	}
+
+	// failure
+	err := skylark.UnpackArgs("unpack", skylark.Tuple{skylark.MakeInt(42)}, nil, "x", &x)
+	if want := "unpack: for parameter 1: got int, want hasfields"; fmt.Sprint(err) != want {
+		t.Errorf("unpack args error = %q, want %q", err, want)
+	}
+}

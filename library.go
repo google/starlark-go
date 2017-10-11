@@ -15,6 +15,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -181,10 +182,15 @@ func builtinAttrNames(methods map[string]builtinMethod) []string {
 // supplied parameter variables.  pairs is an alternating list of names
 // and pointers to variables.
 //
-// If the variable is a bool, int, string, *List, *Dict, Callable, or Iterable,
-// UnpackArgs performs the appropriate type check.  (An int uses the
-// AsInt32 check.) If the parameter name ends with "?", it and all
-// following parameters are optional.
+// If the variable is a bool, int, string, *List, *Dict, Callable,
+// Iterable, or user-defined implementation of Value,
+// UnpackArgs performs the appropriate type check.
+// (An int uses the AsInt32 check.)
+// If the parameter name ends with "?",
+// it and all following parameters are optional.
+//
+// If the variable implements Value, UnpackArgs may call
+// its Type() method while constructing the error message.
 //
 // Beware: an optional *List, *Dict, Callable, Iterable, or Value variable that is
 // not assigned is not a valid Skylark Value, so the caller must
@@ -320,7 +326,17 @@ func unpackOneArg(v Value, ptr interface{}) error {
 			return fmt.Errorf("got %s, want iterable", v.Type())
 		}
 	default:
-		log.Fatalf("internal error: invalid ptr type: %T", ptr)
+		param := reflect.ValueOf(ptr).Elem()
+		if !reflect.TypeOf(v).AssignableTo(param.Type()) {
+			// Detect mistakes by caller.
+			if !param.Type().AssignableTo(reflect.TypeOf(new(Value)).Elem()) {
+				log.Fatalf("internal error: invalid ptr type: %T", ptr)
+			}
+			// Assume it's safe to call Type() on a zero instance.
+			paramType := param.Interface().(Value).Type()
+			return fmt.Errorf("got %s, want %s", v.Type(), paramType)
+		}
+		param.Set(reflect.ValueOf(v))
 	}
 	return nil
 }
