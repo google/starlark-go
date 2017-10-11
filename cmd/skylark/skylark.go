@@ -187,9 +187,7 @@ func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.S
 	}
 
 	// resolve
-	isPredeclaredGlobal := func(name string) bool { return globals[name] != nil }
-	isBuiltin := func(name string) bool { return skylark.Universe[name] != nil }
-	if err := resolve.File(f, isPredeclaredGlobal, isBuiltin); err != nil {
+	if err := resolve.File(f, globals.Has, skylark.Universe.Has); err != nil {
 		return err
 
 	}

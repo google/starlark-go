@@ -31,7 +31,7 @@ func TestResolve(t *testing.T) {
 		resolve.AllowSet = option(chunk.Source, "set")
 		resolve.AllowGlobalReassign = option(chunk.Source, "global_reassign")
 
-		if err := resolve.File(f, isPredeclaredGlobal, isBuiltin); err != nil {
+		if err := resolve.File(f, isPredeclaredGlobal, isUniversal); err != nil {
 			for _, err := range err.(resolve.ErrorList) {
 				chunk.GotError(int(err.Pos.Line), err.Msg)
 			}
@@ -50,7 +50,7 @@ func TestDefVarargsAndKwargsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := resolve.File(file, isPredeclaredGlobal, isBuiltin); err != nil {
+	if err := resolve.File(file, isPredeclaredGlobal, isUniversal); err != nil {
 		t.Fatal(err)
 	}
 	fn := file.Stmts[0].(*syntax.DefStmt)
@@ -69,7 +69,7 @@ func TestLambdaVarargsAndKwargsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := resolve.File(file, isPredeclaredGlobal, isBuiltin); err != nil {
+	if err := resolve.File(file, isPredeclaredGlobal, isUniversal); err != nil {
 		t.Fatal(err)
 	}
 	lam := file.Stmts[0].(*syntax.AssignStmt).RHS.(*syntax.LambdaExpr)
@@ -82,6 +82,6 @@ func TestLambdaVarargsAndKwargsSet(t *testing.T) {
 }
 
 func isPredeclaredGlobal(name string) bool { return strings.HasPrefix(name, "G") }
-func isBuiltin(name string) bool {
+func isUniversal(name string) bool {
 	return strings.HasPrefix(name, "B") || name == "float"
 }

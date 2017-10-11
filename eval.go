@@ -96,7 +96,8 @@ func (d StringDict) Freeze() {
 	}
 }
 
-func (d StringDict) has(name string) bool { _, ok := d[name]; return ok }
+// Has reports whether the dictionary contains the specified key.
+func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
 // A Frame holds the execution state of a single Skylark function call
 // or module toplevel.
@@ -157,7 +158,7 @@ func (fr *Frame) lookup(id *syntax.Ident) (Value, error) {
 				return v.fn(fr.thread, v, nil, nil)
 			}
 		}
-	case resolve.Builtin:
+	case resolve.Universal:
 		return Universe[id.Name], nil
 	}
 	return nil, fr.errorf(id.NamePos, "%s variable %s referenced before assignment",
@@ -259,7 +260,7 @@ func Exec(opts ExecOptions) error {
 	}
 
 	globals := opts.Globals
-	if err := resolve.File(f, globals.has, Universe.has); err != nil {
+	if err := resolve.File(f, globals.Has, Universe.Has); err != nil {
 		return err
 	}
 
@@ -315,7 +316,7 @@ func Eval(thread *Thread, filename string, src interface{}, globals StringDict) 
 		return nil, err
 	}
 
-	locals, err := resolve.Expr(expr, globals.has, Universe.has)
+	locals, err := resolve.Expr(expr, globals.Has, Universe.Has)
 	if err != nil {
 		return nil, err
 	}

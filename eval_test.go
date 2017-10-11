@@ -444,9 +444,8 @@ func TestRepeatedExec(t *testing.T) {
 	}
 
 	isPredeclaredGlobal := func(name string) bool { return name == "x" } // x, but not y
-	isBuiltin := func(name string) bool { return skylark.Universe[name] != nil }
 
-	if err := resolve.File(f, isPredeclaredGlobal, isBuiltin); err != nil {
+	if err := resolve.File(f, isPredeclaredGlobal, skylark.Universe.Has); err != nil {
 		t.Fatal(err) // resolve error
 	}
 
