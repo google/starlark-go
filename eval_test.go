@@ -462,7 +462,7 @@ func TestRepeatedExec(t *testing.T) {
 		if err := fr.ExecStmts(f.Stmts); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // exec error
 		} else if eq, err := skylark.Equal(globals["y"], test.want); err != nil {
-			t.Errorf("x=%v: %v", err) // comparison error
+			t.Errorf("x=%v: %v", test.x, err) // comparison error
 		} else if !eq {
 			t.Errorf("x=%v: got y=%v, want %v", test.x, globals["y"], test.want)
 		}
