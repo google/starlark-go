@@ -52,7 +52,7 @@ to identify the sole statement that defines each global, permitting
 accurate cross-reference documentation.
 
 In addition, the resolver validates all variable names, classifying
-them as references to builtin, global, local, or free variables.
+them as references to universal, global, local, or free variables.
 Local and free variables are mapped to a small integer, allowing the
 evaluator to use an efficient (flat) representation for the
 environment.
@@ -113,7 +113,7 @@ insertion order of the elements for iteration.
 
 <b>Struct:</b>
 The `skylarkstruct` Go package provides a non-standard Skylark
-extension data type, `struct`, that maps fields identifiers to
+extension data type, `struct`, that maps field identifiers to
 arbitrary values. Fields are accessed using dot notation: `y = s.f`.
 This data type is extensively used in Bazel, but its specification is
 currently evolving.
@@ -127,28 +127,29 @@ representation more efficient than a hash table.
 ### Freezing
 
 All mutable values created during module initialization are _frozen_
-upon its completion. It is this property that permits one Skylark
-module to be referenced from two others running concurrently without
-the possibility of a data race.
+upon its completion. It is this property that permits a Skylark module
+to be referenced by two Skylark threads running concurrently (such as
+the initialization threads of two other modules) without the
+possibility of a data race.
 
-The Go implementation supports freezing by adding an additional
-"frozen" Boolean to each mutable object. This flag, once set, causes
-all subsequent attempts at mutation to fail. Every value defines a
+The Go implementation supports freezing by storing an additional
+"frozen" Boolean variable in each mutable object. Once this flag is set,
+all subsequent attempts at mutation fail. Every value defines a
 Freeze method that sets its own frozen flag if not already set, and
 calls Freeze for each value that it contains.
 For example, when a list is frozen, it freezes each of its elements;
 when a dictionary is frozen, it freezes each of its keys and values;
 and when a function value is frozen, it freezes each of the free
-variables implicitly referenced by its closure.
+variables and parameter default values implicitly referenced by its closure.
 Application-defined types must also follow this discipline.
 
 The freeze mechanism in the Go implementation is finer grained than in
-the Java implementations: in effect, that latter has one "frozen" flag
+the Java implementation: in effect, the latter has one "frozen" flag
 per module, and every value holds a reference to the frozen flag of
 its module. This makes setting the frozen flag more efficient---a
 simple bit flip, no need to traverse the object graph---but coarser
 grained. Also, it complicates the API slightly because to construct a
-list, say, requires a reference to the frozen variable it should use.
+list, say, requires a reference to the frozen flag it should use.
 
 The Go implementation also permits the `freeze` built-in to be exposed
 to the program. (This requires the `-freeze` dialect flag.) This has
@@ -234,4 +235,11 @@ skylarktest package
 `assert` module
 skylarkstruct
 integration with Go testing.T
+```
+
+
+## TODO
+
+```
+Discuss practical separation of code and data.
 ```
