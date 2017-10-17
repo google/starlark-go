@@ -1865,7 +1865,7 @@ func (is *intset) len() int {
 	return len(is.large)
 }
 
-// See https://docs.python.org/2/library/stdtypes.html#string-formatting.
+// https://github.com/google/skylark/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)

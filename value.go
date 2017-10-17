@@ -93,8 +93,7 @@ type Value interface {
 	// Skylark interpreters running concurrently.
 	Freeze()
 
-	// Truth returns the truth value of an object, according to Python rules.
-	// http://docs.python.org/2/library/stdtypes.html#truth-value-testing
+	// Truth returns the truth value of an object.
 	Truth() Bool
 
 	// Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y).

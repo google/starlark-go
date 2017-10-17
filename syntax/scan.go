@@ -717,11 +717,13 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 }
 
 func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
-	// https://docs.python.org/2/reference/lexical_analysis.html#integer-and-long-integer-literals
-	// Not supported:
+	// https://github.com/google/skylark/blob/master/doc/spec.md#lexical-elements
+	//
+	// Python features not supported:
 	// - integer literals of >64 bits of precision
 	// - 123L or 123l long suffix
 	// - traditional octal: 0755
+	// https://docs.python.org/2/reference/lexical_analysis.html#integer-and-long-integer-literals
 
 	fraction, exponent := false, false
 
