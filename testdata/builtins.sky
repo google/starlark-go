@@ -104,6 +104,12 @@ assert.eq(zip(list("abc".split_bytes()),
               list("def".split_bytes()),
               list("hijk".split_bytes())),
           [("a", "d", "h"), ("b", "e", "i"), ("c", "f", "j")])
+z1 = [1]
+assert.eq(zip(z1), [(1,)])
+z1.append(2)
+assert.eq(zip(z1), [(1,), (2,)])
+assert.fails(lambda: zip(z1, 1), "zip: argument #2 is not iterable: int")
+z1.append(3)
 
 # dir for builtins
 assert.eq(dir(None), [])

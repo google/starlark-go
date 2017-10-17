@@ -1036,6 +1036,13 @@ func zip(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	}
 	rows, cols := 0, len(args)
 	iters := make([]Iterator, cols)
+	defer func() {
+		for _, iter := range iters {
+			if iter != nil {
+				iter.Done()
+			}
+		}
+	}()
 	for i, seq := range args {
 		it := Iterate(seq)
 		if it == nil {
