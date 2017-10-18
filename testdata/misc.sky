@@ -58,7 +58,6 @@ load("assert.sky", "assert")
 cyclic = [1, 2, 3] # list cycle
 cyclic[1] = cyclic
 assert.eq(str(cyclic), "[1, [...], 3]")
-assert.fails(lambda: cmp(cyclic, cyclic), "maximum recursion")
 assert.fails(lambda: cyclic < cyclic, "maximum recursion")
 assert.fails(lambda: cyclic == cyclic, "maximum recursion")
 cyclic2 = [1, 2, 3]

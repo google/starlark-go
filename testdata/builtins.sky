@@ -42,13 +42,19 @@ assert.eq(sorted(["wiz", "foo", "bar"]), ["bar", "foo", "wiz"])
 assert.eq(sorted(["wiz", "foo", "bar"], reverse=True), ["wiz", "foo", "bar"])
 assert.fails(lambda: sorted([1, 2, None, 3]), "int < NoneType not implemented")
 assert.fails(lambda: sorted([1, "one"]), "string < int not implemented")
-# custom cmp
-def cmplen(x, y): return len(x) - len(y)
-assert.eq(sorted(["two", "three", "four"], cmp=cmplen),
+# custom key function
+assert.eq(sorted(["two", "three", "four"], key=len),
           ["two", "four", "three"])
-assert.eq(sorted(["two", "three", "four"], cmp=cmplen, reverse=True),
+assert.eq(sorted(["two", "three", "four"], key=len, reverse=True),
           ["three", "four", "two"])
-assert.fails(lambda: sorted([1, 2, 3], cmp=None), "got NoneType, want callable")
+assert.fails(lambda: sorted([1, 2, 3], key=None), "got NoneType, want callable")
+# sort is stable
+pairs = [(4, 0), (3, 1), (4, 2), (2, 3), (3, 4), (1, 5), (2, 6), (3, 7)]
+assert.eq(sorted(pairs, key=lambda x: x[0]),
+          [(1, 5),
+           (2, 3), (2, 6),
+           (3, 1), (3, 4), (3, 7),
+           (4, 0), (4, 2)])
 
 # reversed
 assert.eq(reversed([1, 144, 81, 16]), [16, 81, 144, 1])

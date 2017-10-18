@@ -43,7 +43,6 @@ func init() {
 		"all":       NewBuiltin("all", all),
 		"bool":      NewBuiltin("bool", bool_),
 		"chr":       NewBuiltin("chr", chr),
-		"cmp":       NewBuiltin("cmp", cmp),
 		"dict":      NewBuiltin("dict", dict),
 		"dir":       NewBuiltin("dir", dir),
 		"enumerate": NewBuiltin("enumerate", enumerate),
@@ -383,6 +382,7 @@ func bool_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error
 	return x.Truth(), nil
 }
 
+// https://github.com/google/skylark/blob/master/doc/spec.md#chr
 func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {
 		return nil, fmt.Errorf("chr does not accept keyword arguments")
@@ -401,29 +401,6 @@ func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 		return nil, fmt.Errorf("chr: Unicode code point U+%X out of range (>0x10FFFF)", i)
 	}
 	return String(string(i)), nil
-}
-
-// https://github.com/google/skylark/blob/master/doc/spec.md#cmp
-func cmp(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("cmp does not accept keyword arguments")
-	}
-	if len(args) != 2 {
-		return nil, fmt.Errorf("cmp: got %d arguments, want 2", len(args))
-	}
-	x := args[0]
-	y := args[1]
-	if lt, err := Compare(syntax.LT, x, y); err != nil {
-		return nil, err
-	} else if lt {
-		return MakeInt(+1), nil // x < y
-	}
-	if gt, err := Compare(syntax.GT, x, y); err != nil {
-		return nil, err
-	} else if gt {
-		return MakeInt(-1), nil // x > y
-	}
-	return zero, nil // x == y or one of the operands is NaN
 }
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#dict
@@ -783,6 +760,7 @@ func minmax(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	return extremum, nil
 }
 
+// https://github.com/google/skylark/blob/master/doc/spec.md#ord
 func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {
 		return nil, fmt.Errorf("ord does not accept keyword arguments")
@@ -1002,11 +980,11 @@ func set(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 // https://github.com/google/skylark/blob/master/doc/spec.md#sorted
 func sorted(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var iterable Iterable
-	var cmp Callable
+	var key Callable
 	var reverse bool
 	if err := UnpackArgs("sorted", args, kwargs,
 		"iterable", &iterable,
-		"cmp?", &cmp,
+		"key?", &key,
 		"reverse?", &reverse,
 	); err != nil {
 		return nil, err
@@ -1014,52 +992,60 @@ func sorted(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 	iter := iterable.Iterate()
 	defer iter.Done()
-	var elems []Value
+	var values []Value
 	if n := Len(iterable); n > 0 {
-		elems = make(Tuple, 0, n) // preallocate if length is known
+		values = make(Tuple, 0, n) // preallocate if length is known
 	}
 	var x Value
 	for iter.Next(&x) {
-		elems = append(elems, x)
+		values = append(values, x)
 	}
-	slice := &sortSlice{thread: thread, elems: elems, cmp: cmp}
+
+	// Derive keys from values by applying key function.
+	var keys []Value
+	if key != nil {
+		keys = make([]Value, len(values))
+		for i, v := range values {
+			k, err := Call(thread, key, Tuple{v}, nil)
+			if err != nil {
+				return nil, err // to preserve backtrace, don't modify error
+			}
+			keys[i] = k
+		}
+	}
+
+	slice := &sortSlice{keys: keys, values: values}
 	if reverse {
-		sort.Sort(sort.Reverse(slice))
+		sort.Stable(sort.Reverse(slice))
 	} else {
-		sort.Sort(slice)
+		sort.Stable(slice)
 	}
-	return NewList(slice.elems), slice.err
+	return NewList(slice.values), slice.err
 }
 
 type sortSlice struct {
-	thread *Thread
-	elems  []Value
-	cmp    Callable
+	keys   []Value // nil => values[i] is key
+	values []Value
 	err    error
-	pair   [2]Value
 }
 
-func (s *sortSlice) Len() int { return len(s.elems) }
+func (s *sortSlice) Len() int { return len(s.values) }
 func (s *sortSlice) Less(i, j int) bool {
-	x, y := s.elems[i], s.elems[j]
-	if s.cmp != nil {
-		// Strange things will happen if cmp fails, or returns a non-int.
-		s.pair[0], s.pair[1] = x, y // avoid allocation
-		res, err := Call(s.thread, s.cmp, Tuple(s.pair[:]), nil)
-		if err != nil {
-			s.err = err
-		}
-		cmp, ok := res.(Int)
-		return ok && cmp.Sign() < 0
+	keys := s.keys
+	if s.keys == nil {
+		keys = s.values
 	}
-	ok, err := Compare(syntax.LT, x, y)
+	ok, err := Compare(syntax.LT, keys[i], keys[j])
 	if err != nil {
 		s.err = err
 	}
 	return ok
 }
 func (s *sortSlice) Swap(i, j int) {
-	s.elems[i], s.elems[j] = s.elems[j], s.elems[i]
+	if s.keys != nil {
+		s.keys[i], s.keys[j] = s.keys[j], s.keys[i]
+	}
+	s.values[i], s.values[j] = s.values[j], s.values[i]
 }
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#str

@@ -110,7 +110,6 @@ assert.true(not nan <= nan)
 assert.true(not nan >= nan)
 assert.true(not nan == nan) # use explicit operator, not assert.ne
 assert.true(nan != nan)
-assert.eq(cmp(nan, nan), 0)
 assert.true(not nan < 0)
 assert.true(not nan > 0)
 assert.true(not [nan] < [nan])

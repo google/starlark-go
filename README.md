@@ -63,7 +63,7 @@ coins = {
   'quarter': 25,
 }
 print('By name:\t' + ', '.join(sorted(coins.keys())))
-print('By value:\t' + ', '.join(sorted(coins.keys(), cmp=lambda x, y: coins[x] - coins[y])))
+print('By value:\t' + ', '.join(sorted(coins.keys(), key=coins.get)))
 
 $ ./skylark -lambda coins.sky
 By name:	dime, nickel, penny, quarter

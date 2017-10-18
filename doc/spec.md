@@ -2777,14 +2777,6 @@ See also: `ord`.
 
 <b>Implementation note:</b> `chr` is not provided by the Java implementation.
 
-### cmp
-
-`cmp(x, y)` compares two values `x` and `y` and returns an integer according to the outcome.
-The result is negative if `x < y`, positive if `x > y`, and zero otherwise.
-Consequently, `cmp(x, x)` always returns zero, even for floating-point NaN values.
-
-<b>Implementation note:</b> `cmp` is not provided by the Java implementation.
-
 ### dict
 
 `dict` creates a dictionary.  It accepts up to one positional
@@ -3076,28 +3068,27 @@ Sets are an optional feature of the Go implementation of Skylark.
 
 ### sorted
 
-`sorted(x)` returns a new list containing the elements of the iterable sequence x, in sorted order.
+`sorted(x)` returns a new list containing the elements of the iterable sequence x,
+in sorted order.  The sort algorithm is stable.
 
 The optional named parameter `reversed`, if true, causes `sorted` to
 return results in reverse sorted order.
 
-The optional named parameter `cmp` specifies an alternative function
-for ordered comparison of two elements.
+The optional named parameter `key` specifies a function of one
+argument to apply to obtain the value's sort key.
+The default behavior is the identity function.
 
 ```python
 sorted(set("harbors".split_codepoints()))                       # ['a', 'b', 'h', 'o', 'r', 's']
 sorted([3, 1, 4, 1, 5, 9])                                      # [1, 1, 3, 4, 5, 9]
 sorted([3, 1, 4, 1, 5, 9], reverse=True)                        # [9, 5, 4, 3, 1, 1]
 
-def cmplen(x, y): return len(x) - len(y)
-
-sorted(["two", "three", "four"], cmp=cmplen)                    # ["two", "four", "three"], shortest to longest
-sorted(["two", "three", "four"], cmp=cmplen, reverse=True)      # ["three", "four", "two"], longest to shortest
+sorted(["two", "three", "four"], key=len)                       # ["two", "four", "three"], shortest to longest
+sorted(["two", "three", "four"], key=len, reverse=True)         # ["three", "four", "two"], longest to shortest
 ```
 
 <b>Implementation note:</b>
-The Java implementation does not support the `cmp`, `key`, and
-`reversed` parameters.
+The Java implementation does not support the `key`, and `reversed` parameters.
 
 ### str
 
