@@ -148,7 +148,7 @@ assert.eq(x5a, [1, 2, 3, "a", "b", "c", True, False])
 
 # list.insert
 def insert_at(index):
-  x = range(3)
+  x = list(range(3))
   x.insert(index, 42)
   return x
 assert.eq(insert_at(-99), [42, 0, 1, 2])

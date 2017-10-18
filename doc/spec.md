@@ -332,7 +332,7 @@ TODO: define string_lit, indent, outdent, semicolon, newline, eof
 
 ## Data types
 
-The following eleven data types are known to the interpreter:
+These are the main data types built in to the interpreter:
 
 ```shell
 NoneType           # the type of None
@@ -348,6 +348,9 @@ function           # a function implemented in Skylark
 builtin            # a function or method implemented by the interpreter or host application
 ```
 
+Some functions, such as the iteration methods of `string`, or the
+`range` function, return instances of special-purpose types that don't
+appear in this list.
 Additional data types may be defined by the host application into
 which the interpreter is embedded, and those data types may
 participate in basic operations of the language such as arithmetic,
@@ -1964,7 +1967,7 @@ c       string          x (string must encode a single Unicode code point)
 ```
 
 It is an error if the argument does not have the type required by the
-conversion specifier.
+conversion specifier.  A Boolean argument is not considered a number.
 
 Examples:
 
@@ -2992,7 +2995,7 @@ print(1, "hi", x=3)	# "1 hi x=3\n"
 
 ### range
 
-`range` returns a new list of integers drawn from the specified interval and stride.
+`range` returns an immutable sequence of integers defined by the specified interval and stride.
 
 ```python
 range(stop)                             # equivalent to range(0, stop)
@@ -3006,13 +3009,35 @@ With two arguments, `range(start, stop)` returns only integers not less than `st
 
 With three arguments, `range(start, stop, step)` returns integers
 formed by successively adding `step` to `start` until the value meets or passes `stop`.
+A call to `range` fails if the value of `step` is zero.
+
+A call to `range` does not materialize the entire sequence, but
+returns a fixed-size value of type `"range"` that represents the
+parameters that define the sequence.
+The `range` value is iterable and may be indexed efficiently.
 
 ```python
-range(10)                               # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-range(3, 10)                            # [3, 4, 5, 6, 7, 8, 9]
-range(3, 10, 2)                         # [3, 5, 7, 9]
-range(10, 3, -2)                        # [10, 8, 6, 4]
+list(range(10))                         # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+list(range(3, 10))                      # [3, 4, 5, 6, 7, 8, 9]
+list(range(3, 10, 2))                   # [3, 5, 7, 9]
+list(range(10, 3, -2))                  # [10, 8, 6, 4]
 ```
+
+The `len` function applied to a `range` value returns its length.
+The truth value of a `range` value is `True` if its length is non-zero.
+
+Range values are comparable: two `range` values compare equal if they
+denote the same sequence of integers, even if they were created using
+different parameters.
+
+Range values are not hashable.  <!-- should they be? -->
+
+The `str` function applied to a `range` value yields a string of the
+form `range(10)`, `range(1, 10)`, or `range(1, 10, 2)`.
+
+The `x in y` operator, where `y` is a range, reports whether `x` is equal to
+some member of the sequence `y`; the operation fails unless `x` is a
+number.
 
 ### repr
 

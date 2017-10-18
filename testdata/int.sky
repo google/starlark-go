@@ -150,4 +150,5 @@ assert.eq(' '.join(["%i" % x for x in nums]), "-95 -1 0 1 95")
 assert.eq(' '.join(["%x" % x for x in nums]), "-5f -1 0 1 5f")
 assert.eq(' '.join(["%X" % x for x in nums]), "-5F -1 0 1 5F")
 assert.eq("%o %x %d" % (123, 123, 123), "173 7b 123")
-assert.eq("%o %x %d" % (123.1, 123.1, True), "173 7b 1") # non-int operands are acceptable
+assert.eq("%o %x %d" % (123.1, 123.1, 123.1), "173 7b 123") # non-int operands are acceptable
+assert.fails(lambda: "%d" % True, "cannot convert bool to int")

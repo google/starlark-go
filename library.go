@@ -665,7 +665,16 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 	if base != nil {
 		return nil, fmt.Errorf("int: can't convert non-string with explicit base")
 	}
-	i, err := ConvertToInt(x)
+
+	if b, ok := x.(Bool); ok {
+		if b {
+			return one, nil
+		} else {
+			return zero, nil
+		}
+	}
+
+	i, err := NumberToInt(x)
 	if err != nil {
 		return nil, fmt.Errorf("int: %s", err)
 	}
@@ -834,7 +843,10 @@ func range_(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	if err := UnpackPositionalArgs("range", args, kwargs, 1, &start, &stop, &step); err != nil {
 		return nil, err
 	}
-	list := new(List)
+
+	// TODO(adonovan): analyze overflow/underflows cases for 32-bit implementations.
+
+	var n int
 	switch len(args) {
 	case 1:
 		// range(stop)
@@ -842,26 +854,98 @@ func range_(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, err
 		fallthrough
 	case 2:
 		// range(start, stop)
-		for i := start; i < stop; i += step {
-			list.elems = append(list.elems, MakeInt(i))
+		if stop > start {
+			n = stop - start
 		}
 	case 3:
 		// range(start, stop, step)
-		if step == 0 {
+		switch {
+		case step > 0:
+			if stop > start {
+				n = (stop-1-start)/step + 1
+			}
+		case step < 0:
+			if start > stop {
+				n = (start-1-stop)/-step + 1
+			}
+		default:
 			return nil, fmt.Errorf("range: step argument must not be zero")
 		}
-		if step > 0 {
-			for i := start; i < stop; i += step {
-				list.elems = append(list.elems, MakeInt(i))
-			}
-		} else {
-			for i := start; i >= stop; i += step {
-				list.elems = append(list.elems, MakeInt(i))
-			}
-		}
 	}
-	return list, nil
+
+	return rangeValue{start: start, stop: stop, step: step, len: n}, nil
 }
+
+// A rangeValue is a comparable, immutable, indexable sequence of integers
+// defined by the three parameters to a range(...) call.
+// Invariant: step != 0.
+type rangeValue struct{ start, stop, step, len int }
+
+var (
+	_ Indexable  = rangeValue{}
+	_ Sequence   = rangeValue{}
+	_ Comparable = rangeValue{}
+)
+
+func (r rangeValue) Len() int          { return r.len }
+func (r rangeValue) Index(i int) Value { return MakeInt(r.start + i*r.step) }
+func (r rangeValue) Iterate() Iterator { return &rangeIterator{r, 0} }
+func (r rangeValue) Freeze()           {} // immutable
+func (r rangeValue) String() string {
+	if r.step != 1 {
+		return fmt.Sprintf("range(%d, %d, %d)", r.start, r.stop, r.step)
+	} else if r.start != 0 {
+		return fmt.Sprintf("range(%d, %d)", r.start, r.stop)
+	} else {
+		return fmt.Sprintf("range(%d)", r.stop)
+	}
+}
+func (r rangeValue) Type() string          { return "range" }
+func (r rangeValue) Truth() Bool           { return r.len > 0 }
+func (r rangeValue) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: range") }
+
+func (x rangeValue) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+	y := y_.(rangeValue)
+	switch op {
+	case syntax.EQL:
+		return rangeEqual(x, y), nil
+	case syntax.NEQ:
+		return !rangeEqual(x, y), nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
+	}
+}
+
+func rangeEqual(x, y rangeValue) bool {
+	// Two ranges compare equal if they denote the same sequence.
+	return x.len == y.len &&
+		(x.len == 0 || x.start == y.start && x.step == y.step)
+}
+
+func (r rangeValue) contains(x Int) bool {
+	x32, err := AsInt32(x)
+	if err != nil {
+		return false // out of range
+	}
+	delta := x32 - r.start
+	quo, rem := delta/r.step, delta%r.step
+	return rem == 0 && 0 <= quo && quo < r.len
+}
+
+type rangeIterator struct {
+	r rangeValue
+	i int
+}
+
+func (it *rangeIterator) Next(p *Value) bool {
+	if it.i < it.r.len {
+		*p = it.r.Index(it.i)
+		it.i++
+		return true
+	}
+	return false
+}
+func (*rangeIterator) Done() {}
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#repr
 func repr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {

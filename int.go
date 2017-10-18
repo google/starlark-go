@@ -179,17 +179,11 @@ func AsInt32(x Value) (int, error) {
 	return 0, fmt.Errorf("%s out of range", i)
 }
 
-// ConvertToInt converts x to an integer value.  An int is returned
-// unchanged, a bool becomes 0 or 1, a float is truncated towards
-// zero. ConvertToInt reports an error for all other values.
-func ConvertToInt(x Value) (Int, error) {
+// NumberToInt converts a number x to an integer value.
+// An int is returned unchanged, a float is truncated towards zero.
+// NumberToInt reports an error for all other values.
+func NumberToInt(x Value) (Int, error) {
 	switch x := x.(type) {
-	case Bool:
-		if x {
-			return one, nil
-		} else {
-			return zero, nil
-		}
 	case Int:
 		return x, nil
 	case Float:
