@@ -129,10 +129,12 @@ assert.eq(enumerate([False, True, None], 42), [(42, False), (43, True), (44, Non
 
 # zip
 assert.eq(zip(), [])
+assert.eq(zip([]), [])
 assert.eq(zip([1, 2, 3]), [(1,), (2,), (3,)])
-assert.eq(zip(list("abc".split_bytes()),
+assert.eq(zip("".split_bytes()), [])
+assert.eq(zip("abc".split_bytes(),
               list("def".split_bytes()),
-              list("hijk".split_bytes())),
+              "hijk".split_bytes()),
           [("a", "d", "h"), ("b", "e", "i"), ("c", "f", "j")])
 z1 = [1]
 assert.eq(zip(z1), [(1,)])
