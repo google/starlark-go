@@ -1178,7 +1178,8 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				return x.Or(y), nil
 			}
 		case *Set: // union
-			if iter := Iterate(y); iter != nil {
+			if y, ok := y.(*Set); ok {
+				iter := Iterate(y)
 				defer iter.Done()
 				return x.Union(iter)
 			}

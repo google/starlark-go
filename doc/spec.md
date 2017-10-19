@@ -1813,7 +1813,7 @@ String interpolation
 
 Sets
       int | int                 # bitwise union (OR)
-      set | iterable            # set union
+      set | set                 # set union
       int & int                 # bitwise intersection (AND)
       set & set                 # set intersection
 ```
@@ -1864,9 +1864,7 @@ elements of the operand sets, preserving the element order of the left
 operand.
 
 The `|` operator likewise computes bitwise or set unions.
-However, if the left operand of `|` is a set, the right operand may be
-any iterable, not necessarily another set.
-The result of `set | iterable` is a new set whose elements are the
+The result of `set | set` is a new set whose elements are the
 union of the operands, preserving the order of the elements of the
 operands, left before right.
 
@@ -1876,7 +1874,6 @@ operands, left before right.
 
 set([1, 2]) & set([2, 3])       # set([2])
 set([1, 2]) | set([2, 3])       # set([1, 2, 3])
-set([1, 2]) | [2,3]             # set([1, 2, 3])
 ```
 
 <b>Implementation note:</b>
