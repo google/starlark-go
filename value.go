@@ -17,7 +17,7 @@
 //      *Dict           -- dict
 //      *Set            -- set
 //      *Function       -- function (implemented in Skylark)
-//      *Builtin        -- builtin (function or method implemented in Go)
+//      *Builtin        -- builtin_function_or_method (function or method implemented in Go)
 //
 // Client applications may define new data types that satisfy at least
 // the Value interface.  Such types may provide additional operations by
@@ -495,13 +495,13 @@ func (b *Builtin) Hash() (uint32, error) {
 }
 func (b *Builtin) Receiver() Value { return b.recv }
 func (b *Builtin) String() string  { return toString(b) }
-func (b *Builtin) Type() string    { return "builtin" }
+func (b *Builtin) Type() string    { return "builtin_function_or_method" }
 func (b *Builtin) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	return b.fn(thread, b, args, kwargs)
 }
 func (b *Builtin) Truth() Bool { return true }
 
-// NewBuiltin returns a new 'builtin' value with the specified name
+// NewBuiltin returns a new 'builtin_function_or_method' value with the specified name
 // and implementation.  It compares unequal with all other values.
 func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)) *Builtin {
 	return &Builtin{name: name, fn: fn}
@@ -510,8 +510,8 @@ func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kw
 // BindReceiver returns a new Builtin value representing a method
 // closure, that is, a built-in function bound to a receiver value.
 //
-// In the example below, the value of f is the string.index builtin bound to
-// the receiver value "abc":
+// In the example below, the value of f is the string.index
+// built-in method bound to the receiver value "abc":
 //
 //     f = "abc".index; f("a"); f("b")
 //

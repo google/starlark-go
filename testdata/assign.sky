@@ -195,18 +195,18 @@ z += 3 ### "global variable z referenced before assignment"
 
 load("assert.sky", "assert")
 
-assert.eq(type(list), "builtin")
+assert.eq(type(list), "builtin_function_or_method")
 list = []
 assert.eq(type(list), "list")
 
 # set and float are dialect-specific,
 # but we shouldn't notice any difference.
 
-assert.eq(type(float), "builtin")
+assert.eq(type(float), "builtin_function_or_method")
 float = 1.0
 assert.eq(type(float), "float")
 
-assert.eq(type(set), "builtin")
+assert.eq(type(set), "builtin_function_or_method")
 set = [1, 2, 3]
 assert.eq(type(set), "list")
 

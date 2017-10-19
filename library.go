@@ -337,7 +337,7 @@ func unpackOneArg(v Value, ptr interface{}) error {
 	return nil
 }
 
-// ---- builtin functions ----
+// ---- built-in functions ----
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#all
 func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {

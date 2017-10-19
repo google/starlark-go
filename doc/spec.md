@@ -70,7 +70,7 @@ concurrency, and other such features of Python.
     * [Dictionaries](#dictionaries)
     * [Sets](#sets)
     * [Functions](#functions)
-    * [Built-ins](#built-ins)
+    * [Built-in functions](#built-in-functions)
   * [Name binding and variables](#name-binding-and-variables)
   * [Value concepts](#value-concepts)
     * [Identity and mutation](#identity-and-mutation)
@@ -335,17 +335,17 @@ TODO: define string_lit, indent, outdent, semicolon, newline, eof
 These are the main data types built in to the interpreter:
 
 ```shell
-NoneType           # the type of None
-bool               # True or False
-int                # a signed integer of arbitrary magnitude
-float              # an IEEE 754 double-precision floating point number
-string             # a byte string
-list               # a fixed-length sequence of values
-tuple              # a fixed-length sequence of values, unmodifiable
-dict               # a mapping from values to values
-set                # a set of values
-function           # a function implemented in Skylark
-builtin            # a function or method implemented by the interpreter or host application
+NoneType                     # the type of None
+bool                         # True or False
+int                          # a signed integer of arbitrary magnitude
+float                        # an IEEE 754 double-precision floating point number
+string                       # a byte string
+list                         # a fixed-length sequence of values
+tuple                        # a fixed-length sequence of values, unmodifiable
+dict                         # a mapping from values to values
+set                          # a set of values
+function                     # a function implemented in Skylark
+builtin_function_or_method   # a function or method implemented by the interpreter or host application
 ```
 
 Some functions, such as the iteration methods of `string`, or the
@@ -1033,18 +1033,24 @@ over finite sequences, implies that Skylark programs are not Turing-complete.
 
 
 
-### Built-ins
+### Built-in functions
 
-A Built-in is a function or method implemented in Go by the interpreter
+A built-in function is a function or method implemented in Go by the interpreter
 or the application into which the interpreter is embedded.
-The [type](#type) of a built-in is `"builtin"`.
-A builtin value used in a Boolean context is always considered true.
 
-Many built-ins are defined in the "universe" block of the environment
+The [type](#type) of a built-in function is `"builtin_function_or_method"`.
+<b>Implementation note:</b>
+The Java implementation of `type(x)` returns `"function"` for all
+functions, whether built in or defined in Skylark,
+even though applications distinguish these two types.
+
+A built-in function value used in a Boolean context is always considered true.
+
+Many built-in functions are defined in the "universe" block of the environment
 (see [Name Resolution](#name-resolution)), and are thus available to
 all Skylark programs.
 
-Except where noted, built-ins accept only positional arguments.
+Except where noted, built-in functions accept only positional arguments.
 The parameter names serve merely as documentation.
 
 ## Name binding and variables
@@ -1338,7 +1344,7 @@ immutable due to _freezing_.
 A `tuple` value is hashable only if all its elements are hashable.
 Thus `("localhost", 80)` is hashable but `([127, 0, 0, 1], 80)` is not.
 
-Values of the types `function` and `builtin` are also hashable.
+Values of the types `function` and `builtin_function_or_method` are also hashable.
 Although functions are not necessarily immutable, as they may be
 closures that refer to mutable variables, instances of these types
 are compared by reference identity (see [Comparisons](#comparisons)),
@@ -1774,14 +1780,14 @@ comparison.
 
 The remaining built-in types support only equality comparisons.
 Values of type `dict` or `set` compare equal if their elements compare
-equal, and values of type `function` or `builtin` are equal only to
+equal, and values of type `function` or `builtin_function_or_method` are equal only to
 themselves.
 
 ```shell
-dict            # equal contents
-set             # equal contents
-function        # identity
-builtin         # identity
+dict                            # equal contents
+set                             # equal contents
+function                        # identity
+builtin_function_or_method      # identity
 ```
 
 #### Arithmetic operations
@@ -2086,7 +2092,7 @@ Arguments = Argument {',' Argument} .
 Argument  = identifier | identifier '=' Test | '*' identifier | '**' identifier .
 ```
 
-A value `f` of type `function` or `builtin` may be called using the expression `f(...)`.
+A value `f` of type `function` or `builtin_function_or_method` may be called using the expression `f(...)`.
 Applications may define additional types whose values may be called in the same way.
 
 A method call such as `filename.endswith(".sky")` is the composition
@@ -2116,7 +2122,7 @@ DotSuffix = '.' identifier .
 A dot expression fails if the value does not have an attribute of the
 specified name.
 
-Use the built-in `hasattr(x, "f")` function to ascertain whether a
+Use the built-in function `hasattr(x, "f")` to ascertain whether a
 value has a specific attribute, or `dir(x)` to enumerate all its
 attributes.  The `getattr(x, "f")` function can be used to select an
 attribute when the name `"f"` is not known statically.
@@ -3895,23 +3901,24 @@ eventually to eliminate all such differences on a case-by-case basis.
 * Integers are represented with infinite precision.
 * Integer arithmetic is exact.
 * Floating-point literals are supported (option: `-float`).
-* The `float` built-in is provided (option: `-float`).
+* The `float` built-in function is provided (option: `-float`).
 * Real division using `float / float` is supported (option: `-float`).
 * `def` statements may be nested (option: `-nesteddef`).
 * `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
 * Strings have the additional methods `bytes`, `split_bytes`, `codepoints`, and `split_codepoints`.
-* The `chr` and `ord` built-ins are supported.
-* The `set` built-in is provided (option: `-set`).
+* The `chr` and `ord` built-in functions are supported.
+* The `set` built-in function is provided (option: `-set`).
 * `x += y` rebindings are permitted at top level.
 * `assert` is a valid identifier.
 * `&` is a token; `int & int` and `set & set` are supported.
 * `int | int` is supported.
-* The `freeze` built-in is provided (option: `-freeze`).
+* The `freeze` built-in function is provided (option: `-freeze`).
 * The parser accepts unary `+` expressions.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
 * `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `cmp`, `key`, and `reversed`.
 * The `dict` type has a `clear` method.
+* `type(x)` returns `"builtin_function_or_method"` for built-in functions.

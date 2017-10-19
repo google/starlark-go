@@ -143,7 +143,7 @@ assert.eq(zip(z1), [(1,), (2,)])
 assert.fails(lambda: zip(z1, 1), "zip: argument #2 is not iterable: int")
 z1.append(3)
 
-# dir for builtins
+# dir for builtin_function_or_method
 assert.eq(dir(None), [])
 assert.eq(dir({})[:3], ["clear", "get", "items"]) # etc
 assert.eq(dir(1), [])

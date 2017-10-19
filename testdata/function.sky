@@ -96,7 +96,7 @@ yang(True)
 assert.eq(calls, ["yang", "yin"])
 
 
-# hash(builtin) should be deterministic.
+# hash(builtin_function_or_method) should be deterministic.
 closures = set(["".count for _ in range(10)])
 assert.eq(len(closures), 10)
 hashes = set([hash("".count) for _ in range(10)])

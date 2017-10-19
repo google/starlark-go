@@ -282,7 +282,7 @@ func writeJSON(out *bytes.Buffer, v skylark.Value) error {
 		}
 		out.WriteByte('}')
 	default:
-		// function, builtin, set, dict, and all user-defined types.
+		// function, builtin_function_or_method, set, dict, and all user-defined types.
 		return fmt.Errorf("cannot convert %s to JSON", v.Type())
 	}
 	return nil
