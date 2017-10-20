@@ -120,6 +120,7 @@ def f():
 f()
 
 ---
+load("module", "name") # ok
 
 def f():
   load("foo", "bar") ### "load statement within a function"
@@ -130,24 +131,6 @@ load("foo",
      b="",   ### "load: empty identifier"
      c="_d", ### "load: names with leading underscores are not exported: _d"
      _e="f") # ok
-
----
-# A load() call as an expression statement is converted into a
-# load statement, but load is not currently a reserved word.
-# TODO(adonovan): clarify the Skylark spec on this issue.
-
-def load(): # doesn't affect following call
-  pass
-
-_ = 1 + load() # ok
-
-load("foo.sky", "") ### "load: empty identifier"
-
----
-
-def f(load):
-  _ = (load, load()) # ok
-  load("foo.sky", "x") ### "load statement within a function"
 
 ---
 # return, if statements and for loops at top-level are forbidden

@@ -127,19 +127,27 @@ outer:
 			continue // blank or comment
 		}
 
-		// If the line contains a well-formed
-		// expression, evaluate it.
-		if expr, err := syntax.ParseExpr("<stdin>", line); err == nil {
-			if isLoad(expr) {
-				if err := execFileNoFreeze(thread, line, globals); err != nil {
-					printError(err)
-				}
-			} else if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
+		// If the line contains a well-formed expression, evaluate it.
+		if _, err := syntax.ParseExpr("<stdin>", line); err == nil {
+			if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
 				printError(err)
 			} else if v != skylark.None {
 				fmt.Println(v)
 			}
 			continue
+		}
+
+		// If the input so far is a single load or assignment statement,
+		// execute it without waiting for a blank line.
+		if f, err := syntax.Parse("<stdin>", line); err == nil && len(f.Stmts) == 1 {
+			switch f.Stmts[0].(type) {
+			case *syntax.AssignStmt, *syntax.LoadStmt:
+				// Execute it as a file.
+				if err := execFileNoFreeze(thread, line, globals); err != nil {
+					printError(err)
+				}
+				continue
+			}
 		}
 
 		// Otherwise assume it is the first of several
@@ -165,7 +173,7 @@ outer:
 		//     1,
 		//     2
 		//   )
-		if expr, err := syntax.ParseExpr("<stdin>", text); err == nil && !isLoad(expr) {
+		if _, err := syntax.ParseExpr("<stdin>", text); err == nil {
 			if v, err := skylark.Eval(thread, "<stdin>", text, globals); err != nil {
 				printError(err)
 			} else if v != skylark.None {
@@ -239,17 +247,4 @@ func printError(err error) {
 	} else {
 		fmt.Fprintln(os.Stderr, err)
 	}
-}
-
-// isLoad reports whether e is a load(...) function call.
-// If so, we must parse it again as a file, not an expression,
-// so that it is is converted to a load statement.
-// ("load" should really be a reserved word.)
-func isLoad(e syntax.Expr) bool {
-	if call, ok := e.(*syntax.CallExpr); ok {
-		if id, ok := call.Fn.(*syntax.Ident); ok && id.Name == "load" {
-			return true
-		}
-	}
-	return false
 }

@@ -217,23 +217,26 @@ func (p *parser) parseSimpleStmt(stmts []Stmt) []Stmt {
 
 // small_stmt = RETURN expr?
 //            | PASS | BREAK | CONTINUE
+//            | LOAD ...
 //            | expr ('=' | '+=' | '-=' | '*=' | '/=' | '%=') expr   // assign
 //            | expr
 func (p *parser) parseSmallStmt() Stmt {
-	if p.tok == RETURN {
+	switch p.tok {
+	case RETURN:
 		pos := p.nextToken() // consume RETURN
 		var result Expr
 		if p.tok != EOF && p.tok != NEWLINE && p.tok != SEMI {
 			result = p.parseExpr(false)
 		}
 		return &ReturnStmt{Return: pos, Result: result}
-	}
 
-	switch p.tok {
 	case BREAK, CONTINUE, PASS:
 		tok := p.tok
 		pos := p.nextToken() // consume it
 		return &BranchStmt{Token: tok, TokenPos: pos}
+
+	case LOAD:
+		return p.parseLoadStmt()
 	}
 
 	// Assignment
@@ -246,72 +249,74 @@ func (p *parser) parseSmallStmt() Stmt {
 		return &AssignStmt{OpPos: pos, Op: op, LHS: x, RHS: rhs}
 	}
 
-	// Convert load(...) call into LoadStmt special form.
-	// TODO(adonovan): This affects all calls to load, not just at toplevel.
-	// Spec clarification needed.
-	if call, ok := x.(*CallExpr); ok {
-		if id, ok := call.Fn.(*Ident); ok && id.Name == "load" {
-			return p.convertCallToLoad(call, id.NamePos)
-		}
-	}
-
 	// Expression statement (e.g. function call, doc string).
 	return &ExprStmt{X: x}
 }
 
-// Because load is not a reserved word, it is impossible to parse a load
-// statement using an LL(1) grammar.  Instead we parse load(...) as a function
-// call and then convert it to a LoadStmt.
-func (p *parser) convertCallToLoad(call *CallExpr, loadPos Position) *LoadStmt {
-	if len(call.Args) < 2 {
-		p.in.errorf(call.Lparen, "load statement needs at least 2 operands, got %d", len(call.Args))
-	}
-	module, ok := call.Args[0].(*Literal)
-	if !ok || module.Token != STRING {
-		start, _ := call.Args[0].Span()
-		p.in.errorf(start, "first operand of load statement must be a string literal")
-	}
+// stmt = LOAD '(' STRING {',' (IDENT '=')? STRING} [','] ')'
+func (p *parser) parseLoadStmt() *LoadStmt {
+	loadPos := p.nextToken() // consume LOAD
+	lparen := p.consume(LPAREN)
 
-	// synthesize identifiers
-	args := call.Args[1:]
-	to := make([]*Ident, len(args))
-	from := make([]*Ident, len(args))
-	for i, arg := range args {
-		if lit, ok := arg.(*Literal); ok && lit.Token == STRING {
+	if p.tok != STRING {
+		p.in.errorf(p.in.pos, "first operand of load statement must be a string literal")
+	}
+	module := p.parsePrimary().(*Literal)
+
+	var from, to []*Ident
+	for p.tok != RPAREN && p.tok != EOF {
+		p.consume(COMMA)
+		if p.tok == RPAREN {
+			break // allow trailing comma
+		}
+		switch p.tok {
+		case STRING:
 			// load("module", "id")
 			// To name is same as original.
+			lit := p.parsePrimary().(*Literal)
 			id := &Ident{
 				NamePos: lit.TokenPos.add(`"`),
 				Name:    lit.Value.(string),
 			}
-			to[i] = id
-			from[i] = id
-			continue
-		} else if binary, ok := arg.(*BinaryExpr); ok && binary.Op == EQ {
-			// load("module", to="from")
-			// Symbol is locally renamed.
-			if lit, ok := binary.Y.(*Literal); ok && lit.Token == STRING {
-				id := &Ident{
-					NamePos: lit.TokenPos.add(`"`),
-					Name:    lit.Value.(string),
-				}
-				to[i] = binary.X.(*Ident)
-				from[i] = id
-				continue
-			}
-		}
+			to = append(to, id)
+			from = append(from, id)
 
-		start, _ := arg.Span()
-		p.in.errorf(start, `load operand must be "name" or localname="name"`)
+		case IDENT:
+			// load("module", to="from")
+			id := p.parseIdent()
+			to = append(to, id)
+			if p.tok != EQ {
+				p.in.errorf(p.in.pos, `load operand must be "%s" or %s="originalname" (want '=' after %s)`, id.Name, id.Name)
+			}
+			p.consume(EQ)
+			if p.tok != STRING {
+				p.in.errorf(p.in.pos, `original name of loaded symbol must be quoted: %s="originalname"`, id.Name)
+			}
+			lit := p.parsePrimary().(*Literal)
+			from = append(from, &Ident{
+				NamePos: lit.TokenPos.add(`"`),
+				Name:    lit.Value.(string),
+			})
+
+		case RPAREN:
+			p.in.errorf(p.in.pos, "trailing comma in load statement")
+
+		default:
+			p.in.errorf(p.in.pos, `load operand must be "name" or localname="name" (got %#v)`, p.tok)
+		}
+	}
+	rparen := p.consume(RPAREN)
+
+	if len(to) == 0 {
+		p.in.errorf(lparen, "load statement must import at least 1 symbol")
 	}
 	return &LoadStmt{
 		Load:   loadPos,
 		Module: module,
 		To:     to,
 		From:   from,
-		Rparen: call.Rparen,
+		Rparen: rparen,
 	}
-
 }
 
 // suite is typically what follows a COLON (e.g. after DEF or FOR).

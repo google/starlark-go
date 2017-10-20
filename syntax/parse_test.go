@@ -154,8 +154,6 @@ else:
 			`(AssignStmt Op== LHS=(TupleExpr List=(x y)) RHS=1)`},
 		{`load("", "a", b="c")`,
 			`(LoadStmt Module="" From=(a c) To=(a b))`},
-		{`load = 1`, // load is not a reserved word
-			`(AssignStmt Op== LHS=load RHS=1)`},
 		{`if True: load("", "a", b="c")`, // load needn't be at toplevel
 			`(IfStmt Cond=True True=((LoadStmt Module="" From=(a c) To=(a b))))`},
 		{`def f(x, *args, **kwargs):

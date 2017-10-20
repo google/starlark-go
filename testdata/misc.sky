@@ -97,13 +97,3 @@ assert.eq(1 + \
 # A regression test for error position information.
 
 _ = {}.get(1, default=2) ### "get: unexpected keyword arguments"
-
----
-load("assert.sky", "assert")
-
-# load(...) calls outside an expression statement are not load statements.
-
-assert.eq([load("123") for load in [int, len]], [123, 3])
-
-load = lambda x: x
-assert.eq(load("abc"), "abc")

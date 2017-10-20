@@ -28,10 +28,6 @@ technique of [precedence
 climbing](http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#climbing)
 to reduce the number of productions.
 
-Because `load` is not a reserved word, Skylark's `load` statements are
-created by post-processing `load(...)` function calls that appear in
-an expression statement.
-
 In some places the parser accepts a larger set of programs than are
 strictly valid, leaving the task of rejecting them to the subsequent
 resolver pass. For example, in the function call `f(a, b=c)` the

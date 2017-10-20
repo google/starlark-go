@@ -247,13 +247,11 @@ characters are tokens:
 identifiers:
 
 ```text
-and            if
-break          in
-continue       lambda
-def            not
-elif           or
-else           pass
-for            return
+and            else           load 
+break          for            not
+continue       if             or
+def            in             pass
+elif           lambda         return
 ```
 
 The tokens below also may not be used as identifiers although they do not
@@ -2314,6 +2312,7 @@ SmallStmt  = ReturnStmt
            | BreakStmt | ContinueStmt | PassStmt
            | AssignStmt
            | ExprStmt
+           | LoadStmt
            .
 ```
 
@@ -2643,12 +2642,6 @@ loop.
 The `load` statement loads another Skylark module, extracts one or
 more values from it, and binds them to names in the current module.
 
-Syntactically, a load statement looks like a function call `load(...)`.
-However, `load` is not a keyword, so the parser converts any expression
-statement containing a function call of the form `load(...)` into a
-load statement.
-In all other contexts, `load` acts like an ordinary identifier.
-
 <!--
 The awkwardness of load statements is a consequence of staying a
 strict subset of Python syntax, which allows reuse of existing tools
@@ -2656,7 +2649,11 @@ such as editor support. Python import statements are inadequate for
 Skylark because they don't allow arbitrary file names for module names.
 -->
 
-A load statement within a function is a static error.
+Syntactically, a load statement looks like a function call `load(...)`.
+
+```grammar {.good}
+LoadStmt = 'load' '(' string {',' [identifier '='] string} [','] ')' .
+```
 
 A load statement requires at least two "arguments".
 The first must be a literal string; it identifies the module to load.
@@ -2682,6 +2679,8 @@ if no name is given, the local name matches the quoted name.
 load("module.sky", "x", "y", "z")       # assigns x, y, and z
 load("module.sky", "x", y2="y", "z")    # assigns x, y2, and z
 ```
+
+A load statement within a function is a static error.
 
 
 ## Module execution

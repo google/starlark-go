@@ -25,6 +25,7 @@ SmallStmt = ReturnStmt
           | BreakStmt | ContinueStmt | PassStmt
           | AssignStmt
           | ExprStmt
+          | LoadStmt
           .
 
 ReturnStmt   = 'return' Expression .
@@ -33,6 +34,8 @@ ContinueStmt = 'continue' .
 PassStmt     = 'pass' .
 AssignStmt   = Expression ('=' | '+=' | '-=' | '*=' | '/=' | '//=' | '%=') Expression .
 ExprStmt     = Expression .
+
+LoadStmt = 'load' '(' string {',' [identifier '='] string} [','] ')' .
 
 Test = LambdaExpr
      | IfExpr
@@ -111,9 +114,6 @@ LoopVariables = PrimaryExpr {',' PrimaryExpr} .
 - plus all quoted tokens such as '+=', 'return'.
 
 # Notes:
-- 'load' is an identifier, not a reserved word.
-  Load statements are synthesized when reducing 'small_stmt = expr'
-  if the name of the identifier is 'load'.  This is a wart.
 - Ambiguity is resolved using operator precedence.
 - The grammar does not enforce the legal order of params and args,
   nor that the first compclause must be a 'for'.
