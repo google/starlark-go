@@ -2987,6 +2987,10 @@ Example:
 print(1, "hi", x=3)	# "1 hi x=3\n"
 ```
 
+Typically the formatted string is printed to the standard error file,
+but the exact behavior is a property of the Skylark thread and is
+determined by the host application.
+
 ### range
 
 `range` returns an immutable sequence of integers defined by the specified interval and stride.
