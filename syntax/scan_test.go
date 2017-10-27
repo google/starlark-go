@@ -155,9 +155,9 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// hex
 		{"0xA", `10 EOF`},
 		{"0xAAG", `170 G EOF`},
-		{"0xG", `invalid hex literal`},
+		{"0xG", `foo.sky:1:1: invalid hex literal`},
 		{"0XA", `10 EOF`},
-		{"0XG", `invalid hex literal`},
+		{"0XG", `foo.sky:1:1: invalid hex literal`},
 		{"0xA.", `10 . EOF`},
 		{"0xA.e1", `10 . e1 EOF`},
 		// octal
@@ -172,13 +172,14 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// TODO(adonovan): reenable later.
 		// {"0123", `obsolete form of octal literal; use 0o123`},
 		{"0123", `83 EOF`},
-		{"012834", `invalid int literal`},
-		{"012934", `invalid int literal`},
+		{"012834", `foo.sky:1:1: invalid int literal`},
+		{"012934", `foo.sky:1:1: invalid int literal`},
+		{"i = 012934", `foo.sky:1:5: invalid int literal`},
 		// octal escapes in string literals
 		{`"\037"`, `"\x1f" EOF`},
 		{`"\377"`, `"\xff" EOF`},
-		{`"\378"`, `"\x1f8" EOF`},                  // = '\37' + '8'
-		{`"\400"`, `invalid escape sequence \400`}, // unlike Python 2 and 3
+		{`"\378"`, `"\x1f8" EOF`},                               // = '\37' + '8'
+		{`"\400"`, `foo.sky:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
 		// Backslashes that are not part of escapes are treated literally,
 		// but this behavior will change; see b/34519173.
 		{`"\+"`, `"\\+" EOF`},
@@ -189,10 +190,12 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"012934e1", `1.293400e+05 EOF`},
 		{"0123.", `1.230000e+02 EOF`},
 		{"0123.1", `1.231000e+02 EOF`},
+		// issue #16
+		{"x ! 0", "foo.sky:1:3: unexpected input character '!'"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {
-			got = err.(Error).Msg
+			got = err.(Error).Error()
 		}
 		if test.want != got {
 			t.Errorf("scan `%s` = [%s], want [%s]", test.input, got, test.want)

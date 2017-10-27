@@ -594,6 +594,7 @@ start:
 	defer sc.endToken(val)
 	switch c {
 	case '=', '<', '>', '!', '+', '-', '%', '/': // possibly followed by '='
+		start := sc.pos
 		sc.readRune()
 		if sc.peekRune() == '=' {
 			sc.readRune()
@@ -624,7 +625,7 @@ start:
 		case '>':
 			return GT
 		case '!':
-			sc.error(sc.pos, "unexpected input character '!'")
+			sc.error(start, "unexpected input character '!'")
 		case '+':
 			return PLUS
 		case '-':
@@ -677,6 +678,7 @@ start:
 }
 
 func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
+	start := sc.pos
 	triple := len(sc.rest) >= 3 && sc.rest[0] == byte(quote) && sc.rest[1] == byte(quote) && sc.rest[2] == byte(quote)
 	sc.readRune()
 	if triple {
@@ -712,7 +714,7 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 	sc.endToken(val)
 	s, _, err := unquote(val.raw)
 	if err != nil {
-		sc.error(sc.pos, err.Error())
+		sc.error(start, err.Error())
 	}
 	val.string = s
 	return STRING
@@ -727,6 +729,7 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 	// - traditional octal: 0755
 	// https://docs.python.org/2/reference/lexical_analysis.html#integer-and-long-integer-literals
 
+	start := sc.pos
 	fraction, exponent := false, false
 
 	if c == '.' {
@@ -750,7 +753,7 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			sc.readRune()
 			c = sc.peekRune()
 			if !isxdigit(c) {
-				sc.error(sc.pos, "invalid hex literal")
+				sc.error(start, "invalid hex literal")
 			}
 			for isxdigit(c) {
 				sc.readRune()
@@ -854,7 +857,7 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			val.int, err = strconv.ParseInt(s, 0, 64)
 		}
 		if err != nil {
-			sc.error(sc.pos, "invalid int literal")
+			sc.error(start, "invalid int literal")
 		}
 		return INT
 	}
