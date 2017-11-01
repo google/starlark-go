@@ -1877,10 +1877,9 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 		} else if maxsplit < 0 {
 			res = strings.Fields(recv)
 		} else if fnname == "split" {
-			res = splitspace(recv, maxsplit+1)
+			res = splitspace(recv, maxsplit)
 		} else { // rsplit
-			// TODO(adonovan): implement.
-			return nil, fmt.Errorf("rsplit(None, %d): maxsplit > 0 not yet supported", maxsplit)
+			res = rsplitspace(recv, maxsplit)
 		}
 
 	} else if sep, ok := AsString(sep_); ok {
@@ -1913,13 +1912,45 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 	return NewList(list), nil
 }
 
+// Precondition: max > 0.
+func rsplitspace(s string, max int) []string {
+	res := make([]string, 0, max+1)
+	end := -1 // index of field end, or -1 in a region of spaces.
+	for i := len(s); i > 0; {
+		r, sz := utf8.DecodeLastRuneInString(s[:i])
+		if unicode.IsSpace(r) {
+			if end >= 0 {
+				if len(res) == max {
+					break // let this field run to the start
+				}
+				res = append(res, s[i:end])
+				end = -1
+			}
+		} else if end < 0 {
+			end = i
+		}
+		i -= sz
+	}
+	if end >= 0 {
+		res = append(res, s[:end])
+	}
+
+	resLen := len(res)
+	for i := 0; i < resLen/2; i++ {
+		res[i], res[resLen-1-i] = res[resLen-1-i], res[i]
+	}
+
+	return res
+}
+
+// Precondition: max > 0.
 func splitspace(s string, max int) []string {
 	var res []string
 	start := -1 // index of field start, or -1 in a region of spaces
 	for i, r := range s {
 		if unicode.IsSpace(r) {
 			if start >= 0 {
-				if len(res)+1 == max {
+				if len(res) == max {
 					break // let this field run to the end
 				}
 				res = append(res, s[start:i])
