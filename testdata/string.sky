@@ -186,9 +186,10 @@ assert.eq("a.b.c.d".rsplit(".", 1), ["a.b.c", "d"])
 assert.eq("a.b.c.d".split(".", 2), ["a", "b", "c.d"])
 assert.eq("a.b.c.d".rsplit(".", 2), ["a.b", "c", "d"])
 
+# {,r}split on white space:
 assert.eq(" a bc\n  def \t  ghi".split(), ["a", "bc", "def", "ghi"])
 assert.eq(" a bc\n  def \t  ghi".split(None), ["a", "bc", "def", "ghi"])
-assert.eq(" a bc\n  def \t  ghi".split(None, 0), [" a bc\n  def \t  ghi"])
+assert.eq(" a bc\n  def \t  ghi".split(None, 0), ["a bc\n  def \t  ghi"])
 assert.eq(" a bc\n  def \t  ghi".rsplit(None, 0), [" a bc\n  def \t  ghi"])
 assert.eq(" a bc\n  def \t  ghi".split(None, 1), ["a", "bc\n  def \t  ghi"])
 assert.eq(" a bc\n  def \t  ghi".rsplit(None, 1), [" a bc\n  def", "ghi"])
@@ -201,9 +202,25 @@ assert.eq(" a bc\n  def \t  ghi".rsplit(None, 4), ["a", "bc", "def", "ghi"])
 assert.eq(" a bc\n  def \t  ghi".rsplit(None, 5), ["a", "bc", "def", "ghi"])
 
 assert.eq(" a bc\n  def \t  ghi ".split(None, 0), ["a bc\n  def \t  ghi "])
-assert.eq(" a bc\n  def \t  ghi ".split(None, 1), ["a", "bc\n  def \t  ghi "])
 assert.eq(" a bc\n  def \t  ghi ".rsplit(None, 0), [" a bc\n  def \t  ghi"])
+assert.eq(" a bc\n  def \t  ghi ".split(None, 1), ["a", "bc\n  def \t  ghi "])
 assert.eq(" a bc\n  def \t  ghi ".rsplit(None, 1), [" a bc\n  def", "ghi"])
+
+# Observe the algorithmic difference when splitting on spaces versus other delimiters.
+assert.eq('--aa--bb--cc--'.split('-', 0), ['--aa--bb--cc--'])  # contrast this
+assert.eq('  aa  bb  cc  '.split(None, 0), ['aa  bb  cc  '])   #  with this
+assert.eq('--aa--bb--cc--'.rsplit('-', 0), ['--aa--bb--cc--']) # ditto this
+assert.eq('  aa  bb  cc  '.rsplit(None, 0), ['  aa  bb  cc'])  #  and this
+#
+assert.eq('--aa--bb--cc--'.split('-', 1), ['', '-aa--bb--cc--'])
+assert.eq('--aa--bb--cc--'.rsplit('-', 1), ['--aa--bb--cc-', ''])
+assert.eq('  aa  bb  cc  '.split(None, 1), ['aa', 'bb  cc  '])
+assert.eq('  aa  bb  cc  '.rsplit(None, 1), ['  aa  bb',  'cc'])
+#
+assert.eq('--aa--bb--cc--'.split('-', -1), ['', '', 'aa', '', 'bb', '', 'cc', '', ''])
+assert.eq('--aa--bb--cc--'.rsplit('-', -1), ['', '', 'aa', '', 'bb', '', 'cc', '', ''])
+assert.eq('  aa  bb  cc  '.split(None, -1), ['aa', 'bb', 'cc'])
+assert.eq('  aa  bb  cc  '.rsplit(None, -1), ['aa', 'bb', 'cc'])
 
 assert.eq("localhost:80".rsplit(":", 1)[-1], "80")
 

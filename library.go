@@ -1872,9 +1872,7 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 
 	if sep_ == nil || sep_ == None {
 		// special case: split on whitespace
-		if maxsplit == 0 {
-			res = append(res, recv)
-		} else if maxsplit < 0 {
+		if maxsplit < 0 {
 			res = strings.Fields(recv)
 		} else if fnname == "split" {
 			res = splitspace(recv, maxsplit)
@@ -1887,9 +1885,7 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 			return nil, fmt.Errorf("split: empty separator")
 		}
 		// usual case: split on non-empty separator
-		if maxsplit == 0 {
-			res = append(res, recv)
-		} else if maxsplit < 0 {
+		if maxsplit < 0 {
 			res = strings.Split(recv, sep)
 		} else if fnname == "split" {
 			res = strings.SplitN(recv, sep, maxsplit+1)
@@ -1912,7 +1908,7 @@ func string_split(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 	return NewList(list), nil
 }
 
-// Precondition: max > 0.
+// Precondition: max >= 0.
 func rsplitspace(s string, max int) []string {
 	res := make([]string, 0, max+1)
 	end := -1 // index of field end, or -1 in a region of spaces.
@@ -1943,7 +1939,7 @@ func rsplitspace(s string, max int) []string {
 	return res
 }
 
-// Precondition: max > 0.
+// Precondition: max >= 0.
 func splitspace(s string, max int) []string {
 	var res []string
 	start := -1 // index of field start, or -1 in a region of spaces
