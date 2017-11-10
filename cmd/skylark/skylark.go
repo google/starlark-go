@@ -110,6 +110,7 @@ func execfile(filename string) {
 }
 
 func repl() {
+	fmt.Println("Welcome to Skylark (github.com/google/skylark)")
 	thread := &skylark.Thread{Load: load}
 	globals := make(skylark.StringDict)
 
