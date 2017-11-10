@@ -112,7 +112,6 @@ concurrency, and other such features of Python.
     * [all](#all)
     * [bool](#bool)
     * [chr](#chr)
-    * [cmp](#cmp)
     * [dict](#dict)
     * [dir](#dir)
     * [enumerate](#enumerate)
@@ -476,7 +475,7 @@ such as `Inf/Inf`.  A NaN value compares neither less than, nor
 greater than, nor equal to any value, including itself.
 
 All floats other than NaN are totally ordered, so they may be compared
-using operators such as `==` and `<` and the `cmp` built-in function.
+using operators such as `==` and `<`.
 
 Any bool, number, or string may be interpreted as a floating-point
 number by using the `float` built-in function.
@@ -522,8 +521,7 @@ index `i` up to index `j`.  The index expression `s[i]` returns the
 Strings are hashable, and thus may be used as keys in a dictionary.
 
 Strings are totally ordered lexicographically, so strings may be
-compared using operators such as `==` and `<` and the `cmp` built-in
-function.
+compared using operators such as `==` and `<`.
 
 Strings are _not_ iterable sequences, so they cannot be used as the operand of
 a `for`-loop, list comprehension, or any other operation than requires
@@ -3077,7 +3075,7 @@ Sets are an optional feature of the Go implementation of Skylark.
 `sorted(x)` returns a new list containing the elements of the iterable sequence x,
 in sorted order.  The sort algorithm is stable.
 
-The optional named parameter `reversed`, if true, causes `sorted` to
+The optional named parameter `reverse`, if true, causes `sorted` to
 return results in reverse sorted order.
 
 The optional named parameter `key` specifies a function of one
@@ -3094,7 +3092,7 @@ sorted(["two", "three", "four"], key=len, reverse=True)         # ["three", "fou
 ```
 
 <b>Implementation note:</b>
-The Java implementation does not support the `key`, and `reversed` parameters.
+The Java implementation does not support the `key`, and `reverse` parameters.
 
 ### str
 
@@ -3929,6 +3927,6 @@ eventually to eliminate all such differences on a case-by-case basis.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
 * `hash` accepts operands besides strings.
-* `sorted` accepts the additional parameters `cmp`, `key`, and `reversed`.
+* `sorted` accepts the additional parameters `key` and `reverse`.
 * The `dict` type has a `clear` method.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
