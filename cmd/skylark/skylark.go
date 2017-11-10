@@ -31,17 +31,16 @@ package main
 //   This is not necessarily a bug.
 
 import (
-	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"runtime/pprof"
 	"sort"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/google/skylark"
 	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/syntax"
@@ -115,14 +114,20 @@ func repl() {
 	thread := &skylark.Thread{Load: load}
 	globals := make(skylark.StringDict)
 
-	sc := bufio.NewScanner(os.Stdin)
+	rl, err := readline.New(">>> ")
+	if err != nil {
+		printError(err)
+		return
+	}
+	defer rl.Close()
 outer:
 	for {
-		io.WriteString(os.Stderr, ">>> ")
-		if !sc.Scan() {
+		rl.SetPrompt(">>> ")
+		line, err := rl.Readline()
+		if err != nil {
 			break
 		}
-		line := sc.Text()
+
 		if l := strings.TrimSpace(line); l == "" || l[0] == '#' {
 			continue // blank or comment
 		}
@@ -155,11 +160,11 @@ outer:
 		var buf bytes.Buffer
 		fmt.Fprintln(&buf, line)
 		for {
-			io.WriteString(os.Stderr, "... ")
-			if !sc.Scan() {
+			rl.SetPrompt("... ")
+			line, err := rl.Readline()
+			if err != nil {
 				break outer
 			}
-			line := sc.Text()
 			if l := strings.TrimSpace(line); l == "" {
 				break // blank
 			}
