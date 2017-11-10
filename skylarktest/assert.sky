@@ -5,6 +5,7 @@
 # catch(f): evaluate f() and returns its evaluation error message, if any
 # matches(str, pattern): report whether str matches regular expression pattern.
 # struct: a constructor for a simple HasFields implementation.
+# freeze(x): freeze the value x and everything reachable from it.
 #
 # Clients may use these functions to define their own testing abstractions.
 
@@ -35,6 +36,8 @@ def _fails(f, pattern):
       error("evaluation succeeded unexpectedly (want error matching %r)" % pattern)
   elif not matches(pattern, msg):
       error("regular expression (%s) did not match error (%s)" % (pattern, msg))
+
+freeze = freeze # an exported global whose value is the built-in freeze function
 
 assert = struct(
     fail = error,

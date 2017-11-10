@@ -1,6 +1,6 @@
 # Tests of Skylark 'dict'
 
-load("assert.sky", "assert")
+load("assert.sky", "assert", "freeze")
 
 # literals
 assert.eq({}, {})

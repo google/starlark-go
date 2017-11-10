@@ -147,10 +147,10 @@ simple bit flip, no need to traverse the object graph---but coarser
 grained. Also, it complicates the API slightly because to construct a
 list, say, requires a reference to the frozen flag it should use.
 
-The Go implementation also permits the `freeze` built-in to be exposed
-to the program. (This requires the `-freeze` dialect flag.) This has
-proven valuable in writing tests of the freeze mechanism itself, but
-is mostly a curiosity.
+The Go implementation would also permit the freeze operation to be
+exposed to the program, for example as a built-in function.
+This has proven valuable in writing tests of the freeze mechanism
+itself, but is otherwise mostly a curiosity.
 
 
 ### Fail-fast iterators

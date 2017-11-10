@@ -55,7 +55,6 @@ var (
 // non-standard dialect flags
 func init() {
 	flag.BoolVar(&resolve.AllowFloat, "fp", resolve.AllowFloat, "allow floating-point numbers")
-	flag.BoolVar(&resolve.AllowFreeze, "freeze", resolve.AllowFreeze, "add freeze built-in function")
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
 	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
 	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")

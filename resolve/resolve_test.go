@@ -27,7 +27,6 @@ func TestResolve(t *testing.T) {
 		resolve.AllowNestedDef = option(chunk.Source, "nesteddef")
 		resolve.AllowLambda = option(chunk.Source, "lambda")
 		resolve.AllowFloat = option(chunk.Source, "float")
-		resolve.AllowFreeze = option(chunk.Source, "freeze")
 		resolve.AllowSet = option(chunk.Source, "set")
 		resolve.AllowGlobalReassign = option(chunk.Source, "global_reassign")
 

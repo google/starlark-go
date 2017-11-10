@@ -5,7 +5,7 @@
 #   and test that functions have correct position, free vars, names of locals, etc.
 # - move the hard-coded tests of parameter passing from eval_test.go to here.
 
-load("assert.sky", "assert")
+load("assert.sky", "assert", "freeze")
 
 # Test lexical scope and closures:
 def outer(x):
@@ -104,7 +104,7 @@ assert.eq(len(hashes), 1)
 
 ---
 # Default values of function parameters are mutable.
-load("assert.sky", "assert")
+load("assert.sky", "assert", "freeze")
 
 def f(x=[0]):
   return x

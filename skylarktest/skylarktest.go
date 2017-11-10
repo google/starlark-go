@@ -64,6 +64,7 @@ func LoadAssertModule() (skylark.StringDict, error) {
 			"catch":   skylark.NewBuiltin("catch", catch),
 			"matches": skylark.NewBuiltin("matches", matches),
 			"struct":  skylark.NewBuiltin("struct", skylarkstruct.Make),
+			"freeze":  skylark.NewBuiltin("freeze", freeze),
 		}
 		filename := DataFile("skylark/skylarktest", "assert.sky")
 		thread := new(skylark.Thread)
@@ -114,6 +115,18 @@ func error_(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple, kwar
 	}
 	GetReporter(thread).Error(buf.String())
 	return skylark.None, nil
+}
+
+// freeze(x) freezes its operand.
+func freeze(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("freeze does not accept keyword arguments")
+	}
+	if len(args) != 1 {
+		return nil, fmt.Errorf("freeze got %d arguments, wants 1", len(args))
+	}
+	args[0].Freeze()
+	return args[0], nil
 }
 
 // DataFile returns the effective filename of the specified

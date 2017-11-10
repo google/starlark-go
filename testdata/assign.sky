@@ -242,7 +242,7 @@ assert.eq(z[0], 1)
 
 ---
 # assignment to/from fields.
-load("assert.sky", "assert")
+load("assert.sky", "assert", "freeze")
 
 hf = hasfields()
 hf.x = 1

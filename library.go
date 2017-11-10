@@ -46,8 +46,7 @@ func init() {
 		"dict":      NewBuiltin("dict", dict),
 		"dir":       NewBuiltin("dir", dir),
 		"enumerate": NewBuiltin("enumerate", enumerate),
-		"float":     NewBuiltin("float", float),   // requires resolve.AllowFloat
-		"freeze":    NewBuiltin("freeze", freeze), // requires resolve.AllowFreeze
+		"float":     NewBuiltin("float", float), // requires resolve.AllowFloat
 		"getattr":   NewBuiltin("getattr", getattr),
 		"hasattr":   NewBuiltin("hasattr", hasattr),
 		"hash":      NewBuiltin("hash", hash),
@@ -504,17 +503,6 @@ func float(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error
 	default:
 		return nil, fmt.Errorf("float got %s, want number or string", x.Type())
 	}
-}
-
-func freeze(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("freeze does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("freeze got %d arguments, wants 1", len(args))
-	}
-	args[0].Freeze()
-	return args[0], nil
 }
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#getattr

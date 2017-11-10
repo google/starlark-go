@@ -116,7 +116,6 @@ concurrency, and other such features of Python.
     * [dir](#dir)
     * [enumerate](#enumerate)
     * [float](#float)
-    * [freeze](#freeze)
     * [getattr](#getattr)
     * [hasattr](#hasattr)
     * [hash](#hash)
@@ -916,6 +915,7 @@ If the function becomes frozen, its parameters' default values become
 frozen too.
 
 ```python
+# module a.sky
 def f(x, list=[]):
   list.append(x)
   return list
@@ -923,7 +923,9 @@ def f(x, list=[]):
 f(4, [1,2,3])           # [1, 2, 3, 4]
 f(1)                    # [1]
 f(2)                    # [1, 2], not [2]!
-freeze(f)
+
+# module b.sky
+load("a.sky", "f")
 f(3)                    # error: cannot append to frozen list
 ```
 
@@ -1235,7 +1237,6 @@ application-defined, implement a few basic behaviors:
 ```text
 str(x)		-- return a string representation of x
 type(x)		-- return a string describing the type of x
-freeze(x)	-- make x, and everything it transitively refers to, immutable
 bool(x)		-- convert x to a Boolean truth value
 hash(x)		-- return a hash code for x
 ```
@@ -1310,13 +1311,6 @@ locks. For example, the Bazel build system loads and executes BUILD
 and .bzl files in parallel, and two modules being executed
 concurrently may freely access variables or call functions from a
 third without the possibility of a race condition.
-
-<b>Implementation note:</b>
-The Go implementation of Skylark permits user code to freeze arbitrary
-values by calling the `freeze` built-in function.
-This feature must be enabled in the REPL by the `-freeze` flag.
-This function is not present in the Java implementation, which freezes
-values only _en masse_ at the end of module initialization.
 
 ### Hashing
 
@@ -2850,19 +2844,6 @@ function, and the real division operator `/`.
 The Java implementation does not yet support floating-point numbers.
 
 
-### freeze
-
-`freeze(x)` freezes x and all values transitively reachable from it.
-Subsequent attempts to modify any of those values will fail.
-
-At the end of module execution, the value of each global in the module
-dictionary is frozen as if by `freeze`.
-
-<b>Implementation note:</b>
-The `freeze` function is an optional feature of the Go implementation,
-and it must be enabled in the REPL using the `-freeze` flag.
-It is not present in the Java implementation.
-
 ### getattr
 
 `getattr(x, name)` returns the value of the attribute (field or method) of x named `name`.
@@ -3922,7 +3903,6 @@ eventually to eliminate all such differences on a case-by-case basis.
 * `assert` is a valid identifier.
 * `&` is a token; `int & int` and `set & set` are supported.
 * `int | int` is supported.
-* The `freeze` built-in function is provided (option: `-freeze`).
 * The parser accepts unary `+` expressions.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.

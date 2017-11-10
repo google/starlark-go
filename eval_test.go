@@ -24,7 +24,6 @@ func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
 	resolve.AllowFloat = true
-	resolve.AllowFreeze = true
 	resolve.AllowSet = true
 }
 

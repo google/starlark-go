@@ -84,7 +84,6 @@ var (
 	AllowNestedDef      = false // allow def statements within function bodies
 	AllowLambda         = false // allow lambda expressions
 	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
-	AllowFreeze         = false // allow the 'freeze' built-in
 	AllowSet            = false // allow the 'set' built-in
 	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
 )
@@ -345,9 +344,6 @@ func (r *resolver) useGlobal(id *syntax.Ident) (scope Scope) {
 		}
 		if !AllowSet && id.Name == "set" {
 			r.errorf(id.NamePos, doesnt+"support sets")
-		}
-		if !AllowFreeze && id.Name == "freeze" {
-			r.errorf(id.NamePos, doesnt+"provide the 'freeze' built-in function")
 		}
 	} else {
 		scope = Undefined
