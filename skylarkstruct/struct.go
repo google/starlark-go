@@ -318,7 +318,7 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 	}
 
 	if eq, err := skylark.Equal(x.constructor, y.constructor); err != nil {
-		return false, fmt.Errorf("error comparing struct constructors: %v",
+		return false, fmt.Errorf("error comparing struct constructors %v and %v: %v",
 			x.constructor, y.constructor, err)
 	} else if !eq {
 		return false, nil

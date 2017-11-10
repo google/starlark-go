@@ -286,7 +286,7 @@ func (p *parser) parseLoadStmt() *LoadStmt {
 			id := p.parseIdent()
 			to = append(to, id)
 			if p.tok != EQ {
-				p.in.errorf(p.in.pos, `load operand must be "%s" or %s="originalname" (want '=' after %s)`, id.Name, id.Name)
+				p.in.errorf(p.in.pos, `load operand must be "%[1]s" or %[1]s="originalname" (want '=' after %[1]s)`, id.Name)
 			}
 			p.consume(EQ)
 			if p.tok != STRING {
