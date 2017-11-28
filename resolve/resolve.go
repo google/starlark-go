@@ -584,8 +584,7 @@ func (r *resolver) expr(e syntax.Expr) {
 
 	case *syntax.CallExpr:
 		r.expr(e.Fn)
-		seenVarargs := false
-		seenKwargs := false
+		var seenVarargs, seenKwargs, seenNamed bool
 		for _, arg := range e.Args {
 			pos, _ := arg.Span()
 			if unop, ok := arg.(*syntax.UnaryExpr); ok && unop.Op == syntax.STARSTAR {
@@ -611,12 +610,15 @@ func (r *resolver) expr(e syntax.Expr) {
 				}
 				// ignore binop.X
 				r.expr(binop.Y)
+				seenNamed = true
 			} else {
 				// positional argument
 				if seenVarargs {
 					r.errorf(pos, "argument may not follow *args")
 				} else if seenKwargs {
 					r.errorf(pos, "argument may not follow **kwargs")
+				} else if seenNamed {
+					r.errorf(pos, "positional argument may not follow named")
 				}
 				r.expr(arg)
 			}
@@ -646,8 +648,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 	r.push(b)
 
 	const allowRebind = false
-	seenVarargs := false
-	seenKwargs := false
+	var seenVarargs, seenKwargs, seenOptional bool
 	for _, param := range function.Params {
 		switch param := param.(type) {
 		case *syntax.Ident:
@@ -656,6 +657,8 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 				r.errorf(pos, "parameter may not follow **kwargs")
 			} else if seenVarargs {
 				r.errorf(pos, "parameter may not follow *args")
+			} else if seenOptional {
+				r.errorf(pos, "required parameter may not follow optional")
 			}
 			if r.bind(param, allowRebind) {
 				r.errorf(pos, "duplicate parameter: %s", param.Name)
@@ -671,6 +674,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			if id := param.X.(*syntax.Ident); r.bind(id, allowRebind) {
 				r.errorf(pos, "duplicate parameter: %s", id.Name)
 			}
+			seenOptional = true
 
 		case *syntax.UnaryExpr:
 			// *args or **kwargs

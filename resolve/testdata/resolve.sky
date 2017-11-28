@@ -166,6 +166,13 @@ continue ### "continue not in a loop"
 pass
 
 ---
+# Positional arguments (and required parameters)
+# must appear before named arguments (and optional parameters).
+
+G(x=1, 2) ### `positional argument may not follow named`
+
+def f(x=1, y): pass ### `required parameter may not follow optional`
+---
 # No parameters may follow **kwargs
 
 def f(**kwargs, x): ### `parameter may not follow \*\*kwargs`
