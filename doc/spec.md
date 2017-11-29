@@ -2264,7 +2264,7 @@ _function body_.
 Example:
 
 ```python
-func map(f, list):
+def map(f, list):
     return [f(x) for x in list]
 
 map(lambda x: 2*x, range(3))    # [2, 4, 6]
@@ -3557,7 +3557,7 @@ that if the substring is not found, the operation fails.
 <a id='string·isalnum'></a>
 ### string·isalnum
 
-`S.isalpha()` reports whether the string S is non-empty and consists only
+`S.isalnum()` reports whether the string S is non-empty and consists only
 Unicode letters and digits.
 
 ```python
