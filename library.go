@@ -1571,13 +1571,29 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 	var buf bytes.Buffer
 	index := 0
 	for {
-		// TODO(adonovan): replace doubled "}}" with "}" and reject single '}'.
+		literal := format
 		i := strings.IndexByte(format, '{')
-		if i < 0 {
-			buf.WriteString(format)
-			break
+		if i >= 0 {
+			literal = format[:i]
 		}
-		buf.WriteString(format[:i])
+
+		// Replace "}}" with "}" in non-field portion, rejecting a lone '}'.
+		for {
+			j := strings.IndexByte(literal, '}')
+			if j < 0 {
+				buf.WriteString(literal)
+				break
+			}
+			if len(literal) == j+1 || literal[j+1] != '}' {
+				return nil, fmt.Errorf("single '}' in format")
+			}
+			buf.WriteString(literal[:j+1])
+			literal = literal[j+2:]
+		}
+
+		if i < 0 {
+			break // end of format string
+		}
 
 		if i+1 < len(format) && format[i+1] == '{' {
 			// "{{" means a literal '{'
@@ -1632,7 +1648,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 			}
 			arg = args[index]
 			index++
-		} else if num, err := strconv.Atoi(name); err == nil {
+		} else if num, err := strconv.Atoi(name); err == nil && !strings.HasPrefix(name, "-") {
 			// positional argument
 			if auto {
 				return nil, fmt.Errorf("cannot switch from automatic field numbering to manual field specification")
@@ -1652,12 +1668,16 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 				}
 			}
 			if arg == nil {
-				// Skylark does not support Python's x.y or a[i] syntaxes.
+				// Skylark does not support Python's x.y or a[i] syntaxes,
+				// or nested use of {...}.
 				if strings.Contains(name, ".") {
 					return nil, fmt.Errorf("attribute syntax x.y is not supported in replacement fields: %s", name)
 				}
 				if strings.Contains(name, "[") {
 					return nil, fmt.Errorf("element syntax a[i] is not supported in replacement fields: %s", name)
+				}
+				if strings.Contains(name, "{") {
+					return nil, fmt.Errorf("nested replacement fields not supported")
 				}
 				return nil, fmt.Errorf("keyword %s not found", name)
 			}
