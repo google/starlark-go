@@ -783,13 +783,6 @@ fail.
 A dictionary used in a Boolean context is considered true if it is
 non-empty.
 
-The binary `+` operation may be applied to two dictionaries.  It
-yields a new dictionary whose elements are the union of the two
-operands.  If a key is present in both operands, the result contains
-the value from the right operand.
-<b>Note:</b> this feature is deprecated.  Use the
-`dict.update` method instead.
-
 Dictionaries may be compared for equality using `==` and `!=`.  Two
 dictionaries compare equal if they contain the same number of items
 and each key/value item (k, v) found in one dictionary is also present
@@ -1798,7 +1791,6 @@ Concatenation
    string + string
      list + list
     tuple + tuple
-     dict + dict                # (deprecated)
 
 Repetition (string/list/tuple)
       int * sequence
@@ -1828,15 +1820,6 @@ the same type.
 "Hello, " + "world"		# "Hello, world"
 (1, 2) + (3, 4)			# (1, 2, 3, 4)
 [1, 2] + [3, 4]			# [1, 2, 3, 4]
-```
-
-The `x + y` operation is deprecated for `dict` operands; see Google Issue b/31994014.
-Use the [dict·update](dict·update) method instead:
-
-```python
-# z = x + y
-z = dict(x)
-z.update(y)
 ```
 
 The `*` operator may be applied to an integer _n_ and a value of type
