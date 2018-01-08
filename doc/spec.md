@@ -294,6 +294,7 @@ has string, integer, and floating-point literals.
 123                             # decimal int
 0x7f                            # hexadecimal int
 0755                            # octal int
+0b1011                          # binary int
 
 0.0     0.       .0             # float
 1e10    1e+10    1e-10
@@ -307,10 +308,11 @@ r'hello'     r"hello"           # raw string literal
 Integer and floating-point literal tokens are defined by the following grammar:
 
 ```grammar {.good}
-int         = decimal_lit | octal_lit | hex_lit .
+int         = decimal_lit | octal_lit | hex_lit | binary_lit .
 decimal_lit = ('1' … '9') {decimal_digit} .
 octal_lit   = '0' {octal_digit} .
 hex_lit     = '0' ('x'|'X') hex_digit {hex_digit} .
+binary_lit  = '0' ('b'|'B') binary_digit {binary_digit} .
 
 float     = decimals '.' [decimals] [exponent]
           | decimals exponent
@@ -320,8 +322,10 @@ decimals  = decimal_digit {decimal_digit} .
 exponent  = ('e'|'E') ['+'|'-'] decimals .
 
 decimal_digit = '0' … '9' .
+
 octal_digit   = '0' … '7' .
 hex_digit     = '0' … '9' | 'A' … 'F' | 'a' … 'f' .
+binary_digit  = '0' | '1' .
 ```
 
 TODO: define string_lit, indent, outdent, semicolon, newline, eof

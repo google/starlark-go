@@ -742,7 +742,7 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 		}
 		fraction = true
 	} else if c == '0' {
-		// hex, octal, or float
+		// hex, octal, binary or float
 		sc.readRune()
 		c = sc.peekRune()
 
@@ -767,6 +767,17 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 				sc.error(sc.pos, "invalid octal literal")
 			}
 			for isodigit(c) {
+				sc.readRune()
+				c = sc.peekRune()
+			}
+		} else if c == 'b' || c == 'B' {
+			// binary
+			sc.readRune()
+			c = sc.peekRune()
+			if !isbdigit(c) {
+				sc.error(sc.pos, "invalid binary literal")
+			}
+			for isbdigit(c) {
 				sc.readRune()
 				c = sc.peekRune()
 			}
@@ -853,6 +864,8 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 		s := val.raw
 		if len(s) > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'O') {
 			val.int, err = strconv.ParseInt(s[2:], 8, 64)
+		} else if len(s) > 2 && s[0] == '0' && (s[1] == 'b' || s[1] == 'B') {
+			val.int, err = strconv.ParseInt(s[2:], 2, 64)
 		} else {
 			val.int, err = strconv.ParseInt(s, 0, 64)
 		}
@@ -878,6 +891,7 @@ func isIdentStart(c rune) bool {
 func isdigit(c rune) bool  { return '0' <= c && c <= '9' }
 func isodigit(c rune) bool { return '0' <= c && c <= '7' }
 func isxdigit(c rune) bool { return isdigit(c) || 'A' <= c && c <= 'F' || 'a' <= c && c <= 'f' }
+func isbdigit(c rune) bool { return '0' == c || c == '1' }
 
 // keywordToken records the special tokens for
 // strings that should not be treated as ordinary identifiers.

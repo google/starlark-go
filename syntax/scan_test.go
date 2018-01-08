@@ -160,6 +160,13 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"0XG", `foo.sky:1:1: invalid hex literal`},
 		{"0xA.", `10 . EOF`},
 		{"0xA.e1", `10 . e1 EOF`},
+		// binary
+		{"0b1010", `10 EOF`},
+		{"0B111101", `61 EOF`},
+		{"0b3", `foo.sky:1:3: invalid binary literal`},
+		{"0b1010201", `10 201 EOF`},
+		{"0b1010.01", `10 1.000000e-02 EOF`},
+		{"0b0000", `0 EOF`},
 		// octal
 		{"0o123", `83 EOF`},
 		{"0o12834", `10 834 EOF`},

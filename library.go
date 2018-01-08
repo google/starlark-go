@@ -589,6 +589,8 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 						hasbase = 8
 					case 'x', 'X':
 						hasbase = 16
+					case 'b', 'B':
+						hasbase = 2
 					}
 
 					if hasbase != 0 && b != 0 {
