@@ -20,7 +20,7 @@ We plan to converge both implementations on a single specification
 in early 2018.
 
 This document is maintained by Alan Donovan <adonovan@google.com>.
-It was was influenced by the Python specification,
+It was influenced by the Python specification,
 Copyright 1990&ndash;2017, Python Software Foundation,
 and the Go specification, Copyright 2009&ndash;2017, The Go Authors.
 
