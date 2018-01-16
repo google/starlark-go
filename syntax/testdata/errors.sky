@@ -85,8 +85,20 @@ for x in 1, 2, 3:
 _ = [x for x in 1, 2, 3] ### `got ',', want ']', for, or if`
 ---
 # Unparenthesized tuple is not allowed as operand of 'if' in comprehension.
-
 _ = [a for b in c if 1, 2] ### `got ',', want ']', for, or if`
+
+---
+# Lambda is ok though.
+_ = [a for b in c if lambda: d] # ok
+
+# But the body of such a lambda may not be a conditional:
+_ = [a for b in c if (lambda: d if e else f)] # ok
+_ = [a for b in c if lambda: d if e else f]   ### "got else, want ']'"
+
+---
+# A lambda is not allowed as the operand of a 'for' clause.
+_ = [a for b in lambda: c] ### `got lambda, want primary`
+
 ---
 # Comparison operations are not associative.
 

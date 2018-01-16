@@ -466,21 +466,7 @@ func (p *parser) parseExprs(exprs []Expr, allowTrailingComma bool) []Expr {
 // parseTest parses a 'test', a single-component expression.
 func (p *parser) parseTest() Expr {
 	if p.tok == LAMBDA {
-		lambda := p.nextToken()
-		var params []Expr
-		if p.tok != COLON {
-			params = p.parseParams()
-		}
-		p.consume(COLON)
-		body := p.parseTest()
-		return &LambdaExpr{
-			Lambda: lambda,
-			Function: Function{
-				StartPos: lambda,
-				Params:   params,
-				Body:     []Stmt{&ReturnStmt{Result: body}},
-			},
-		}
+		return p.parseLambda(true)
 	}
 
 	x := p.parseTestPrec(0)
@@ -498,6 +484,42 @@ func (p *parser) parseTest() Expr {
 	}
 
 	return x
+}
+
+// parseTestNoCond parses a a single-component expression without
+// consuming a trailing 'if expr else expr'.
+func (p *parser) parseTestNoCond() Expr {
+	if p.tok == LAMBDA {
+		return p.parseLambda(false)
+	}
+	return p.parseTestPrec(0)
+}
+
+// parseLambda parses a lambda expression.
+// The allowCond flag allows the body to be an 'a if b else c' conditional.
+func (p *parser) parseLambda(allowCond bool) Expr {
+	lambda := p.nextToken()
+	var params []Expr
+	if p.tok != COLON {
+		params = p.parseParams()
+	}
+	p.consume(COLON)
+
+	var body Expr
+	if allowCond {
+		body = p.parseTest()
+	} else {
+		body = p.parseTestNoCond()
+	}
+
+	return &LambdaExpr{
+		Lambda: lambda,
+		Function: Function{
+			StartPos: lambda,
+			Params:   params,
+			Body:     []Stmt{&ReturnStmt{Result: body}},
+		},
+	}
 }
 
 func (p *parser) parseTestPrec(prec int) Expr {
@@ -888,7 +910,7 @@ func (p *parser) parseComprehensionSuffix(lbrace Position, body Expr, endBrace T
 			clauses = append(clauses, &ForClause{For: pos, Vars: vars, In: in, X: x})
 		} else if p.tok == IF {
 			pos := p.nextToken()
-			cond := p.parseTest()
+			cond := p.parseTestNoCond()
 			clauses = append(clauses, &IfClause{If: pos, Cond: cond})
 		} else {
 			p.in.errorf(p.in.pos, "got %#v, want '%s', for, or if", p.tok, endBrace)

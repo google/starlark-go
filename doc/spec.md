@@ -322,7 +322,6 @@ decimals  = decimal_digit {decimal_digit} .
 exponent  = ('e'|'E') ['+'|'-'] decimals .
 
 decimal_digit = '0' … '9' .
-
 octal_digit   = '0' … '7' .
 hex_digit     = '0' … '9' | 'A' … 'F' | 'a' … 'f' .
 binary_digit  = '0' | '1' .
@@ -2043,10 +2042,11 @@ assignment:
 ```
 
 Skylark, following Python 3, does not accept an unparenthesized
-tuple as the operand of a `for` clause:
+tuple or lambda expression as the operand of a `for` clause:
 
 ```python
 [x*x for x in 1, 2, 3]		# parse error: unexpected comma
+[x*x for x in lambda: 0]	# parse error: unexpected lambda
 ```
 
 Comprehensions in Skylark, again following Python 3, define a new lexical
@@ -2866,7 +2866,7 @@ truncating towards zero; it is an error if x is not finite (`NaN`,
 If x is a `bool`, the result is 0 for `False` or 1 for `True`.
 
 If x is a string, it is interpreted like a string literal;
-an optional base prefix (`0`, `0x`, `0X`) determines which base to use.
+an optional base prefix (`0`, `0b`, `0B`, `0x`, `0X`) determines which base to use.
 The string may specify an arbitrarily large integer,
 whereas true integer literals are restricted to 64 bits.
 If a non-zero `base` argument is provided, the string is interpreted
