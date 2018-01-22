@@ -14,12 +14,6 @@ package repl
 
 // TODO(adonovan):
 //
-// - Distinguish expressions from statements more precisely.
-//   Otherwise e.g. 1 is parsed as an expression but
-//   1000000000000000000000000000 is parsed as a file
-//   because the scanner fails to convert it to an int64.
-//   The spec should clarify limits on numeric literals.
-//
 // - Unparenthesized tuples are not parsed as a single expression:
 //     >>> (1, 2)
 //     (1, 2)

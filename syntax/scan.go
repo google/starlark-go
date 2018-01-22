@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/big"
 	"strconv"
 	"strings"
 	"unicode"
@@ -336,6 +337,7 @@ func (sc *scanner) readRune() rune {
 type tokenValue struct {
 	raw    string   // raw text of token
 	int    int64    // decoded int
+	bigInt *big.Int // decoded integers > int64
 	float  float64  // decoded float
 	string string   // decoded string
 	pos    Position // start position of token
@@ -862,12 +864,21 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 	} else {
 		var err error
 		s := val.raw
+		val.bigInt = nil
 		if len(s) > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'O') {
 			val.int, err = strconv.ParseInt(s[2:], 8, 64)
 		} else if len(s) > 2 && s[0] == '0' && (s[1] == 'b' || s[1] == 'B') {
 			val.int, err = strconv.ParseInt(s[2:], 2, 64)
 		} else {
 			val.int, err = strconv.ParseInt(s, 0, 64)
+			if err != nil {
+				num := new(big.Int)
+				var ok bool = true
+				val.bigInt, ok = num.SetString(s, 0)
+				if ok {
+					err = nil
+				}
+			}
 		}
 		if err != nil {
 			sc.error(start, "invalid int literal")

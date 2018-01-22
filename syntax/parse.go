@@ -778,7 +778,11 @@ func (p *parser) parsePrimary() Expr {
 		tok := p.tok
 		switch tok {
 		case INT:
-			val = p.tokval.int
+			if p.tokval.bigInt != nil {
+				val = p.tokval.bigInt
+			} else {
+				val = p.tokval.int
+			}
 		case FLOAT:
 			val = p.tokval.float
 		case STRING:

@@ -217,7 +217,7 @@ type Literal struct {
 	Token    Token // = STRING | INT
 	TokenPos Position
 	Raw      string      // uninterpreted text
-	Value    interface{} // = string | int
+	Value    interface{} // = string | int64 | *big.Int
 }
 
 func (x *Literal) Span() (start, end Position) {

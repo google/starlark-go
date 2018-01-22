@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 	"unicode"
@@ -723,7 +724,12 @@ func eval(fr *Frame, e syntax.Expr) (Value, error) {
 	case *syntax.Literal:
 		switch e.Token {
 		case syntax.INT:
-			return MakeInt64(e.Value.(int64)), nil
+			switch e.Value.(type) {
+			case int64:
+				return MakeInt64(e.Value.(int64)), nil
+			case *big.Int:
+				return Int{e.Value.(*big.Int)}, nil
+			}
 		case syntax.FLOAT:
 			return Float(e.Value.(float64)), nil
 		case syntax.STRING:
