@@ -16,7 +16,7 @@ IfStmt = 'if' Test ':' Suite {'elif' Test ':' Suite} ['else' ':' Suite] .
 
 ForStmt = 'for' LoopVariables 'in' Expression ':' Suite .
 
-Suite = [newline indent {Statement} outdent] SimpleStmt .
+Suite = [newline indent {Statement} outdent] | SimpleStmt .
 
 SimpleStmt = SmallStmt {';' SmallStmt} [';'] '\n' .
 # NOTE: '\n' optional at EOF
@@ -28,7 +28,7 @@ SmallStmt = ReturnStmt
           | LoadStmt
           .
 
-ReturnStmt   = 'return' Expression .
+ReturnStmt   = 'return' [Expression] .
 BreakStmt    = 'break' .
 ContinueStmt = 'continue' .
 PassStmt     = 'pass' .
@@ -67,7 +67,7 @@ CallSuffix  = '(' [Arguments [',']] ')' .
 SliceSuffix = '[' [Expression] [':' Test [':' Test]] ']' .
 
 Arguments = Argument {',' Argument} .
-Argument  = identifier | identifier '=' Test | '*' identifier | '**' identifier .
+Argument  = Test | identifier '=' Test | '*' identifier | '**' identifier .
 
 ListExpr = '[' [Expression [',']] ']' .
 ListComp = '[' Test {CompClause} ']'.

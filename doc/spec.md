@@ -311,6 +311,7 @@ Integer and floating-point literal tokens are defined by the following grammar:
 int         = decimal_lit | octal_lit | hex_lit | binary_lit .
 decimal_lit = ('1' … '9') {decimal_digit} .
 octal_lit   = '0' {octal_digit} .
+            | '0' ('o'|'O') octal_digit {octal_digit} .
 hex_lit     = '0' ('x'|'X') hex_digit {hex_digit} .
 binary_lit  = '0' ('b'|'B') binary_digit {binary_digit} .
 
@@ -2066,7 +2067,7 @@ print(x)                        # 1
 CallSuffix = '(' [Arguments] ')' .
 
 Arguments = Argument {',' Argument} .
-Argument  = identifier | identifier '=' Test | '*' identifier | '**' identifier .
+Argument  = Test | identifier '=' Test | '*' identifier | '**' identifier .
 ```
 
 A value `f` of type `function` or `builtin_function_or_method` may be called using the expression `f(...)`.
@@ -2474,7 +2475,7 @@ A `return` statement ends the execution of a function and returns a
 value to the caller of the function.
 
 ```grammar {.good}
-ReturnStmt = 'return' Expression .
+ReturnStmt = 'return' [Expression] .
 ```
 
 A return statement may have zero, one, or more
