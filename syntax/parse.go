@@ -16,6 +16,13 @@ import "log"
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false
 
+// A Mode value is a set of flags (or 0) that controls optional parser functionality.
+type Mode uint
+
+const (
+	RetainComments Mode = 1 << iota // retain comments in AST; see Node.Comments
+)
+
 // Parse parses the input data and returns the corresponding parse tree.
 //
 // If src != nil, ParseFile parses the source from src and the filename
@@ -23,8 +30,8 @@ const debug = false
 // The type of the argument for the src parameter must be string,
 // []byte, or io.Reader.
 // If src == nil, ParseFile parses the file specified by filename.
-func Parse(filename string, src interface{}) (f *File, err error) {
-	in, err := newScanner(filename, src)
+func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
+	in, err := newScanner(filename, src, mode&RetainComments != 0)
 	if err != nil {
 		return nil, err
 	}
@@ -36,13 +43,14 @@ func Parse(filename string, src interface{}) (f *File, err error) {
 	if f != nil {
 		f.Path = filename
 	}
+	p.assignComments(f)
 	return f, nil
 }
 
 // ParseExpr parses a Skylark expression.
 // See Parse for explanation of parameters.
-func ParseExpr(filename string, src interface{}) (expr Expr, err error) {
-	in, err := newScanner(filename, src)
+func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
+	in, err := newScanner(filename, src, mode&RetainComments != 0)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +69,7 @@ func ParseExpr(filename string, src interface{}) (expr Expr, err error) {
 	if p.tok != EOF {
 		p.in.errorf(p.in.pos, "got %#v after expression, want EOF", p.tok)
 	}
-
+	p.assignComments(expr)
 	return expr, nil
 }
 
@@ -937,4 +945,81 @@ func terminatesExprList(tok Token) bool {
 		return true
 	}
 	return false
+}
+
+// Comment assignment.
+// We build two lists of all subnodes, preorder and postorder.
+// The preorder list is ordered by start location, with outer nodes first.
+// The postorder list is ordered by end location, with outer nodes last.
+// We use the preorder list to assign each whole-line comment to the syntax
+// immediately following it, and we use the postorder list to assign each
+// end-of-line comment to the syntax immediately preceding it.
+
+// flattenAST returns the list of AST nodes, both in prefix order and in postfix
+// order.
+func flattenAST(root Node) (pre, post []Node) {
+	stack := []Node{}
+	Walk(root, func(n Node) bool {
+		if n != nil {
+			pre = append(pre, n)
+			stack = append(stack, n)
+		} else {
+			post = append(post, stack[len(stack)-1])
+			stack = stack[:len(stack)-1]
+		}
+		return true
+	})
+	return pre, post
+}
+
+// assignComments attaches comments to nearby syntax.
+func (p *parser) assignComments(n Node) {
+	// Leave early if there are no comments
+	if len(p.in.lineComments)+len(p.in.suffixComments) == 0 {
+		return
+	}
+
+	pre, post := flattenAST(n)
+
+	// Assign line comments to syntax immediately following.
+	line := p.in.lineComments
+	for _, x := range pre {
+		start, _ := x.Span()
+
+		switch x.(type) {
+		case *File:
+			continue
+		}
+
+		for len(line) > 0 && !start.isBefore(line[0].Start) {
+			x.AllocComments()
+			x.Comments().Before = append(x.Comments().Before, line[0])
+			line = line[1:]
+		}
+	}
+
+	// Remaining line comments go at end of file.
+	if len(line) > 0 {
+		n.AllocComments()
+		n.Comments().After = append(n.Comments().After, line...)
+	}
+
+	// Assign suffix comments to syntax immediately before.
+	suffix := p.in.suffixComments
+	for i := len(post) - 1; i >= 0; i-- {
+		x := post[i]
+
+		// Do not assign suffix comments to file
+		switch x.(type) {
+		case *File:
+			continue
+		}
+
+		_, end := x.Span()
+		if len(suffix) > 0 && end.isBefore(suffix[len(suffix)-1].Start) {
+			x.AllocComments()
+			x.Comments().Suffix = append(x.Comments().Suffix, suffix[len(suffix)-1])
+			suffix = suffix[:len(suffix)-1]
+		}
+	}
 }

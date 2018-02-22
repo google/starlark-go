@@ -14,7 +14,7 @@ import (
 )
 
 func scan(src interface{}) (tokens string, err error) {
-	sc, err := newScanner("foo.sky", src)
+	sc, err := newScanner("foo.sky", src, false)
 	if err != nil {
 		return "", err
 	}
@@ -233,7 +233,7 @@ func BenchmarkScan(b *testing.B) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		sc, err := newScanner(filename, data)
+		sc, err := newScanner(filename, data, false)
 		if err != nil {
 			b.Fatal(err)
 		}

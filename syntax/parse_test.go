@@ -107,12 +107,13 @@ func TestExprParseTrees(t *testing.T) {
 		{`[e for x in y if cond1 if cond2]`,
 			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // github.com/google/skylark issue 53
 	} {
-		e, err := syntax.ParseExpr("foo.sky", test.input)
+		e, err := syntax.ParseExpr("foo.sky", test.input, 0)
 		if err != nil {
 			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
 			continue
 		}
 		if got := treeString(e); test.want != got {
+
 			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
 		}
 	}
@@ -175,7 +176,7 @@ def h():
 	pass`,
 			`(DefStmt Name=f Function=(Function Body=((DefStmt Name=g Function=(Function Body=((BranchStmt Token=pass)))) (BranchStmt Token=pass))))`},
 	} {
-		f, err := syntax.Parse("foo.sky", test.input)
+		f, err := syntax.Parse("foo.sky", test.input, 0)
 		if err != nil {
 			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
 			continue
@@ -224,7 +225,7 @@ pass`,
 + 2`,
 			`(AssignStmt Op== LHS=x RHS=(BinaryExpr X=1 Op=+ Y=2))`},
 	} {
-		f, err := syntax.Parse("foo.sky", test.input)
+		f, err := syntax.Parse("foo.sky", test.input, 0)
 		if err != nil {
 			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
 			continue
@@ -290,6 +291,9 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 				continue // skip positions
 			}
 			name := x.Type().Field(i).Name
+			if name == "commentsRef" {
+				continue // skip comments fields
+			}
 			if f.Type() == reflect.TypeOf(syntax.Token(0)) {
 				fmt.Fprintf(out, " %s=%s", name, f.Interface())
 				continue
@@ -330,7 +334,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 func TestParseErrors(t *testing.T) {
 	filename := skylarktest.DataFile("skylark/syntax", "testdata/errors.sky")
 	for _, chunk := range chunkedfile.Read(filename, t) {
-		_, err := syntax.Parse(filename, chunk.Source)
+		_, err := syntax.Parse(filename, chunk.Source, 0)
 		switch err := err.(type) {
 		case nil:
 			// ok
@@ -355,7 +359,7 @@ for x in y:
 	// (compare against a reflect-based implementation).
 	// TODO(adonovan): test that the result of f is used to prune
 	// the descent.
-	f, err := syntax.Parse("hello.go", src)
+	f, err := syntax.Parse("hello.go", src, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

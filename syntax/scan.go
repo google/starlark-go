@@ -196,29 +196,40 @@ func (p Position) String() string {
 	return fmt.Sprintf("%s:%d:%d", p.Filename(), p.Line, p.Col)
 }
 
-// An scanner represents a single input file being parsed.
-type scanner struct {
-	complete  []byte   // entire input
-	rest      []byte   // rest of input
-	token     []byte   // token being scanned
-	pos       Position // current input position
-	depth     int      // nesting of [ ] { } ( )
-	indentstk []int    // stack of indentation levels
-	dents     int      // number of saved INDENT (>0) or OUTDENT (<0) tokens to return
-	lineStart bool     // after NEWLINE; convert spaces to indentation tokens
+func (p Position) isBefore(q Position) bool {
+	if p.Line != q.Line {
+		return p.Line < q.Line
+	}
+	return p.Col < q.Col
 }
 
-func newScanner(filename string, src interface{}) (*scanner, error) {
+// An scanner represents a single input file being parsed.
+type scanner struct {
+	complete       []byte    // entire input
+	rest           []byte    // rest of input
+	token          []byte    // token being scanned
+	pos            Position  // current input position
+	depth          int       // nesting of [ ] { } ( )
+	indentstk      []int     // stack of indentation levels
+	dents          int       // number of saved INDENT (>0) or OUTDENT (<0) tokens to return
+	lineStart      bool      // after NEWLINE; convert spaces to indentation tokens
+	keepComments   bool      // accumulate comments in slice
+	lineComments   []Comment // list of full line comments (if keepComments)
+	suffixComments []Comment // list of suffix comments (if keepComments)
+}
+
+func newScanner(filename string, src interface{}, keepComments bool) (*scanner, error) {
 	data, err := readSource(filename, src)
 	if err != nil {
 		return nil, err
 	}
 	return &scanner{
-		complete:  data,
-		rest:      data,
-		pos:       Position{file: &filename, Line: 1, Col: 1},
-		indentstk: make([]int, 1, 10), // []int{0} + spare capacity
-		lineStart: true,
+		complete:     data,
+		rest:         data,
+		pos:          Position{file: &filename, Line: 1, Col: 1},
+		indentstk:    make([]int, 1, 10), // []int{0} + spare capacity
+		lineStart:    true,
+		keepComments: keepComments,
 	}, nil
 }
 
@@ -462,10 +473,21 @@ start:
 
 	// comment
 	if c == '#' {
-		// Consume up to (but not including) newline.
+		if sc.keepComments {
+			sc.startToken(val)
+		}
+		// Consume up to newline (included).
 		for c != 0 && c != '\n' {
 			sc.readRune()
 			c = sc.peekRune()
+		}
+		if sc.keepComments {
+			sc.endToken(val)
+			if blank {
+				sc.lineComments = append(sc.lineComments, Comment{val.pos, val.raw})
+			} else {
+				sc.suffixComments = append(sc.suffixComments, Comment{val.pos, val.raw})
+			}
 		}
 	}
 

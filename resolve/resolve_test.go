@@ -17,7 +17,7 @@ import (
 func TestResolve(t *testing.T) {
 	filename := skylarktest.DataFile("skylark/resolve", "testdata/resolve.sky")
 	for _, chunk := range chunkedfile.Read(filename, t) {
-		f, err := syntax.Parse(filename, chunk.Source)
+		f, err := syntax.Parse(filename, chunk.Source, 0)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -45,7 +45,7 @@ func option(chunk, name string) bool {
 
 func TestDefVarargsAndKwargsSet(t *testing.T) {
 	source := "def f(*args, **kwargs): pass\n"
-	file, err := syntax.Parse("foo.sky", source)
+	file, err := syntax.Parse("foo.sky", source, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestDefVarargsAndKwargsSet(t *testing.T) {
 func TestLambdaVarargsAndKwargsSet(t *testing.T) {
 	resolve.AllowLambda = true
 	source := "f = lambda *args, **kwargs: 0\n"
-	file, err := syntax.Parse("foo.sky", source)
+	file, err := syntax.Parse("foo.sky", source, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -100,7 +100,7 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 	}
 
 	// If the line contains a well-formed expression, evaluate it.
-	if _, err := syntax.ParseExpr("<stdin>", line); err == nil {
+	if _, err := syntax.ParseExpr("<stdin>", line, 0); err == nil {
 		if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
 			PrintError(err)
 		} else if v != skylark.None {
@@ -111,7 +111,7 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 
 	// If the input so far is a single load or assignment statement,
 	// execute it without waiting for a blank line.
-	if f, err := syntax.Parse("<stdin>", line); err == nil && len(f.Stmts) == 1 {
+	if f, err := syntax.Parse("<stdin>", line, 0); err == nil && len(f.Stmts) == 1 {
 		switch f.Stmts[0].(type) {
 		case *syntax.AssignStmt, *syntax.LoadStmt:
 			// Execute it as a file.
@@ -145,7 +145,7 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 	//     1,
 	//     2
 	//   )
-	if _, err := syntax.ParseExpr("<stdin>", text); err == nil {
+	if _, err := syntax.ParseExpr("<stdin>", text, 0); err == nil {
 		if v, err := skylark.Eval(thread, "<stdin>", text, globals); err != nil {
 			PrintError(err)
 		} else if v != skylark.None {
@@ -165,7 +165,7 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 // execFileNoFreeze is skylark.ExecFile without globals.Freeze().
 func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.StringDict) error {
 	// parse
-	f, err := syntax.Parse("<stdin>", src)
+	f, err := syntax.Parse("<stdin>", src, 0)
 	if err != nil {
 		return err
 	}

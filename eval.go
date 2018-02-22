@@ -255,7 +255,7 @@ func Exec(opts ExecOptions) error {
 		fmt.Printf("ExecFile %s\n", opts.Filename)
 		defer fmt.Printf("ExecFile %s done\n", opts.Filename)
 	}
-	f, err := syntax.Parse(opts.Filename, opts.Source)
+	f, err := syntax.Parse(opts.Filename, opts.Source, 0)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ func (thread *Thread) Pop() {
 // If Eval fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func Eval(thread *Thread, filename string, src interface{}, globals StringDict) (Value, error) {
-	expr, err := syntax.ParseExpr(filename, src)
+	expr, err := syntax.ParseExpr(filename, src, 0)
 	if err != nil {
 		return nil, err
 	}

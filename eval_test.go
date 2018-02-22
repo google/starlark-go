@@ -437,7 +437,7 @@ Error: floored division by zero`
 // TestRepeatedExec parses and resolves a file syntax tree once then
 // executes it repeatedly with different values of its global variables.
 func TestRepeatedExec(t *testing.T) {
-	f, err := syntax.Parse("repeat.sky", "y = 2 * x")
+	f, err := syntax.Parse("repeat.sky", "y = 2 * x", 0)
 	if err != nil {
 		t.Fatal(f) // parse error
 	}
