@@ -531,8 +531,19 @@ func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 		return nil, err
 	}
 	if object, ok := object.(HasAttrs); ok {
-		if v, err := object.Attr(name); v != nil || err != nil {
-			return True, nil
+		v, err := object.Attr(name)
+		if err == nil {
+			return Bool(v != nil), nil
+		}
+
+		// An error does not conclusively indicate presence or
+		// absence of a field: it could occur while computing
+		// the value of a present attribute, or it could be a
+		// "no such attribute" error with details.
+		for _, x := range object.AttrNames() {
+			if x == name {
+				return True, nil
+			}
 		}
 	}
 	return False, nil

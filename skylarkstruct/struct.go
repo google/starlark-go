@@ -6,17 +6,23 @@
 // an optional language extension.
 package skylarkstruct
 
-// TODO(adonovan): This package is implicitly covered by other
-// packages' tests, but it should really have some of its own.
-
-// TODO(adonovan): the deprecated struct methods "to_json" and
-// "to_proto" do not appear in AttrNames, and hence dir(struct), since
-// that would force the majority to have to ignore them, but they may
-// nonetheless be called if the struct does not have fields of these
-// names. Ideally these will go away soon. See b/36412967.
+// TODO(adonovan):
+//
+// - every struct instance should reference a (shared) fields dictionary
+//   to afford type safety (eager checking of allowed field names),
+//   and also making field lookup a constant time operation.
+//
+// - there should be a way to get the constructor symbol out of a struct.
+//
+// - the deprecated struct methods "to_json" and "to_proto" do not
+//   appear in AttrNames, and hence dir(struct), since that would force
+//   the majority to have to ignore them, but they may nonetheless be
+//   called if the struct does not have fields of these names. Ideally
+//   these will go away soon. See Google issue b/36412967.
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -125,7 +131,11 @@ func (s *Struct) ToStringDict(d skylark.StringDict) {
 
 func (s *Struct) String() string {
 	var buf bytes.Buffer
-	buf.WriteString(s.constructor.String())
+	if s.constructor == Default {
+		buf.WriteString("struct") // avoid String()'s quotation
+	} else {
+		buf.WriteString(s.constructor.String())
+	}
 	buf.WriteByte('(')
 	for i, e := range s.entries {
 		if i > 0 {
@@ -218,16 +228,24 @@ func (s *Struct) Attr(name string) (skylark.Value, error) {
 	case "to_json", "to_proto":
 		return skylark.NewBuiltin(name, func(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 			var buf bytes.Buffer
+			var err error
 			if name == "to_json" {
-				writeJSON(&buf, s)
+				err = writeJSON(&buf, s)
 			} else {
-				writeTextProto(&buf, s)
+				err = writeTextProto(&buf, s)
+			}
+			if err != nil {
+				return nil, err
 			}
 			return skylark.String(buf.String()), nil
 		}), nil
 	}
 
-	return nil, fmt.Errorf("%v has no .%s attribute", s.constructor, name)
+	var ctor string
+	if s.constructor != Default {
+		ctor = s.constructor.String() + " "
+	}
+	return nil, fmt.Errorf("%sstruct has no .%s attribute", ctor, name)
 }
 
 func writeTextProto(out *bytes.Buffer, v skylark.Value) error {
@@ -252,9 +270,14 @@ func writeJSON(out *bytes.Buffer, v skylark.Value) error {
 		// TODO(adonovan): test.
 		fmt.Fprintf(out, "%g", v)
 	case skylark.String:
-		// TODO(adonovan): test with all bytes.
-		// I think JSON can represent only UTF-16 encoded Unicode.
-		fmt.Fprintf(out, "%q", string(v))
+		s := string(v)
+		if goQuoteIsSafe(s) {
+			fmt.Fprintf(out, "%q", s)
+		} else {
+			// vanishingly rare for text strings
+			data, _ := json.Marshal(s)
+			out.Write(data)
+		}
 	case skylark.Indexable: // Tuple, List
 		out.WriteByte('[')
 		for i, n := 0, skylark.Len(v); i < n; i++ {
@@ -286,6 +309,17 @@ func writeJSON(out *bytes.Buffer, v skylark.Value) error {
 		return fmt.Errorf("cannot convert %s to JSON", v.Type())
 	}
 	return nil
+}
+
+func goQuoteIsSafe(s string) bool {
+	for _, r := range s {
+		// JSON doesn't like Go's \xHH escapes for ASCII control codes,
+		// nor its \UHHHHHHHH escapes for runes >16 bits.
+		if r < 0x20 || r >= 0x10000 {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Struct) Len() int { return len(s.entries) }
