@@ -491,6 +491,9 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 			r.assign(elem, isAugmented)
 		}
 
+	case *syntax.ParenExpr:
+		r.assign(lhs.X, isAugmented)
+
 	default:
 		name := strings.ToLower(strings.TrimPrefix(fmt.Sprintf("%T", lhs), "*syntax."))
 		r.errorf(syntax.Start(lhs), "can't assign to %s", name)
@@ -629,6 +632,9 @@ func (r *resolver) expr(e syntax.Expr) {
 			r.errorf(e.Lambda, doesnt+"support lambda")
 		}
 		r.function(e.Lambda, "lambda", &e.Function)
+
+	case *syntax.ParenExpr:
+		r.expr(e.X)
 
 	default:
 		log.Fatalf("unexpected expr %T", e)

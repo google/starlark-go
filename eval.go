@@ -675,6 +675,9 @@ func assign(fr *Frame, pos syntax.Position, lhs syntax.Expr, rhs Value) error {
 		}
 		return setField(fr, x, lhs, rhs)
 
+	case *syntax.ParenExpr:
+		return assign(fr, pos, lhs.X, rhs)
+
 	default:
 		return fr.errorf(pos, "ill-formed assignment: %T", lhs)
 	}
@@ -879,6 +882,9 @@ func eval(fr *Frame, e syntax.Expr) (Value, error) {
 
 	case *syntax.LambdaExpr:
 		return evalFunction(fr, e.Lambda, "lambda", &e.Function)
+
+	case *syntax.ParenExpr:
+		return eval(fr, e.X)
 	}
 
 	start, _ := e.Span()

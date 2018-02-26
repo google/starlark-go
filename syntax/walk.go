@@ -68,6 +68,9 @@ func Walk(n Node, f func(Node) bool) {
 			Walk(x, f)
 		}
 
+	case *ParenExpr:
+		Walk(n.X, f)
+
 	case *CondExpr:
 		Walk(n.Cond, f)
 		Walk(n.True, f)

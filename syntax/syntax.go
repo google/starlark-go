@@ -243,6 +243,7 @@ func (*IndexExpr) expr()     {}
 func (*LambdaExpr) expr()    {}
 func (*ListExpr) expr()      {}
 func (*Literal) expr()       {}
+func (*ParenExpr) expr()     {}
 func (*SliceExpr) expr()     {}
 func (*TupleExpr) expr()     {}
 func (*UnaryExpr) expr()     {}
@@ -274,6 +275,18 @@ type Literal struct {
 
 func (x *Literal) Span() (start, end Position) {
 	return x.TokenPos, x.TokenPos.add(x.Raw)
+}
+
+// A ParenExpr represents a parenthesized expression: (X).
+type ParenExpr struct {
+	commentsRef
+	Lparen Position
+	X      Expr
+	Rparen Position
+}
+
+func (x *ParenExpr) Span() (start, end Position) {
+	return x.Lparen, x.Rparen.add(")")
 }
 
 // A CallExpr represents a function call expression: Fn(Args).
