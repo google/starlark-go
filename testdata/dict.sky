@@ -11,8 +11,8 @@ assert.eq({"a": 1,}, {"a": 1})
 assert.true({False: False})
 assert.true(not {})
 
-# dict + dict is no longer supported; use dict.update.
-assert.fails(lambda: {} + {}, r'unknown binary op: dict \+ dict')
+# dict + dict (undocumented and deprecated; see b/36360157).
+assert.eq({"a": 1, "b": 2} + {"a": 3, "c": 4}, {"a": 3, "b": 2, "c": 4})
 
 # dict comprehension
 assert.eq({x: x*x for x in range(3)}, {0: 0, 1: 1, 2: 4})

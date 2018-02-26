@@ -953,6 +953,21 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				z = append(z, y...)
 				return z, nil
 			}
+		case *Dict:
+			// Python doesn't have dict+dict, and I can't find
+			// it documented for Skylark.  But it is used; see:
+			//   tools/build_defs/haskell/def.bzl:448
+			// TODO(adonovan): clarify spec; see b/36360157.
+			if y, ok := y.(*Dict); ok {
+				z := new(Dict)
+				for _, item := range x.Items() {
+					z.Set(item[0], item[1])
+				}
+				for _, item := range y.Items() {
+					z.Set(item[0], item[1])
+				}
+				return z, nil
+			}
 		}
 
 	case syntax.MINUS:
