@@ -516,10 +516,20 @@ func getattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	if err := UnpackPositionalArgs("getattr", args, kwargs, 2, &object, &name, &dflt); err != nil {
 		return nil, err
 	}
-	if o, ok := object.(HasAttrs); ok {
-		if v, err := o.Attr(name); v != nil || err != nil {
-			return v, err
+	if object, ok := object.(HasAttrs); ok {
+		v, err := object.Attr(name)
+		if err != nil {
+			// An error could mean the field doesn't exist,
+			// or it exists but could not be computed.
+			if dflt != nil {
+				return dflt, nil
+			}
+			return nil, err
 		}
+		if v != nil {
+			return v, nil
+		}
+		// (nil, nil) => no such field
 	}
 	if dflt != nil {
 		return dflt, nil
