@@ -26,6 +26,7 @@ assert.fails(lambda: 1.0 * "abc", "unknown.*float \\* str")
 
 # len
 assert.eq(len("Hello, 世界!"), 14)
+assert.eq(len("𐐷"), 4) # U+10437 has a 4-byte UTF-8 encoding (and a 2-code UTF-16 encoding)
 
 # chr & ord
 assert.eq(chr(65), "A")       # 1-byte UTF-8 encoding
