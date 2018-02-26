@@ -36,6 +36,7 @@ type Thread struct {
 	// Load is the client-supplied implementation of module loading.
 	// Repeated calls with the same module name must return the same
 	// module environment or error.
+	// The error message need not include the module name.
 	//
 	// See example_test.go for some example implementations of Load.
 	Load func(thread *Thread, module string) (StringDict, error)
