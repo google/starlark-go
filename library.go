@@ -321,11 +321,15 @@ func unpackOneArg(v Value, ptr interface{}) error {
 			return fmt.Errorf("got %s, want iterable", v.Type())
 		}
 	default:
-		param := reflect.ValueOf(ptr).Elem()
+		ptrv := reflect.ValueOf(ptr)
+		if ptrv.Kind() != reflect.Ptr {
+			log.Fatalf("internal error: not a pointer: %T", ptr)
+		}
+		param := ptrv.Elem()
 		if !reflect.TypeOf(v).AssignableTo(param.Type()) {
 			// Detect mistakes by caller.
 			if !param.Type().AssignableTo(reflect.TypeOf(new(Value)).Elem()) {
-				log.Fatalf("internal error: invalid ptr type: %T", ptr)
+				log.Fatalf("internal error: invalid pointer type: %T", ptr)
 			}
 			// Assume it's safe to call Type() on a zero instance.
 			paramType := param.Interface().(Value).Type()

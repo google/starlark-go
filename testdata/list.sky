@@ -129,7 +129,7 @@ assert.fails(f4, "local variable a_list referenced before assignment")
 def f5():
   x = []
   x += 1
-assert.fails(f5, "invalid operation: list \\+= int")
+assert.fails(f5, "unknown binary op: list \\+ int")
 
 # frozen list += iterable
 def f6():
@@ -137,6 +137,13 @@ def f6():
   freeze(x)
   x += [1]
 assert.fails(f6, "cannot apply \\+= to frozen list")
+
+# list += hasfields (hasfields is not iterable but defines list+hasfields)
+def f7():
+  x = []
+  x += hasfields()
+  return x
+assert.eq(f7(), 42) # weird, but exercises a corner case in list+=x.
 
 # append
 x5 = [1, 2, 3]

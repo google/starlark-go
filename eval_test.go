@@ -186,7 +186,10 @@ type hasfields struct {
 	frozen bool
 }
 
-var _ skylark.HasAttrs = (*hasfields)(nil)
+var (
+	_ skylark.HasAttrs  = (*hasfields)(nil)
+	_ skylark.HasBinary = (*hasfields)(nil)
+)
 
 func (hf *hasfields) String() string        { return "hasfields" }
 func (hf *hasfields) Type() string          { return "hasfields" }
@@ -218,6 +221,17 @@ func (hf *hasfields) AttrNames() []string {
 		names = append(names, key)
 	}
 	return names
+}
+
+func (hf *hasfields) Binary(op syntax.Token, y skylark.Value, side skylark.Side) (skylark.Value, error) {
+	// This method exists so we can exercise 'list += x'
+	// where x is not Iterable but defines list+x.
+	if op == syntax.PLUS {
+		if _, ok := y.(*skylark.List); ok {
+			return skylark.MakeInt(42), nil // list+hasfields is 42
+		}
+	}
+	return nil, nil
 }
 
 func TestParameterPassing(t *testing.T) {

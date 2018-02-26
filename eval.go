@@ -452,15 +452,16 @@ func exec(fr *Frame, stmt syntax.Stmt) error {
 			// Special case, following Python:
 			// If x is a list, x += y is sugar for x.extend(y).
 			if xlist, ok := old.(*List); ok && stmt.Op == syntax.PLUS_EQ {
-				yiter, ok := y.(Iterable)
-				if !ok {
-					return fr.errorf(stmt.OpPos, "invalid operation: list += %s", y.Type())
+				// It's possible that y is not Iterable but
+				// nonetheless defines x+y, in which case we
+				// should fall back to the general case.
+				if yiter, ok := y.(Iterable); ok {
+					if err := xlist.checkMutable("apply += to", true); err != nil {
+						return fr.errorf(stmt.OpPos, "%v", err)
+					}
+					listExtend(xlist, yiter)
+					return nil
 				}
-				if err := xlist.checkMutable("apply += to", true); err != nil {
-					return fr.errorf(stmt.OpPos, "%v", err)
-				}
-				listExtend(xlist, yiter)
-				return nil
 			}
 
 			new, err := Binary(stmt.Op-syntax.PLUS_EQ+syntax.PLUS, old, y)
