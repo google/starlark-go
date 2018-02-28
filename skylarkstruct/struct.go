@@ -13,12 +13,6 @@ package skylarkstruct
 //   and also making field lookup a constant time operation.
 //
 // - there should be a way to get the constructor symbol out of a struct.
-//
-// - the deprecated struct methods "to_json" and "to_proto" do not
-//   appear in AttrNames, and hence dir(struct), since that would force
-//   the majority to have to ignore them, but they may nonetheless be
-//   called if the struct does not have fields of these names. Ideally
-//   these will go away soon. See Google issue b/36412967.
 
 import (
 	"bytes"
@@ -223,7 +217,11 @@ func (s *Struct) Attr(name string) (skylark.Value, error) {
 		return s.entries[i].value, nil
 	}
 
-	// TODO(adonovan): to_{json,proto} are deprecated (b/36412967).
+	// TODO(adonovan): there may be a nice feature for core
+	// skylark.Value here, especially for JSON, but the current
+	// features are incomplete and underspecified.
+	//
+	// to_{json,proto} are deprecated, appropriately; see Google issue b/36412967.
 	switch name {
 	case "to_json", "to_proto":
 		return skylark.NewBuiltin(name, func(thread *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -232,9 +230,11 @@ func (s *Struct) Attr(name string) (skylark.Value, error) {
 			if name == "to_json" {
 				err = writeJSON(&buf, s)
 			} else {
-				err = writeTextProto(&buf, s)
+				err = writeProtoStruct(&buf, 0, s)
 			}
 			if err != nil {
+				// TODO(adonovan): improve error error messages
+				// to show the path through the object graph.
 				return nil, err
 			}
 			return skylark.String(buf.String()), nil
@@ -248,16 +248,68 @@ func (s *Struct) Attr(name string) (skylark.Value, error) {
 	return nil, fmt.Errorf("%sstruct has no .%s attribute", ctor, name)
 }
 
-func writeTextProto(out *bytes.Buffer, v skylark.Value) error {
-	return fmt.Errorf("to_proto not yet implemented")
+func writeProtoStruct(out *bytes.Buffer, depth int, s *Struct) error {
+	for _, e := range s.entries {
+		if err := writeProtoField(out, depth, e.name, e.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeProtoField(out *bytes.Buffer, depth int, field string, v skylark.Value) error {
+	if depth > 16 {
+		return fmt.Errorf("to_proto: depth limit exceeded")
+	}
+
+	switch v := v.(type) {
+	case *Struct:
+		fmt.Fprintf(out, "%*s%s {\n", 2*depth, "", field)
+		if err := writeProtoStruct(out, depth+1, v); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "%*s}\n", 2*depth, "")
+		return nil
+
+	case *skylark.List, skylark.Tuple:
+		iter := skylark.Iterate(v)
+		defer iter.Done()
+		var elem skylark.Value
+		for iter.Next(&elem) {
+			if err := writeProtoField(out, depth, field, elem); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// scalars
+	fmt.Fprintf(out, "%*s%s: ", 2*depth, "", field)
+	switch v := v.(type) {
+	case skylark.Bool:
+		fmt.Fprintf(out, "%t", v)
+
+	case skylark.Int:
+		// TODO(adonovan): limits?
+		out.WriteString(v.String())
+
+	case skylark.Float:
+		fmt.Fprintf(out, "%g", v)
+
+	case skylark.String:
+		fmt.Fprintf(out, "%q", string(v))
+
+	default:
+		return fmt.Errorf("cannot convert %s to proto", v.Type())
+	}
+	out.WriteByte('\n')
+	return nil
 }
 
 // writeJSON writes the JSON representation of a Skylark value to out.
 // TODO(adonovan): there may be a nice feature for core skylark.Value here,
 // but the current feature is incomplete and underspecified.
 func writeJSON(out *bytes.Buffer, v skylark.Value) error {
-	// TODO(adonovan): improve error error messages to show the path
-	// through the object graph.
 	switch v := v.(type) {
 	case skylark.NoneType:
 		out.WriteString("null")
@@ -305,7 +357,6 @@ func writeJSON(out *bytes.Buffer, v skylark.Value) error {
 		}
 		out.WriteByte('}')
 	default:
-		// function, builtin_function_or_method, set, dict, and all user-defined types.
 		return fmt.Errorf("cannot convert %s to JSON", v.Type())
 	}
 	return nil
@@ -325,6 +376,12 @@ func goQuoteIsSafe(s string) bool {
 func (s *Struct) Len() int { return len(s.entries) }
 
 // AttrNames returns a new sorted list of the struct fields.
+//
+// The deprecated struct methods "to_json" and "to_proto" do not
+// appear in AttrNames, and hence dir(struct), since that would force
+// the majority to have to ignore them, but they may nonetheless be
+// called if the struct does not have fields of these names. Ideally
+// these will go away soon. See Google issue b/36412967.
 func (s *Struct) AttrNames() []string {
 	names := make([]string, len(s.entries))
 	for i, e := range s.entries {

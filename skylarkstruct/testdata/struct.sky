@@ -68,5 +68,31 @@ assert.eq(bob.to_json(), '{"age": 50, "name": "bob"}')
 # These deprecated methods are hidden from dir:
 assert.eq(hasattr(alice, "to_json"), True)
 assert.eq(hasattr(bob, "to_proto"), True)
-# to_proto (deprecated, not implemented)
-assert.fails(lambda: bob.to_proto(), 'not yet implemented')
+
+# to_proto
+assert.eq(struct().to_proto(), '')
+assert.eq(struct(int=1, float=3.141, str="hello", bool=True, intlist=[1, 2, 3]).to_proto(),
+          '''bool: true
+float: 3.141
+int: 1
+intlist: 1
+intlist: 2
+intlist: 3
+str: "hello"
+''')
+assert.eq(struct(x=struct(), y=[struct(a=1), struct(b=2, c=struct(p=1, q=2))]).to_proto(),
+          '''x {
+}
+y {
+  a: 1
+}
+y {
+  b: 2
+  c {
+    p: 1
+    q: 2
+  }
+}
+''')
+assert.fails(lambda: struct(none=None).to_proto(), 'cannot convert NoneType to proto')
+assert.fails(lambda: struct(dict={}).to_proto(), 'cannot convert dict to proto')
