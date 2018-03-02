@@ -199,6 +199,9 @@ func (x *LoadStmt) Span() (start, end Position) {
 	return x.Load, x.Rparen
 }
 
+// ModuleName returns the name of the module loaded by this statement.
+func (x *LoadStmt) ModuleName() string { return x.Module.Value.(string) }
+
 // A BranchStmt changes the flow of control: break, continue, pass.
 type BranchStmt struct {
 	commentsRef

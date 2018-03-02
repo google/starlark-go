@@ -522,7 +522,7 @@ func exec(fr *Frame, stmt syntax.Stmt) error {
 		return errReturn
 
 	case *syntax.LoadStmt:
-		module := stmt.Module.Value.(string)
+		module := stmt.ModuleName()
 		if fr.thread.Load == nil {
 			return fr.errorf(stmt.Load, "load not implemented by this application")
 		}
