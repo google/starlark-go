@@ -41,7 +41,8 @@ type Thread struct {
 	// See example_test.go for some example implementations of Load.
 	Load func(thread *Thread, module string) (StringDict, error)
 
-	// locals holds arbitrary "thread-local" values belonging to the client.
+	// locals holds arbitrary "thread-local" Go values belonging to the client.
+	// They are accessible to the client but not to any Skylark program.
 	locals map[string]interface{}
 }
 
