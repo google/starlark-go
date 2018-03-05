@@ -828,6 +828,9 @@ func toString(v Value) string {
 // (These are the only potentially cyclic structures.)
 func writeValue(out *bytes.Buffer, x Value, path []Value) {
 	switch x := x.(type) {
+	case nil:
+		out.WriteString("<nil>") // indicates a bug
+
 	case NoneType:
 		out.WriteString("None")
 
