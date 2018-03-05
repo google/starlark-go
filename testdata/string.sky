@@ -56,21 +56,21 @@ assert.eq(list("abcЙ😿".split_codepoints()), ["a", "b", "c", "Й", "😿"])
 assert.eq(list(("A" + "😿Z"[1:]).split_codepoints()), ["A", "\x9f", "\x98", "\xbf", "Z"])
 assert.eq(list("".split_codepoints()), [])
 
-# string.bytes
-assert.eq(type("abcЙ😿".bytes()), "bytes")
-assert.eq(str("abcЙ😿".bytes()), '"abcЙ😿".bytes()')
-assert.eq(list("abcЙ😿".bytes()), [97, 98, 99,  208, 153, 240, 159, 152, 191])
-assert.eq(list(("A" + "😿Z"[1:]).bytes()),  [65, 159, 152, 191, 90])
-assert.eq(list("".bytes()), [])
+# string.elems
+assert.eq(type("abcЙ😿".elems()), "elems")
+assert.eq(str("abcЙ😿".elems()), '"abcЙ😿".elems()')
+assert.eq(list("abcЙ😿".elems()), [97, 98, 99,  208, 153, 240, 159, 152, 191])
+assert.eq(list(("A" + "😿Z"[1:]).elems()),  [65, 159, 152, 191, 90])
+assert.eq(list("".elems()), [])
 
-# string.split_bytes
-assert.eq(type("abcЙ😿".split_bytes()), "bytes")
-assert.eq(str("abcЙ😿".split_bytes()), '"abcЙ😿".split_bytes()')
-assert.eq(list("abcЙ😿".split_bytes()),
+# string.split_elems
+assert.eq(type("abcЙ😿".split_elems()), "elems")
+assert.eq(str("abcЙ😿".split_elems()), '"abcЙ😿".split_elems()')
+assert.eq(list("abcЙ😿".split_elems()),
           ["a", "b", "c", "\xd0", "\x99", "\xf0", "\x9f", "\x98", "\xbf"])
-assert.eq(list(("A" + "😿Z"[1:]).split_bytes()),
+assert.eq(list(("A" + "😿Z"[1:]).split_elems()),
           ["A", "\x9f", "\x98", "\xbf", "Z"])
-assert.eq(list("".split_bytes()), [])
+assert.eq(list("".split_elems()), [])
 
 # indexing, x[i]
 assert.eq("Hello, 世界!"[0], "H")

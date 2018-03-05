@@ -97,10 +97,10 @@ var (
 	}
 
 	stringMethods = map[string]builtinMethod{
-		"bytes":            string_iterable,
 		"capitalize":       string_capitalize,
 		"codepoints":       string_iterable,
 		"count":            string_count,
+		"elems":            string_iterable,
 		"endswith":         string_endswith,
 		"find":             string_find,
 		"format":           string_format,
@@ -123,9 +123,9 @@ var (
 		"rsplit":           string_split,     // sic
 		"rstrip":           string_strip,     // sic
 		"split":            string_split,
-		"splitlines":       string_splitlines,
-		"split_bytes":      string_iterable, // sic
 		"split_codepoints": string_iterable, // sic
+		"split_elems":      string_iterable, // sic
+		"splitlines":       string_splitlines,
 		"startswith":       string_startswith,
 		"strip":            string_strip,
 		"title":            string_title,
@@ -1423,9 +1423,9 @@ func string_capitalize(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 }
 
 // string_iterable returns an unspecified iterable value whose iterator yields:
-// - bytes: numeric values of successive bytes
+// - elems: numeric values of successive bytes
 // - codepoints: numeric values of successive Unicode code points
-// - split_bytes: successive 1-byte substrings
+// - split_elems: successive 1-byte substrings
 // - split_codepoints: successive substrings that encode a single Unicode code point.
 func string_iterable(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {

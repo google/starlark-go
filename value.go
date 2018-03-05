@@ -393,7 +393,7 @@ func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, err
 func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), ok }
 
 // A stringIterable is an iterable whose iterator yields a sequence of
-// either Unicode code points or bytes,
+// either Unicode code points or elements (bytes),
 // either numerically or as successive substrings.
 type stringIterable struct {
 	s          String
@@ -414,7 +414,7 @@ func (si stringIterable) Type() string {
 	if si.codepoints {
 		return "codepoints"
 	} else {
-		return "bytes"
+		return "elems"
 	}
 }
 func (si stringIterable) Freeze()               {} // immutable

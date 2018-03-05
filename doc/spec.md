@@ -153,10 +153,10 @@ concurrency, and other such features of Python.
     * [list·pop](#list·pop)
     * [list·remove](#list·remove)
     * [set·union](#set·union)
-    * [string·bytes](#string·bytes)
     * [string·capitalize](#string·capitalize)
     * [string·codepoints](#string·codepoints)
     * [string·count](#string·count)
+    * [string·elems](#string·elems)
     * [string·endswith](#string·endswith)
     * [string·find](#string·find)
     * [string·format](#string·format)
@@ -179,8 +179,8 @@ concurrency, and other such features of Python.
     * [string·rsplit](#string·rsplit)
     * [string·rstrip](#string·rstrip)
     * [string·split](#string·split)
-    * [string·split_bytes](#string·split_bytes)
     * [string·split_codepoints](#string·split_codepoints)
+    * [string·split_elems](#string·split_elems)
     * [string·splitlines](#string·splitlines)
     * [string·startswith](#string·startswith)
     * [string·strip](#string·strip)
@@ -532,7 +532,7 @@ an iterable sequence.
 To obtain a view of a string as an iterable sequence of numeric byte
 values, 1-byte substrings, numeric Unicode code points, or 1-code
 point substrings, you must explicitly call one of its four methods:
-`bytes`, `split_bytes`, `codepoints`, or `split_codepoints`.
+`elems`, `split_elems`, `codepoints`, or `split_codepoints`.
 
 Any value may formatted as a string using the `str` or `repr` built-in
 functions, the `str % tuple` operator, or the `str.format` method.
@@ -542,10 +542,10 @@ non-empty.
 
 Strings have several built-in methods:
 
-* [`bytes`](#string·bytes)
 * [`capitalize`](#string·capitalize)
 * [`codepoints`](#string·codepoints)
 * [`count`](#string·count)
+* [`elems`](#string·elems)
 * [`endswith`](#string·endswith)
 * [`find`](#string·find)
 * [`format`](#string·format)
@@ -569,8 +569,8 @@ Strings have several built-in methods:
 * [`rstrip`](#string·rstrip)
 * [`split`](#string·split)
 * [`splitlines`](#string·splitlines)
-* [`split_bytes`](#string·split_bytes)
 * [`split_codepoints`](#string·split_codepoints)
+* [`split_elems`](#string·split_elems)
 * [`startswith`](#string·startswith)
 * [`strip`](#string·strip)
 * [`title`](#string·title)
@@ -3335,7 +3335,7 @@ nearest value within that range is used; see [Indexing](#indexing).
 is not a valid index (`int` or `None`).
 
 ```python
-x = list("banana".split_bytes())
+x = list("banana".split_elems())
 x.index("a")                            # 1 (bAnana)
 x.index("a", 2)                         # 3 (banAna)
 x.index("a", -2)                        # 5 (bananA)
@@ -3405,10 +3405,10 @@ y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
 ```
 
-<a id='string·bytes'></a>
-### string·bytes
+<a id='string·elems'></a>
+### string·elems
 
-`S.bytes()` returns an iterable value containing the
+`S.elems()` returns an iterable value containing the
 sequence of numeric bytes values in the string S.
 
 To materialize the entire sequence of bytes, apply `list(...)` to the result.
@@ -3416,12 +3416,12 @@ To materialize the entire sequence of bytes, apply `list(...)` to the result.
 Example:
 
 ```python
-list("Hello, 世界".bytes())        # [72, 101, 108, 108, 111, 44, 32, 228, 184, 150, 231, 149, 140]
+list("Hello, 世界".elems())        # [72, 101, 108, 108, 111, 44, 32, 228, 184, 150, 231, 149, 140]
 ```
 
-See also: `string·split_bytes`.
+See also: `string·split_elems`.
 
-<b>Implementation note:</b> `bytes` is not provided by the Java implementation.
+<b>Implementation note:</b> `elems` is not provided by the Java implementation.
 
 <a id='string·capitalize'></a>
 ### string·capitalize
@@ -3784,22 +3784,22 @@ If `maxsplit` is given and non-negative, it specifies a maximum number of splits
 "banana".split("n", 1)                      # ["ba", "ana"]
 ```
 
-<a id='string·split_bytes'></a>
-### string·split_bytes
+<a id='string·split_elems'></a>
+### string·split_elems
 
-`S.split_bytes()` returns an iterable value containing successive
+`S.split_elems()` returns an iterable value containing successive
 1-byte substrings of S.
 To materialize the entire sequence, apply `list(...)` to the result.
 
 Example:
 
 ```python
-list('Hello, 世界'.split_bytes())  # ["H", "e", "l", "l", "o", ",", " ", "\xe4", "\xb8", "\x96", "\xe7", "\x95", "\x8c"]
+list('Hello, 世界'.split_elems())  # ["H", "e", "l", "l", "o", ",", " ", "\xe4", "\xb8", "\x96", "\xe7", "\x95", "\x8c"]
 ```
 
-See also: `string·bytes`.
+See also: `string·elems`.
 
-<b>Implementation note:</b> `split_bytes` is not provided by the Java implementation.
+<b>Implementation note:</b> `split_elems` is not provided by the Java implementation.
 
 <a id='string·split_codepoints'></a>
 ### string·split_codepoints
@@ -3901,7 +3901,7 @@ eventually to eliminate all such differences on a case-by-case basis.
 * `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
-* Strings have the additional methods `bytes`, `split_bytes`, `codepoints`, and `split_codepoints`.
+* Strings have the additional methods `elems`, `split_elems`, `codepoints`, and `split_codepoints`.
 * The `chr` and `ord` built-in functions are supported.
 * The `set` built-in function is provided (option: `-set`).
 * `x += y` rebindings are permitted at top level.
