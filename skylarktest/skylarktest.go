@@ -68,8 +68,9 @@ func LoadAssertModule() (skylark.StringDict, error) {
 		}
 		filename := DataFile("skylark/skylarktest", "assert.sky")
 		thread := new(skylark.Thread)
-		err := skylark.ExecFile(thread, filename, nil, globals)
-		assert, assertErr = globals, err
+		assertErr = skylark.ExecFile(thread, filename, nil, globals)
+		// Expose only the 'assert' struct.
+		assert = skylark.StringDict{"assert": globals["assert"]}
 	})
 	return assert, assertErr
 }
