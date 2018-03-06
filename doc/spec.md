@@ -1500,6 +1500,9 @@ Operand = identifier
 DotSuffix   = '.' identifier .
 CallSuffix  = '(' [Arguments [',']] ')' .
 SliceSuffix = '[' [Expression] [':' Test [':' Test]] ']' .
+
+# A CallSuffix does not allow a trailing comma
+# if the last argument is '*' Test or '**' Test.
 ```
 
 TODO: resolve position of +x, -x, and 'not x' in grammar: Operand or UnaryExpr?
@@ -2084,7 +2087,7 @@ print(x)                        # 1
 CallSuffix = '(' [Arguments] ')' .
 
 Arguments = Argument {',' Argument} .
-Argument  = Test | identifier '=' Test | '*' identifier | '**' identifier .
+Argument  = Test | identifier '=' Test | '*' Test | '**' Test .
 ```
 
 A value `f` of type `function` or `builtin_function_or_method` may be called using the expression `f(...)`.

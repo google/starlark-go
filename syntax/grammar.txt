@@ -66,8 +66,11 @@ DotSuffix   = '.' identifier .
 CallSuffix  = '(' [Arguments [',']] ')' .
 SliceSuffix = '[' [Expression] [':' Test [':' Test]] ']' .
 
+# A CallSuffix does not allow a trailing comma
+# if the last argument is '*' Test or '**' Test.
+
 Arguments = Argument {',' Argument} .
-Argument  = Test | identifier '=' Test | '*' identifier | '**' identifier .
+Argument  = Test | identifier '=' Test | '*' Test | '**' Test .
 
 ListExpr = '[' [Expression [',']] ']' .
 ListComp = '[' Test {CompClause} ']'.
