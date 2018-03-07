@@ -929,6 +929,9 @@ const maxdepth = 10
 
 // Equal reports whether two Skylark values are equal.
 func Equal(x, y Value) (bool, error) {
+	if x, ok := x.(String); ok {
+		return x == y, nil // fast path for an important special case
+	}
 	return EqualDepth(x, y, maxdepth)
 }
 
