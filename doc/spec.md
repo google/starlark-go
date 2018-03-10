@@ -685,7 +685,7 @@ built-in `tuple` function.
 
 Like lists, tuples are indexed sequences, so they may be indexed and
 sliced.  The index expression `tuple[i]` returns the tuple element at
-index i, and the slice expression `tuple[i:j]` returns a subsequence
+index i, and the slice expression `tuple[i:j]` returns a sub-sequence
 of a tuple.
 
 Tuples are iterable sequences, so they may be used as the operand of a
@@ -1369,7 +1369,7 @@ the interpreter's Go API.
 * `Mapping`: a mapping is an association of keys to values. Example: `dict`.
 
 Although all of Skylark's core data types for sequences implement at
-least the `Sequence` contract, it's possible for an an application
+least the `Sequence` contract, it's possible for an application
 that embeds the Skylark interpreter to define additional data types
 representing sequences of unknown length that implement only the `Iterable` contract.
 
@@ -1399,7 +1399,7 @@ increment_values(dict)
 
 Many Skylark operators and functions require an index operand `i`,
 such as `a[i]` or `list.insert(i, x)`. Others require two indices `i`
-and `j` that indicate the start and end of a subsequence, such as
+and `j` that indicate the start and end of a sub-sequence, such as
 `a[i:j]`, `list.index(x, i, j)`, or `string.find(x, i, j)`.
 All such operations follow similar conventions, described here.
 
@@ -1413,10 +1413,10 @@ sequence of length `n` has index `n-1`.
 "hello"[5]			# error: index out of range
 ```
 
-For subsequence operations that require two indices, the first is
+For sub-sequence operations that require two indices, the first is
 _inclusive_ and the second _exclusive_. Thus `a[i:j]` indicates the
 sequence starting with element `i` up to but not including element
-`j`. The length of this subsequence is `j-i`. This convention is known
+`j`. The length of this sub-sequence is `j-i`. This convention is known
 as *half-open indexing*.
 
 ```python
@@ -1443,7 +1443,7 @@ to address the final elements of the sequence:
 "hello"[-3:-1]                  # "ll", like "hello"[2:4]
 ```
 
-Second, for subsequence operations, if the value is still negative, it
+Second, for sub-sequence operations, if the value is still negative, it
 is replaced by zero, or if it is greater than the length `n` of the
 sequence, it is replaced by `n`. In effect, the index is "truncated" to
 the nearest value in the range `[0:n]`.
@@ -2196,7 +2196,7 @@ type, such as a tuple or string, or a frozen value of a mutable type.
 ### Slice expressions
 
 A slice expression `a[start:stop:stride]` yields a new value containing a
-subsequence of `a`, which must be a string, tuple, or list.
+sub-sequence of `a`, which must be a string, tuple, or list.
 
 ```grammar {.good}
 SliceSuffix = '[' [Expression] [':' Test [':' Test]] ']' .
