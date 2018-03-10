@@ -85,6 +85,8 @@ $ ./skylark
 >>>
 ```
 
+When you have finished, type `Ctrl-D` to close the REPL's input stream. 
+
 ### Contributing
 
 We welcome submissions but please let us know what you're working on
