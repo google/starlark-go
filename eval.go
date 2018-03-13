@@ -105,13 +105,14 @@ func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 // A Frame holds the execution state of a single Skylark function call
 // or module toplevel.
 type Frame struct {
-	thread  *Thread         // thread-associated state
-	parent  *Frame          // caller's frame (or nil)
-	posn    syntax.Position // source position of PC (set during call and error)
-	fn      *Function       // current function (nil at toplevel)
-	globals StringDict      // current global environment
-	locals  []Value         // local variables, starting with parameters
-	result  Value           // operand of current function's return statement
+	thread      *Thread         // thread-associated state
+	parent      *Frame          // caller's frame (or nil)
+	posn        syntax.Position // source position of PC (set during call and error)
+	fn          *Function       // current function (nil at toplevel)
+	predeclared StringDict      // names predeclared for this module
+	globals     []Value         // global variables of enclosing module
+	locals      []Value         // local variables, starting with parameters
+	result      Value           // operand of current function's return statement
 }
 
 func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}) *EvalError {
@@ -135,7 +136,7 @@ func (fr *Frame) set(id *syntax.Ident, v Value) {
 	case resolve.Local:
 		fr.locals[id.Index] = v
 	case resolve.Global:
-		fr.globals[id.Name] = v
+		fr.globals[id.Index] = v
 	default:
 		log.Fatalf("%s: set(%s): neither global nor local (%d)", id.NamePos, id.Name, id.Scope)
 	}
@@ -151,16 +152,21 @@ func (fr *Frame) lookup(id *syntax.Ident) (Value, error) {
 	case resolve.Free:
 		return fr.fn.freevars[id.Index], nil
 	case resolve.Global:
-		if v := fr.globals[id.Name]; v != nil {
+		if v := fr.globals[id.Index]; v != nil {
+			return v, nil
+		}
+	case resolve.Predeclared:
+		if v := fr.predeclared[id.Name]; v != nil {
 			return v, nil
 		}
 		if id.Name == "PACKAGE_NAME" {
 			// Gross spec, gross hack.
 			// Users should just call package_name() function.
-			if v, ok := fr.globals["package_name"].(*Builtin); ok {
+			if v, ok := fr.predeclared["package_name"].(*Builtin); ok {
 				return v.fn(fr.thread, v, nil, nil)
 			}
 		}
+		return nil, fr.errorf(id.NamePos, "internal error: predeclared variable %s is uninitialized", id.Name)
 	case resolve.Universal:
 		return Universe[id.Name], nil
 	}
@@ -223,8 +229,13 @@ func (e *EvalError) Stack() []*Frame {
 //
 // If ExecFile fails during evaluation, it returns an *EvalError
 // containing a backtrace.
-func ExecFile(thread *Thread, filename string, src interface{}, globals StringDict) error {
-	return Exec(ExecOptions{Thread: thread, Filename: filename, Source: src, Globals: globals})
+func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDict) (StringDict, error) {
+	return Exec(ExecOptions{
+		Thread:      thread,
+		Filename:    filename,
+		Source:      src,
+		Predeclared: predeclared,
+	})
 }
 
 // ExecOptions specifies the arguments to Exec.
@@ -240,9 +251,9 @@ type ExecOptions struct {
 	// instead of Filename.  See syntax.Parse for details.
 	Source interface{}
 
-	// Globals is the environment of the module.
-	// It may be modified during execution.
-	Globals StringDict
+	// Predeclared defines the predeclared names specific to this module.
+	// Execution does not modify this dictionary.
+	Predeclared StringDict
 
 	// BeforeExec is an optional function that is called after the
 	// syntax tree has been resolved but before execution.  If it
@@ -252,79 +263,93 @@ type ExecOptions struct {
 
 // Exec is a variant of ExecFile that gives the client greater control
 // over optional features.
-func Exec(opts ExecOptions) error {
+func Exec(opts ExecOptions) (StringDict, error) {
 	if debug {
 		fmt.Printf("ExecFile %s\n", opts.Filename)
 		defer fmt.Printf("ExecFile %s done\n", opts.Filename)
 	}
 	f, err := syntax.Parse(opts.Filename, opts.Source, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	globals := opts.Globals
-	if err := resolve.File(f, globals.Has, Universe.Has); err != nil {
-		return err
+	predeclared := opts.Predeclared
+	if err := resolve.File(f, predeclared.Has, Universe.Has); err != nil {
+		return nil, err
 	}
 
 	thread := opts.Thread
 
 	if opts.BeforeExec != nil {
 		if err := opts.BeforeExec(thread, f); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	fr := thread.Push(globals, len(f.Locals))
+	globals := make([]Value, len(f.Globals))
+	fr := thread.Push(predeclared, globals, len(f.Locals))
 	err = fr.ExecStmts(f.Stmts)
 	thread.Pop()
 
-	// Freeze the global environment.
-	globals.Freeze()
+	// Convert the global environment to a map, and freeze it.
+	// We return a (partial) map even in case of error.
+	globalsMap := make(StringDict, len(f.Globals))
+	for i, id := range f.Globals {
+		if v := globals[i]; v != nil {
+			v.Freeze()
+			globalsMap[id.Name] = v
+		}
+	}
 
-	return err
+	return globalsMap, err
 }
 
 // Push pushes a new Frame on the specified thread's stack, and returns it.
 // It must be followed by a call to Pop when the frame is no longer needed.
-func (thread *Thread) Push(globals StringDict, nlocals int) *Frame {
+//
+// Most clients do not need this low-level function; use ExecFile or Eval instead.
+func (thread *Thread) Push(predeclared StringDict, globals []Value, nlocals int) *Frame {
 	fr := &Frame{
-		thread:  thread,
-		parent:  thread.frame,
-		globals: globals,
-		locals:  make([]Value, nlocals),
+		thread:      thread,
+		parent:      thread.frame,
+		predeclared: predeclared,
+		globals:     globals,
+		locals:      make([]Value, nlocals),
 	}
 	thread.frame = fr
 	return fr
 }
 
 // Pop removes the topmost frame from the thread's stack.
+//
+// Most clients do not need this low-level function; use ExecFile or Eval instead.
 func (thread *Thread) Pop() {
 	thread.frame = thread.frame.parent
 }
 
 // Eval parses, resolves, and evaluates an expression within the
-// specified global environment.
+// specified (predeclared) environment.
 //
-// Evaluation cannot mutate the globals dictionary itself, though it may
-// modify variables reachable from the dictionary.
+// Evaluation cannot mutate the environment dictionary itself,
+// though it may modify variables reachable from the dictionary.
 //
 // The filename and src parameters are as for syntax.Parse.
 //
 // If Eval fails during evaluation, it returns an *EvalError
 // containing a backtrace.
-func Eval(thread *Thread, filename string, src interface{}, globals StringDict) (Value, error) {
+func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Value, error) {
 	expr, err := syntax.ParseExpr(filename, src, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	locals, err := resolve.Expr(expr, globals.Has, Universe.Has)
+	locals, err := resolve.Expr(expr, env.Has, Universe.Has)
 	if err != nil {
 		return nil, err
 	}
 
-	fr := thread.Push(globals, len(locals))
+	// There are no globals.
+	fr := thread.Push(env, nil, len(locals))
 	v, err := eval(fr, expr)
 	thread.Pop()
 	return v, err
@@ -1687,12 +1712,13 @@ func evalFunction(fr *Frame, pos syntax.Position, name string, function *syntax.
 	}
 
 	return &Function{
-		name:     name,
-		position: pos,
-		syntax:   function,
-		globals:  fr.globals,
-		defaults: defaults,
-		freevars: freevars,
+		name:        name,
+		position:    pos,
+		syntax:      function,
+		predeclared: fr.predeclared,
+		globals:     fr.globals,
+		defaults:    defaults,
+		freevars:    freevars,
 	}, nil
 }
 
@@ -1711,7 +1737,7 @@ func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, err
 		}
 	}
 
-	fr := thread.Push(fn.globals, len(fn.syntax.Locals))
+	fr := thread.Push(fn.predeclared, fn.globals, len(fn.syntax.Locals))
 	fr.fn = fn
 	err := fn.setArgs(fr, args, kwargs)
 	if err == nil {

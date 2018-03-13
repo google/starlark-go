@@ -456,12 +456,13 @@ func (*stringIterator) Done() {}
 
 // A Function is a function defined by a Skylark def statement.
 type Function struct {
-	name     string          // "lambda" for anonymous functions
-	position syntax.Position // position of def or lambda token
-	syntax   *syntax.Function
-	globals  StringDict
-	defaults Tuple
-	freevars Tuple
+	name        string          // "lambda" for anonymous functions
+	position    syntax.Position // position of def or lambda token
+	syntax      *syntax.Function
+	predeclared StringDict // names predeclared in the current module
+	globals     []Value    // globals of the current module
+	defaults    Tuple
+	freevars    Tuple
 }
 
 func (fn *Function) Name() string          { return fn.name }

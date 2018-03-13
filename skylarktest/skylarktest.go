@@ -59,21 +59,16 @@ var (
 // It is concurrency-safe and idempotent.
 func LoadAssertModule() (skylark.StringDict, error) {
 	once.Do(func() {
-		globals := skylark.StringDict{
+		predeclared := skylark.StringDict{
 			"error":   skylark.NewBuiltin("error", error_),
 			"catch":   skylark.NewBuiltin("catch", catch),
 			"matches": skylark.NewBuiltin("matches", matches),
 			"struct":  skylark.NewBuiltin("struct", skylarkstruct.Make),
-			"freeze":  skylark.NewBuiltin("freeze", freeze),
+			"_freeze": skylark.NewBuiltin("freeze", freeze),
 		}
 		filename := DataFile("skylark/skylarktest", "assert.sky")
 		thread := new(skylark.Thread)
-		assertErr = skylark.ExecFile(thread, filename, nil, globals)
-		// Expose only these items:
-		assert = skylark.StringDict{
-			"assert": globals["assert"],
-			"freeze": globals["freeze"],
-		}
+		assert, assertErr = skylark.ExecFile(thread, filename, nil, predeclared)
 	})
 	return assert, assertErr
 }

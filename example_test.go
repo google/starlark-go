@@ -28,10 +28,11 @@ squares = [x*x for x in range(10)]
 	thread := &skylark.Thread{
 		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
 	}
-	globals := skylark.StringDict{
+	predeclared := skylark.StringDict{
 		"greeting": skylark.String("hello"),
 	}
-	if err := skylark.ExecFile(thread, "apparent/filename.sky", data, globals); err != nil {
+	globals, err := skylark.ExecFile(thread, "apparent/filename.sky", data, predeclared)
+	if err != nil {
 		if evalErr, ok := err.(*skylark.EvalError); ok {
 			log.Fatal(evalErr.Backtrace())
 		}
@@ -54,7 +55,6 @@ squares = [x*x for x in range(10)]
 	// hello, world
 	//
 	// Globals:
-	// greeting (string) = "hello"
 	// squares (list) = [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 }
 
@@ -89,8 +89,7 @@ func ExampleLoadSequential() {
 			// Load and initialize the module in a new thread.
 			data := fakeFilesystem[module]
 			thread := &skylark.Thread{Load: load}
-			globals := make(skylark.StringDict)
-			err := skylark.ExecFile(thread, module, data, globals)
+			globals, err := skylark.ExecFile(thread, module, data, nil)
 			e = &entry{globals, err}
 
 			// Update the cache.
@@ -243,12 +242,7 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (skylark.StringDict, err
 		},
 	}
 	data := c.fakeFilesystem[module]
-	globals := make(skylark.StringDict)
-	err := skylark.ExecFile(thread, module, data, globals)
-	if err != nil {
-		return nil, err
-	}
-	return globals, nil
+	return skylark.ExecFile(thread, module, data, nil)
 }
 
 // -- concurrent cycle checking --

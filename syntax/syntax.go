@@ -71,7 +71,8 @@ type File struct {
 	Stmts []Stmt
 
 	// set by resolver:
-	Locals []*Ident // this file's (comprehension-)local variables
+	Locals  []*Ident // this file's (comprehension-)local variables
+	Globals []*Ident // this file's global variables
 }
 
 func (x *File) Span() (start, end Position) {
@@ -259,8 +260,8 @@ type Ident struct {
 
 	// set by resolver:
 
-	Scope uint8 // one of resolve.{Undefined,Local,Free,Global,Builtin}
-	Index int   // index into enclosing {DefStmt,File}.Locals (if scope==Local) or DefStmt.FreeVars (if scope==Free)
+	Scope uint8 // see type resolve.Scope
+	Index int   // index into enclosing {DefStmt,File}.Locals (if scope==Local) or DefStmt.FreeVars (if scope==Free) or File.Globals (if scope==Global)
 }
 
 func (x *Ident) Span() (start, end Position) {

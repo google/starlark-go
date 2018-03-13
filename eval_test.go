@@ -112,11 +112,11 @@ func TestExecFile(t *testing.T) {
 	} {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
-			globals := skylark.StringDict{
+			predeclared := skylark.StringDict{
 				"hasfields": skylark.NewBuiltin("hasfields", newHasFields),
 				"fibonacci": fib{},
 			}
-			err := skylark.ExecFile(thread, filename, chunk.Source, globals)
+			_, err := skylark.ExecFile(thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {
 			case *skylark.EvalError:
 				found := false
@@ -167,10 +167,8 @@ func load(thread *skylark.Thread, module string) (skylark.StringDict, error) {
 	}
 
 	// TODO(adonovan): test load() using this execution path.
-	globals := make(skylark.StringDict)
 	filename := filepath.Join(filepath.Dir(thread.Caller().Position().Filename()), module)
-	err := skylark.ExecFile(thread, filename, nil, globals)
-	return globals, err
+	return skylark.ExecFile(thread, filename, nil, nil)
 }
 
 func newHasFields(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
@@ -252,8 +250,8 @@ def f(a, b=42, *args, **kwargs):
 `
 
 	thread := new(skylark.Thread)
-	globals := make(skylark.StringDict)
-	if err := skylark.ExecFile(thread, filename, src, globals); err != nil {
+	globals, err := skylark.ExecFile(thread, filename, src, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -330,8 +328,7 @@ f()
 		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Position(), name, msg)
 	}
 	thread := &skylark.Thread{Print: print}
-	globals := make(skylark.StringDict)
-	if err := skylark.ExecFile(thread, "foo.go", src, globals); err != nil {
+	if _, err := skylark.ExecFile(thread, "foo.go", src, nil); err != nil {
 		t.Fatal(err)
 	}
 	want := "foo.go:2:6: <module>: hello\n" +
@@ -351,8 +348,8 @@ func Benchmark(b *testing.B) {
 		filename := filepath.Join(testdata, file)
 
 		// Evaluate the file once.
-		globals := make(skylark.StringDict)
-		if err := skylark.ExecFile(thread, filename, nil, globals); err != nil {
+		globals, err := skylark.ExecFile(thread, filename, nil, nil)
+		if err != nil {
 			reportEvalError(b, err)
 		}
 
@@ -426,8 +423,7 @@ def i(): return h()
 i()
 `
 	thread := new(skylark.Thread)
-	globals := make(skylark.StringDict)
-	err := skylark.ExecFile(thread, "crash.go", src, globals)
+	_, err := skylark.ExecFile(thread, "crash.go", src, nil)
 	switch err := err.(type) {
 	case *skylark.EvalError:
 		got := err.Backtrace()
@@ -449,17 +445,22 @@ Error: floored division by zero`
 }
 
 // TestRepeatedExec parses and resolves a file syntax tree once then
-// executes it repeatedly with different values of its global variables.
+// executes it repeatedly with different values of its predeclared variables.
 func TestRepeatedExec(t *testing.T) {
 	f, err := syntax.Parse("repeat.sky", "y = 2 * x", 0)
 	if err != nil {
 		t.Fatal(f) // parse error
 	}
 
-	isPredeclaredGlobal := func(name string) bool { return name == "x" } // x, but not y
+	isPredeclared := func(name string) bool { return name == "x" } // x, but not y
 
-	if err := resolve.File(f, isPredeclaredGlobal, skylark.Universe.Has); err != nil {
+	if err := resolve.File(f, isPredeclared, skylark.Universe.Has); err != nil {
 		t.Fatal(err) // resolve error
+	}
+
+	const yIndex = 0
+	if yName := f.Globals[yIndex].Name; yName != "y" {
+		t.Fatalf("global[%d] = %s, want y", yIndex, yName)
 	}
 
 	thread := new(skylark.Thread)
@@ -470,14 +471,15 @@ func TestRepeatedExec(t *testing.T) {
 		{x: skylark.String("mur"), want: skylark.String("murmur")},
 		{x: skylark.Tuple{skylark.None}, want: skylark.Tuple{skylark.None, skylark.None}},
 	} {
-		globals := skylark.StringDict{"x": test.x}
-		fr := thread.Push(globals, len(f.Locals))
+		predeclared := skylark.StringDict{"x": test.x}
+		globals := make([]skylark.Value, len(f.Globals))
+		fr := thread.Push(predeclared, globals, len(f.Locals))
 		if err := fr.ExecStmts(f.Stmts); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // exec error
-		} else if eq, err := skylark.Equal(globals["y"], test.want); err != nil {
+		} else if eq, err := skylark.Equal(globals[yIndex], test.want); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // comparison error
 		} else if !eq {
-			t.Errorf("x=%v: got y=%v, want %v", test.x, globals["y"], test.want)
+			t.Errorf("x=%v: got y=%v, want %v", test.x, globals[yIndex], test.want)
 		}
 		thread.Pop()
 	}

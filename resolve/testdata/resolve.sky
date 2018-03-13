@@ -1,4 +1,8 @@
 # Tests of resolver errors.
+#
+# The initial environment contains the predeclared names "M"
+# (module-specific) and "U" (universal). This distinction
+# should be unobservable to the Skylark program.
 
 # use of declared global
 x = 1
@@ -16,53 +20,55 @@ _ = x ### "undefined: x"
 ---
 # redeclaration of global
 x = 1
-x = 2 ### "cannot reassign global x declared at .*resolve.sky:18:1"
+x = 2 ### "cannot reassign global x declared at .*resolve.sky:22:1"
 
 ---
-# redeclaration of predeclared global or built-in
+# Redeclaration of predeclared names is allowed.
+#
+# This rule permits tool maintainers to add members to the predeclared
+# environment without breaking existing programs.
 
-# This rule permits tool maintainers to add members to the global
-# environment without breaking exsiting programs.
+# module-specific predeclared name
+M = 1 # ok
+M = 2 ### "cannot reassign global M declared at .*/resolve.sky"
 
-G = 1 # ok
-G = 2 ### "cannot reassign global G declared at .*/resolve.sky"
-
-B = 1 # ok
-B = 1 ### "cannot reassign global B declared at .*/resolve.sky"
+# universal predeclared name
+U = 1 # ok
+U = 1 ### "cannot reassign global U declared at .*/resolve.sky"
 
 ---
-# reference to built-in
-B()
+# reference to predeclared name
+M()
 
 ---
 # locals may be referenced before they are defined
 
 def f():
-   G(x) # dynamic error
+   M(x) # dynamic error
    x = 1
 
 ---
 # Various forms of assignment:
 
 def f(x): # parameter
-    G(x)
-    G(y) ### "undefined: y"
+    M(x)
+    M(y) ### "undefined: y"
 
 (a, b) = 1, 2
-G(a)
-G(b)
-G(c) ### "undefined: c"
+M(a)
+M(b)
+M(c) ### "undefined: c"
 
 [p, q] = 1, 2
-G(p)
-G(q)
-G(r) ### "undefined: r"
+M(p)
+M(q)
+M(r) ### "undefined: r"
 
 ---
 # a comprehension introduces a separate lexical block
 
 _ = [x for x in "abc"]
-G(x) ### "undefined: x"
+M(x) ### "undefined: x"
 
 ---
 # Functions may have forward refs.   (option:lambda option:nesteddef)
@@ -97,12 +103,12 @@ def f(a):
   if 1==1:
     b = 1
   c = 1
-  G(a) # ok: param
-  G(b) # ok: maybe bound local
-  G(c) # ok: bound local
-  G(d) # NB: we don't do a use-before-def check on local vars!
-  G(e) # ok: global
-  G(f) # ok: global
+  M(a) # ok: param
+  M(b) # ok: maybe bound local
+  M(c) # ok: bound local
+  M(d) # NB: we don't do a use-before-def check on local vars!
+  M(e) # ok: global
+  M(f) # ok: global
   d = 1
 
 e = 1
@@ -114,7 +120,7 @@ e = 1
 x = 1
 
 def f():
-  G(x) # dynamic error: reference to undefined local
+  M(x) # dynamic error: reference to undefined local
   x = 2
 
 f()
@@ -169,7 +175,7 @@ pass
 # Positional arguments (and required parameters)
 # must appear before named arguments (and optional parameters).
 
-G(x=1, 2) ### `positional argument may not follow named`
+M(x=1, 2) ### `positional argument may not follow named`
 
 def f(x=1, y): pass ### `required parameter may not follow optional`
 ---

@@ -13,11 +13,15 @@
 package resolve
 
 // All references to names are statically resolved.  Names may be
-// universal (e.g. None, len), global and predeclared (e.g. glob in the
-// build language), global and user-defined (e.g. x=1 at toplevel), or
-// local to a function or module-level comprehension.  The resolver maps
-// each local name to a small integer for fast and compact
-// representation in the evaluator.
+// predeclared, global, or local to a function or module-level comprehension.
+// The resolver maps each global name to a small integer and each local
+// name to a small integer; these integers enable a fast and compact
+// representation of globals and locals in the evaluator.
+//
+// As an optimization, the resolver classifies each predeclared name as
+// either universal (e.g. None, len) or per-module (e.g. glob in Bazel's
+// build language), enabling the evaluator to share the representation
+// of the universal environment across all modules.
 //
 // The lexical environment is a tree of blocks with the module block at
 // its root.  The module's child blocks may be of two kinds: functions
@@ -34,12 +38,12 @@ package resolve
 // local variable to the enclosing function.
 //
 // As we finish resolving each function, we inspect all the uses within
-// that function and discard ones that were found to be local.  The
+// that function and discard ones that were found to be local. The
 // remaining ones must be either free (local to some lexically enclosing
-// function) or global/universal, but we cannot tell which until we have
-// finished inspecting the outermost enclosing function.  At that point,
-// we can distinguish local from global names (and this is when Python
-// would compute free variables).
+// function), or nonlocal (global or predeclared), but we cannot tell
+// which until we have finished inspecting the outermost enclosing
+// function. At that point, we can distinguish local from global names
+// (and this is when Python would compute free variables).
 //
 // However, Skylark additionally requires that all references to global
 // names are satisfied by some declaration in the current module;
@@ -90,13 +94,18 @@ var (
 
 // File resolves the specified file.
 //
-// The isPredeclaredGlobal and isUniversal predicates report whether a
-// name is a pre-declared global identifier (in the current module) or a
-// universal identifier (in every module).
-// Typical values are globals.Has and Universe.Has, respectively, where
-// globals is the current module's StringDict.
-func File(file *syntax.File, isPredeclaredGlobal, isUniversal func(name string) bool) error {
-	r := newResolver(isPredeclaredGlobal, isUniversal)
+// The isPredeclared and isUniversal predicates report whether a name is
+// a pre-declared identifier (visible in the current module) or a
+// universal identifier (visible in every module).
+// Clients should typically pass predeclared.Has for the first and
+// skylark.Universe.Has for the second, where predeclared is the
+// module's StringDict of predeclared names and skylark.Universe is the
+// standard set of built-ins.
+// The isUniverse predicate is supplied a parameter to avoid a cyclic
+// dependency upon skylark.Universe, not because users should ever need
+// to redefine it.
+func File(file *syntax.File, isPredeclared, isUniversal func(name string) bool) error {
+	r := newResolver(isPredeclared, isUniversal)
 	r.stmts(file.Stmts)
 
 	r.env.resolveLocalUses()
@@ -107,6 +116,7 @@ func File(file *syntax.File, isPredeclaredGlobal, isUniversal func(name string) 
 	r.resolveNonLocalUses(r.env)
 
 	file.Locals = r.moduleLocals
+	file.Globals = r.moduleGlobals
 
 	if len(r.errors) > 0 {
 		return r.errors
@@ -117,13 +127,9 @@ func File(file *syntax.File, isPredeclaredGlobal, isUniversal func(name string) 
 // Expr resolves the specified expression.
 // It returns the local variables bound within the expression.
 //
-// The isPredeclaredGlobal and isUniversal predicates report whether a
-// name is a pre-declared global identifier (in the current module) or a
-// universal identifier (in every module).
-// Typical values are globals.Has and Universe.Has, respectively, where
-// globals is the current module's StringDict.
-func Expr(expr syntax.Expr, isPredeclaredGlobal, isUniversal func(name string) bool) ([]*syntax.Ident, error) {
-	r := newResolver(isPredeclaredGlobal, isUniversal)
+// The isPredeclared and isUniversal predicates behave as for the File function.
+func Expr(expr syntax.Expr, isPredeclared, isUniversal func(name string) bool) ([]*syntax.Ident, error) {
+	r := newResolver(isPredeclared, isUniversal)
 	r.expr(expr)
 	r.env.resolveLocalUses()
 	r.resolveNonLocalUses(r.env) // globals & universals
@@ -150,29 +156,31 @@ func (e Error) Error() string { return e.Pos.String() + ": " + e.Msg }
 type Scope uint8
 
 const (
-	Undefined Scope = iota // name is not defined
-	Local                  // name is local to its function
-	Free                   // name is local to some enclosing function
-	Global                 // name is global to module
-	Universal              // name is universal (e.g. len)
+	Undefined   Scope = iota // name is not defined
+	Local                    // name is local to its function
+	Free                     // name is local to some enclosing function
+	Global                   // name is global to module
+	Predeclared              // name is predeclared for this module (e.g. glob)
+	Universal                // name is universal (e.g. len)
 )
 
 var scopeNames = [...]string{
-	Undefined: "undefined",
-	Local:     "local",
-	Free:      "free",
-	Global:    "global",
-	Universal: "universal",
+	Undefined:   "undefined",
+	Local:       "local",
+	Free:        "free",
+	Global:      "global",
+	Predeclared: "predeclared",
+	Universal:   "universal",
 }
 
 func (scope Scope) String() string { return scopeNames[scope] }
 
-func newResolver(isPredeclaredGlobal, isUniversal func(name string) bool) *resolver {
+func newResolver(isPredeclared, isUniversal func(name string) bool) *resolver {
 	return &resolver{
-		env:                 new(block), // module block
-		isPredeclaredGlobal: isPredeclaredGlobal,
-		isUniversal:         isUniversal,
-		globals:             make(map[string]syntax.Position),
+		env:           new(block), // module block
+		isPredeclared: isPredeclared,
+		isUniversal:   isUniversal,
+		globals:       make(map[string]*syntax.Ident),
 	}
 }
 
@@ -184,16 +192,17 @@ type resolver struct {
 
 	// moduleLocals contains the local variables of the module
 	// (due to comprehensions outside any function).
-	moduleLocals []*syntax.Ident
+	// moduleGlobals contains the global variables of the module.
+	moduleLocals  []*syntax.Ident
+	moduleGlobals []*syntax.Ident
 
-	// globals contains the names of global variables defined
-	// within the module (but not predeclared ones).
-	// The position is that of the original binding.
-	globals map[string]syntax.Position
+	// globals maps each global name in the module
+	// to its first binding occurrence.
+	globals map[string]*syntax.Ident
 
 	// These predicates report whether a name is
-	// a pre-declared global or universal.
-	isPredeclaredGlobal, isUniversal func(name string) bool
+	// pre-declared, either in this module or universally.
+	isPredeclared, isUniversal func(name string) bool
 
 	loops int // number of enclosing for loops
 
@@ -283,20 +292,22 @@ type use struct {
 func (r *resolver) bind(id *syntax.Ident, allowRebind bool) bool {
 	// Binding outside any local (comprehension/function) block?
 	if r.env.isModule() {
-		prevPos, ok := r.globals[id.Name]
+		id.Scope = uint8(Global)
+		prev, ok := r.globals[id.Name]
 		if ok {
-			id.Scope = uint8(Global)
-
 			// Global reassignments are permitted only if
 			// they are of the form x += y.  We can't tell
 			// statically whether it's a reassignment
 			// (e.g. int += int) or a mutation (list += list).
 			if !allowRebind && !AllowGlobalReassign {
-				r.errorf(id.NamePos, "cannot reassign global %s declared at %s", id.Name, prevPos)
+				r.errorf(id.NamePos, "cannot reassign global %s declared at %s", id.Name, prev.NamePos)
 			}
+			id.Index = prev.Index
 		} else {
-			id.Scope = uint8(Global)
-			r.globals[id.Name] = id.NamePos
+			// first global binding of this name
+			r.globals[id.Name] = id
+			id.Index = len(r.moduleGlobals)
+			r.moduleGlobals = append(r.moduleGlobals, id)
 		}
 		return ok
 	}
@@ -330,13 +341,15 @@ func (r *resolver) use(id *syntax.Ident) {
 	b.uses = append(b.uses, use{id, r.env})
 }
 
-func (r *resolver) useGlobal(id *syntax.Ident) (scope Scope) {
-	if _, ok := r.globals[id.Name]; ok {
+func (r *resolver) useGlobal(id *syntax.Ident) binding {
+	var scope Scope
+	if prev, ok := r.globals[id.Name]; ok {
 		scope = Global // use of global declared by module
-	} else if r.isPredeclaredGlobal(id.Name) {
-		scope = Global // use of pre-declared global
+		id.Index = prev.Index
+	} else if r.isPredeclared(id.Name) {
+		scope = Predeclared // use of pre-declared
 	} else if id.Name == "PACKAGE_NAME" {
-		scope = Global // nasty hack in Skylark spec; will go away (b/34240042).
+		scope = Predeclared // nasty hack in Skylark spec; will go away (b/34240042).
 	} else if r.isUniversal(id.Name) {
 		scope = Universal // use of universal name
 		if !AllowFloat && id.Name == "float" {
@@ -350,7 +363,7 @@ func (r *resolver) useGlobal(id *syntax.Ident) (scope Scope) {
 		r.errorf(id.NamePos, "undefined: %s", id.Name)
 	}
 	id.Scope = uint8(scope)
-	return scope
+	return binding{scope, id.Index}
 }
 
 // resolveLocalUses is called when leaving a container (function/module)
@@ -755,7 +768,7 @@ func (r *resolver) lookupLexical(id *syntax.Ident, env *block) (bind binding) {
 
 	// Is this the module block?
 	if env.isModule() {
-		return binding{r.useGlobal(id), 0} // global or universal, or not found
+		return r.useGlobal(id) // global, predeclared, or not found
 	}
 
 	// Defined in this block?

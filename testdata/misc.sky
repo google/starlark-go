@@ -97,3 +97,17 @@ assert.eq(1 + \
 # A regression test for error position information.
 
 _ = {}.get(1, default=2) ### "get: unexpected keyword arguments"
+
+---
+# Load exposes explicitly declared globals from other modules.
+load('assert.sky', 'assert', 'freeze')
+assert.eq(str(freeze), '<built-in function freeze>')
+
+---
+# Load does not expose pre-declared globals from other modules.
+# See github.com/google/skylark/issues/75.
+load('assert.sky', 'assert', 'matches') ### "matches not found in module"
+
+---
+# Load does not expose universals accessible in other modules.
+load('assert.sky', 'len') ### "len not found in module"

@@ -28,11 +28,11 @@ func Test(t *testing.T) {
 	thread := &skylark.Thread{Load: load}
 	skylarktest.SetReporter(thread, t)
 	filename := filepath.Join(testdata, "testdata/struct.sky")
-	globals := skylark.StringDict{
+	predeclared := skylark.StringDict{
 		"struct": skylark.NewBuiltin("struct", skylarkstruct.Make),
 		"gensym": skylark.NewBuiltin("gensym", gensym),
 	}
-	if err := skylark.ExecFile(thread, filename, nil, globals); err != nil {
+	if _, err := skylark.ExecFile(thread, filename, nil, predeclared); err != nil {
 		if err, ok := err.(*skylark.EvalError); ok {
 			t.Fatal(err.Backtrace())
 		}

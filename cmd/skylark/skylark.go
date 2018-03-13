@@ -60,7 +60,9 @@ func main() {
 	case 1:
 		// Execute specified file.
 		filename := flag.Args()[0]
-		if err := skylark.ExecFile(thread, filename, nil, globals); err != nil {
+		var err error
+		globals, err = skylark.ExecFile(thread, filename, nil, nil)
+		if err != nil {
 			repl.PrintError(err)
 			os.Exit(1)
 		}

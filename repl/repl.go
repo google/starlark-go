@@ -173,13 +173,24 @@ func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.S
 	// resolve
 	if err := resolve.File(f, globals.Has, skylark.Universe.Has); err != nil {
 		return err
-
 	}
 
 	// execute
-	fr := thread.Push(globals, len(f.Locals))
-	defer thread.Pop()
-	return fr.ExecStmts(f.Stmts)
+	// The global names from the previous call become the predeclared names of this call.
+	globalsArray := make([]skylark.Value, len(f.Globals))
+	fr := thread.Push(globals, globalsArray, len(f.Locals))
+	err = fr.ExecStmts(f.Stmts)
+	thread.Pop()
+
+	// Copy globals back to the caller's map.
+	// If execution failed, some globals may be undefined.
+	for i, id := range f.Globals {
+		if v := globalsArray[i]; v != nil {
+			globals[id.Name] = v
+		}
+	}
+
+	return err
 }
 
 // PrintError prints the error to stderr,
@@ -216,8 +227,7 @@ func MakeLoad() func(thread *skylark.Thread, module string) (skylark.StringDict,
 
 			// Load it.
 			thread := &skylark.Thread{Load: thread.Load}
-			globals := make(skylark.StringDict)
-			err := skylark.ExecFile(thread, module, nil, globals)
+			globals, err := skylark.ExecFile(thread, module, nil, nil)
 			e = &entry{globals, err}
 
 			// Update the cache.
