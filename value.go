@@ -220,6 +220,9 @@ type Mapping interface {
 	Value
 	// Get returns the value corresponding to the specified key,
 	// or !found if the mapping does not contain the key.
+	//
+	// Get also defines the behavior of "v in mapping".
+	// The 'in' operator reports the 'found' component, ignoring errors.
 	Get(Value) (v Value, found bool, err error)
 }
 

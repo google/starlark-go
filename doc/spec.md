@@ -1917,6 +1917,7 @@ d = {"one": 1, "two": 2}
 "one" in d                      # True
 "three" in d                    # False
 1 in d                          # False
+[] in d				# False
 
 "nasty" in "dynasty"            # True
 "a" in "banana"                 # True

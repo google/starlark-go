@@ -33,7 +33,7 @@ assert.true(4 not in (1, 2, 3))
 assert.fails(lambda: 3 in "foo", "in.*requires string as left operand")
 assert.true(123 in {123: ""})
 assert.true(456 not in {123:""})
-assert.fails(lambda: [] in {123: ""}, "unhashable")
+assert.true([] not in {123: ""})
 
 # sorted
 assert.eq(sorted([42, 123, 3]), [3, 42, 123])
