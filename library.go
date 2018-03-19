@@ -577,7 +577,7 @@ func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var x Value = zero
 	var base Value
-	if err := UnpackArgs("int", args, kwargs, "x?", &x, "base?", &base); err != nil {
+	if err := UnpackArgs("int", args, kwargs, "x", &x, "base?", &base); err != nil {
 		return nil, err
 	}
 

@@ -439,7 +439,7 @@ non-zero.
 3 / 2                           # 1.5
 111111111 * 111111111           # 12345678987654321
 "0x%x" % (0x1234 & 0xf00f)      # "0x1004"
-int("0xffff")                   # 65535
+int("ffff", 16)                 # 65535, 0xffff
 ```
 
 <b>Implementation note:</b>
@@ -1935,8 +1935,8 @@ The characters following `%` in each conversion determine which
 argument it uses and how to convert it to a string.
 
 Each `%` character marks the start of a conversion specifier, unless
-it is immediately followed by another `%`, in which cases both
-characters denote a literal percent sign.
+it is immediately followed by another `%`, in which case both
+characters together denote a literal percent sign.
 
 If the `"%"` is immediately followed by `"(key)"`, the parenthesized
 substring specifies the key of the `args` dictionary whose
@@ -2892,15 +2892,10 @@ truncating towards zero; it is an error if x is not finite (`NaN`,
 `+Inf`, `-Inf`).
 If x is a `bool`, the result is 0 for `False` or 1 for `True`.
 
-If x is a string, it is interpreted like a string literal;
-an optional base prefix (`0`, `0b`, `0B`, `0x`, `0X`) determines which base to use.
-The string may specify an arbitrarily large integer,
-whereas true integer literals are restricted to 64 bits.
-If a non-zero `base` argument is provided, the string is interpreted
-in that base and no base prefix is permitted; the base argument may
-specified by name.
-
-`int()` with no arguments returns 0.
+If x is a string, it is interpreted as a sequence of digits in the
+specified base, decimal by default.
+If `base` is zero, x is interpreted like an integer literal, the base
+being inferred from an optional base prefix such as `0b`, `0o`, or `0x`.
 
 ### len
 
