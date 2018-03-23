@@ -475,7 +475,18 @@ func (fn *Function) String() string        { return toString(fn) }
 func (fn *Function) Type() string          { return "function" }
 func (fn *Function) Truth() Bool           { return true }
 
-func (fn *Function) Syntax() *syntax.Function { return fn.syntax }
+// syntax accessors
+//
+// We do not expose the syntax tree; future versions of Function may dispense with it.
+
+func (fn *Function) Position() syntax.Position { return fn.position }
+func (fn *Function) NumParams() int            { return len(fn.syntax.Params) }
+func (fn *Function) Param(i int) (string, syntax.Position) {
+	id := fn.syntax.Locals[i]
+	return id.Name, id.NamePos
+}
+func (fn *Function) HasVarargs() bool { return fn.syntax.HasVarargs }
+func (fn *Function) HasKwargs() bool  { return fn.syntax.HasKwargs }
 
 // A Builtin is a function implemented in Go.
 type Builtin struct {
