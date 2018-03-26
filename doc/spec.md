@@ -2896,7 +2896,10 @@ If x is a `bool`, the result is 0 for `False` or 1 for `True`.
 If x is a string, it is interpreted as a sequence of digits in the
 specified base, decimal by default.
 If `base` is zero, x is interpreted like an integer literal, the base
-being inferred from an optional base prefix such as `0b`, `0o`, or `0x`.
+being inferred from an optional base marker such as `0b`, `0o`, or
+`0x` preceding the first digit.
+Irrespective of base, the string may start with an optional `+` or `-`
+sign indicating the sign of the result.
 
 ### len
 
