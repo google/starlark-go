@@ -1117,7 +1117,7 @@ contains the bindings of the current file.
 Bindings in the module block (such as `a`, `b`, `c`, and `h` in the
 example) are called _global_.
 The module block is empty at the start of the file
-and is populated by top-level binding statements,
+and is populated by top-level binding statements.
 
 A module block contains a _function_ block for each top-level
 function, and a _comprehension_ block for each top-level
