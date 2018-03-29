@@ -108,7 +108,7 @@ assert.true(1e15 not in range(4)) # too big for int32
 assert.true(1e100 not in range(4)) # too big for int64
 
 # list
-assert.eq(list("abc".split_elems()), ["a", "b", "c"])
+assert.eq(list("abc".elems()), ["a", "b", "c"])
 assert.eq(sorted(list({"a": 1, "b": 2})), ['a', 'b'])
 
 # min, max
@@ -124,17 +124,17 @@ assert.eq(min(5, -2, 1, 7, 3, key=lambda x: x*x), 1) # min absolute value
 assert.eq(min(5, -2, 1, 7, 3, key=lambda x: -x), 7) # min negated value
 
 # enumerate
-assert.eq(enumerate("abc".split_elems()), [(0, "a"), (1, "b"), (2, "c")])
+assert.eq(enumerate("abc".elems()), [(0, "a"), (1, "b"), (2, "c")])
 assert.eq(enumerate([False, True, None], 42), [(42, False), (43, True), (44, None)])
 
 # zip
 assert.eq(zip(), [])
 assert.eq(zip([]), [])
 assert.eq(zip([1, 2, 3]), [(1,), (2,), (3,)])
-assert.eq(zip("".split_elems()), [])
-assert.eq(zip("abc".split_elems(),
-              list("def".split_elems()),
-              "hijk".split_elems()),
+assert.eq(zip("".elems()), [])
+assert.eq(zip("abc".elems(),
+              list("def".elems()),
+              "hijk".elems()),
           [("a", "d", "h"), ("b", "e", "i"), ("c", "f", "j")])
 z1 = [1]
 assert.eq(zip(z1), [(1,)])

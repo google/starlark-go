@@ -97,39 +97,39 @@ var (
 	}
 
 	stringMethods = map[string]builtinMethod{
-		"capitalize":       string_capitalize,
-		"codepoints":       string_iterable,
-		"count":            string_count,
-		"elems":            string_iterable,
-		"endswith":         string_endswith,
-		"find":             string_find,
-		"format":           string_format,
-		"index":            string_index,
-		"isalnum":          string_isalnum,
-		"isalpha":          string_isalpha,
-		"isdigit":          string_isdigit,
-		"islower":          string_islower,
-		"isspace":          string_isspace,
-		"istitle":          string_istitle,
-		"isupper":          string_isupper,
-		"join":             string_join,
-		"lower":            string_lower,
-		"lstrip":           string_strip, // sic
-		"partition":        string_partition,
-		"replace":          string_replace,
-		"rfind":            string_rfind,
-		"rindex":           string_rindex,
-		"rpartition":       string_partition, // sic
-		"rsplit":           string_split,     // sic
-		"rstrip":           string_strip,     // sic
-		"split":            string_split,
-		"split_codepoints": string_iterable, // sic
-		"split_elems":      string_iterable, // sic
-		"splitlines":       string_splitlines,
-		"startswith":       string_startswith,
-		"strip":            string_strip,
-		"title":            string_title,
-		"upper":            string_upper,
+		"capitalize":     string_capitalize,
+		"codepoint_ords": string_iterable,
+		"codepoints":     string_iterable, // sic
+		"count":          string_count,
+		"elem_ords":      string_iterable,
+		"elems":          string_iterable, // sic
+		"endswith":       string_endswith,
+		"find":           string_find,
+		"format":         string_format,
+		"index":          string_index,
+		"isalnum":        string_isalnum,
+		"isalpha":        string_isalpha,
+		"isdigit":        string_isdigit,
+		"islower":        string_islower,
+		"isspace":        string_isspace,
+		"istitle":        string_istitle,
+		"isupper":        string_isupper,
+		"join":           string_join,
+		"lower":          string_lower,
+		"lstrip":         string_strip, // sic
+		"partition":      string_partition,
+		"replace":        string_replace,
+		"rfind":          string_rfind,
+		"rindex":         string_rindex,
+		"rpartition":     string_partition, // sic
+		"rsplit":         string_split,     // sic
+		"rstrip":         string_strip,     // sic
+		"split":          string_split,
+		"splitlines":     string_splitlines,
+		"startswith":     string_startswith,
+		"strip":          string_strip,
+		"title":          string_title,
+		"upper":          string_upper,
 	}
 
 	setMethods = map[string]builtinMethod{
@@ -1423,18 +1423,18 @@ func string_capitalize(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 }
 
 // string_iterable returns an unspecified iterable value whose iterator yields:
-// - elems: numeric values of successive bytes
-// - codepoints: numeric values of successive Unicode code points
-// - split_elems: successive 1-byte substrings
-// - split_codepoints: successive substrings that encode a single Unicode code point.
+// - elems: successive 1-byte substrings
+// - codepoints: successive substrings that encode a single Unicode code point.
+// - elem_ords: numeric values of successive bytes
+// - codepoint_ords: numeric values of successive Unicode code points
 func string_iterable(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
 		return nil, err
 	}
 	return stringIterable{
 		s:          recv.(String),
-		split:      fnname[0] == 's',
-		codepoints: fnname[len(fnname)-2] == 't',
+		ords:       fnname[len(fnname)-2] == 'd',
+		codepoints: fnname[0] == 'c',
 	}, nil
 }
 

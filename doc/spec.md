@@ -154,8 +154,10 @@ concurrency, and other such features of Python.
     * [list·remove](#list·remove)
     * [set·union](#set·union)
     * [string·capitalize](#string·capitalize)
+    * [string·codepoint_ords](#string·codepoint_ords)
     * [string·codepoints](#string·codepoints)
     * [string·count](#string·count)
+    * [string·elem_ords](#string·elem_ords)
     * [string·elems](#string·elems)
     * [string·endswith](#string·endswith)
     * [string·find](#string·find)
@@ -179,8 +181,6 @@ concurrency, and other such features of Python.
     * [string·rsplit](#string·rsplit)
     * [string·rstrip](#string·rstrip)
     * [string·split](#string·split)
-    * [string·split_codepoints](#string·split_codepoints)
-    * [string·split_elems](#string·split_elems)
     * [string·splitlines](#string·splitlines)
     * [string·startswith](#string·startswith)
     * [string·strip](#string·strip)
@@ -532,7 +532,7 @@ an iterable sequence.
 To obtain a view of a string as an iterable sequence of numeric byte
 values, 1-byte substrings, numeric Unicode code points, or 1-code
 point substrings, you must explicitly call one of its four methods:
-`elems`, `split_elems`, `codepoints`, or `split_codepoints`.
+`elems`, `elem_ords`, `codepoints`, or `codepoint_ords`.
 
 Any value may formatted as a string using the `str` or `repr` built-in
 functions, the `str % tuple` operator, or the `str.format` method.
@@ -543,8 +543,10 @@ non-empty.
 Strings have several built-in methods:
 
 * [`capitalize`](#string·capitalize)
+* [`codepoint_ords`](#string·codepoint_ords)
 * [`codepoints`](#string·codepoints)
 * [`count`](#string·count)
+* [`elem_ords`](#string·elem_ords)
 * [`elems`](#string·elems)
 * [`endswith`](#string·endswith)
 * [`find`](#string·find)
@@ -569,8 +571,6 @@ Strings have several built-in methods:
 * [`rstrip`](#string·rstrip)
 * [`split`](#string·split)
 * [`splitlines`](#string·splitlines)
-* [`split_codepoints`](#string·split_codepoints)
-* [`split_elems`](#string·split_elems)
 * [`startswith`](#string·startswith)
 * [`strip`](#string·strip)
 * [`title`](#string·title)
@@ -3047,7 +3047,7 @@ repr([1, "x"])          # '[1, "x"]'
 
 ```python
 reversed(range(5))                              # [4, 3, 2, 1, 0]
-reversed("stressed".split_codepoints())         # ["d", "e", "s", "s", "e", "r", "t", "s"]
+reversed("stressed".codepoints())               # ["d", "e", "s", "s", "e", "r", "t", "s"]
 reversed({"one": 1, "two": 2}.keys())           # ["two", "one"]
 ```
 
@@ -3077,7 +3077,7 @@ argument to apply to obtain the value's sort key.
 The default behavior is the identity function.
 
 ```python
-sorted(set("harbors".split_codepoints()))                       # ['a', 'b', 'h', 'o', 'r', 's']
+sorted(set("harbors".codepoints()))                             # ['a', 'b', 'h', 'o', 'r', 's']
 sorted([3, 1, 4, 1, 5, 9])                                      # [1, 1, 3, 4, 5, 9]
 sorted([3, 1, 4, 1, 5, 9], reverse=True)                        # [9, 5, 4, 3, 1, 1]
 
@@ -3343,7 +3343,7 @@ nearest value within that range is used; see [Indexing](#indexing).
 is not a valid index (`int` or `None`).
 
 ```python
-x = list("banana".split_elems())
+x = list("banana".codepoints())
 x.index("a")                            # 1 (bAnana)
 x.index("a", 2)                         # 3 (banAna)
 x.index("a", -2)                        # 5 (bananA)
@@ -3413,10 +3413,10 @@ y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
 ```
 
-<a id='string·elems'></a>
-### string·elems
+<a id='string·elem_ords'></a>
+### string·elem_ords
 
-`S.elems()` returns an iterable value containing the
+`S.elem_ords()` returns an iterable value containing the
 sequence of numeric bytes values in the string S.
 
 To materialize the entire sequence of bytes, apply `list(...)` to the result.
@@ -3424,12 +3424,12 @@ To materialize the entire sequence of bytes, apply `list(...)` to the result.
 Example:
 
 ```python
-list("Hello, 世界".elems())        # [72, 101, 108, 108, 111, 44, 32, 228, 184, 150, 231, 149, 140]
+list("Hello, 世界".elem_ords())        # [72, 101, 108, 108, 111, 44, 32, 228, 184, 150, 231, 149, 140]
 ```
 
-See also: `string·split_elems`.
+See also: `string·elems`.
 
-<b>Implementation note:</b> `elems` is not provided by the Java implementation.
+<b>Implementation note:</b> `elem_ords` is not provided by the Java implementation.
 
 <a id='string·capitalize'></a>
 ### string·capitalize
@@ -3441,10 +3441,10 @@ that begin words changed to their title case.
 "hello, world!".capitalize()		# "Hello, World!"
 ```
 
-<a id='string·codepoints'></a>
-### string·codepoints
+<a id='string·codepoint_ords'></a>
+### string·codepoint_ords
 
-`S.codepoints()` returns an iterable value containing the
+`S.codepoint_ords()` returns an iterable value containing the
 sequence of integer Unicode code points encoded by the string S.
 Each invalid code within the string is treated as if it encodes the
 Unicode replacement character, U+FFFD.
@@ -3456,17 +3456,15 @@ materialize the entire sequence.
 Example:
 
 ```python
-list("Hello, 世界".codepoints())        # [72, 101, 108, 108, 111, 44, 32, 19990, 30028]
+list("Hello, 世界".codepoint_ords())        # [72, 101, 108, 108, 111, 44, 32, 19990, 30028]
 
-for cp in "Hello, 世界".codepoints():
-   if cp == ord(','):
-      break
-   print(chr(cp))  # prints "H", "e", "l", "l", "o"
+for cp in "Hello, 世界".codepoint_ords():
+   print(chr(cp))  # prints 'H', 'e', 'l', 'l', 'o', ',', ' ', '世', '界'
 ```
 
-See also: `string·split_codepoints`.
+See also: `string·codepoints`.
 
-<b>Implementation note:</b> `codepoints` is not provided by the Java implementation.
+<b>Implementation note:</b> `codepoint_ords` is not provided by the Java implementation.
 
 <a id='string·count'></a>
 ### string·count
@@ -3658,7 +3656,7 @@ are strings.
 
 ```python
 ", ".join(["one", "two", "three"])      # "one, two, three"
-"a".join("ctmrn".split_elems())         # "catamaran"
+"a".join("ctmrn".codepoints())          # "catamaran"
 ```
 
 <a id='string·lower'></a>
@@ -3792,27 +3790,26 @@ If `maxsplit` is given and non-negative, it specifies a maximum number of splits
 "banana".split("n", 1)                      # ["ba", "ana"]
 ```
 
-<a id='string·split_elems'></a>
-### string·split_elems
+<a id='string·elems'></a>
+### string·elems
 
-`S.split_elems()` returns an iterable value containing successive
+`S.elems()` returns an iterable value containing successive
 1-byte substrings of S.
 To materialize the entire sequence, apply `list(...)` to the result.
 
 Example:
 
 ```python
-list('Hello, 世界'.split_elems())  # ["H", "e", "l", "l", "o", ",", " ", "\xe4", "\xb8", "\x96", "\xe7", "\x95", "\x8c"]
+list('Hello, 世界'.elems())  # ["H", "e", "l", "l", "o", ",", " ", "\xe4", "\xb8", "\x96", "\xe7", "\x95", "\x8c"]
 ```
 
-See also: `string·elems`.
+See also: `string·elem_ords`.
 
-<b>Implementation note:</b> `split_elems` is not provided by the Java implementation.
 
-<a id='string·split_codepoints'></a>
-### string·split_codepoints
+<a id='string·codepoints'></a>
+### string·codepoints
 
-`S.split_codepoints()` returns an iterable value containing the sequence of
+`S.codepoints()` returns an iterable value containing the sequence of
 substrings of S that each encode a single Unicode code point.
 Each invalid code within the string is treated as if it encodes the
 Unicode replacement character, U+FFFD.
@@ -3824,17 +3821,15 @@ materialize the entire sequence.
 Example:
 
 ```python
-list('Hello, 世界'.split_codepoints())  # ['H', 'e', 'l', 'l', 'o', ',', ' ', '世', '界']
+list('Hello, 世界'.codepoints())  # ['H', 'e', 'l', 'l', 'o', ',', ' ', '世', '界']
 
-for cp in 'Hello, 世界'.split_codepoints():
-   if cp == ',':
-      break
-   print(cp)  # prints 'H', 'e', 'l', 'l', 'o'
+for cp in 'Hello, 世界'.codepoints():
+   print(cp)  # prints 'H', 'e', 'l', 'l', 'o', ',', ' ', '世', '界'
 ```
 
-See also: `string·codepoints`.
+See also: `string·codepoint_ords`.
 
-<b>Implementation note:</b> `split_codepoints` is not provided by the Java implementation.
+<b>Implementation note:</b> `codepoints` is not provided by the Java implementation.
 
 <a id='string·splitlines'></a>
 ### string·splitlines
@@ -3909,7 +3904,7 @@ eventually to eliminate all such differences on a case-by-case basis.
 * `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
-* Strings have the additional methods `elems`, `split_elems`, `codepoints`, and `split_codepoints`.
+* Strings have the additional methods `elem_ords`, `codepoint_ords`, and `codepoints`.
 * The `chr` and `ord` built-in functions are supported.
 * The `set` built-in function is provided (option: `-set`).
 * `x += y` rebindings are permitted at top level.

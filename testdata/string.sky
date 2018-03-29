@@ -42,35 +42,35 @@ assert.fails(lambda: ord("abc"), "string encodes 3 Unicode code points, want 1")
 assert.fails(lambda: ord(""), "string encodes 0 Unicode code points, want 1")
 assert.fails(lambda: ord("😿"[1:]), "string encodes 3 Unicode code points, want 1") # 3 x 0xFFFD
 
+# string.codepoint_ords
+assert.eq(type("abcЙ😿".codepoint_ords()), "codepoints")
+assert.eq(str("abcЙ😿".codepoint_ords()), '"abcЙ😿".codepoint_ords()')
+assert.eq(list("abcЙ😿".codepoint_ords()), [97, 98, 99, 1049, 128575])
+assert.eq(list(("A" + "😿Z"[1:]).codepoint_ords()), [ord("A"), 0xFFFD, 0xFFFD, 0xFFFD, ord("Z")])
+assert.eq(list("".codepoint_ords()), [])
+
 # string.codepoints
 assert.eq(type("abcЙ😿".codepoints()), "codepoints")
 assert.eq(str("abcЙ😿".codepoints()), '"abcЙ😿".codepoints()')
-assert.eq(list("abcЙ😿".codepoints()), [97, 98, 99, 1049, 128575])
-assert.eq(list(("A" + "😿Z"[1:]).codepoints()), [ord("A"), 0xFFFD, 0xFFFD, 0xFFFD, ord("Z")])
+assert.eq(list("abcЙ😿".codepoints()), ["a", "b", "c", "Й", "😿"])
+assert.eq(list(("A" + "😿Z"[1:]).codepoints()), ["A", "\x9f", "\x98", "\xbf", "Z"])
 assert.eq(list("".codepoints()), [])
 
-# string.split_codepoints
-assert.eq(type("abcЙ😿".split_codepoints()), "codepoints")
-assert.eq(str("abcЙ😿".split_codepoints()), '"abcЙ😿".split_codepoints()')
-assert.eq(list("abcЙ😿".split_codepoints()), ["a", "b", "c", "Й", "😿"])
-assert.eq(list(("A" + "😿Z"[1:]).split_codepoints()), ["A", "\x9f", "\x98", "\xbf", "Z"])
-assert.eq(list("".split_codepoints()), [])
+# string.elem_ords
+assert.eq(type("abcЙ😿".elem_ords()), "elems")
+assert.eq(str("abcЙ😿".elem_ords()), '"abcЙ😿".elem_ords()')
+assert.eq(list("abcЙ😿".elem_ords()), [97, 98, 99,  208, 153, 240, 159, 152, 191])
+assert.eq(list(("A" + "😿Z"[1:]).elem_ords()),  [65, 159, 152, 191, 90])
+assert.eq(list("".elem_ords()), [])
 
 # string.elems
 assert.eq(type("abcЙ😿".elems()), "elems")
 assert.eq(str("abcЙ😿".elems()), '"abcЙ😿".elems()')
-assert.eq(list("abcЙ😿".elems()), [97, 98, 99,  208, 153, 240, 159, 152, 191])
-assert.eq(list(("A" + "😿Z"[1:]).elems()),  [65, 159, 152, 191, 90])
-assert.eq(list("".elems()), [])
-
-# string.split_elems
-assert.eq(type("abcЙ😿".split_elems()), "elems")
-assert.eq(str("abcЙ😿".split_elems()), '"abcЙ😿".split_elems()')
-assert.eq(list("abcЙ😿".split_elems()),
+assert.eq(list("abcЙ😿".elems()),
           ["a", "b", "c", "\xd0", "\x99", "\xf0", "\x9f", "\x98", "\xbf"])
-assert.eq(list(("A" + "😿Z"[1:]).split_elems()),
+assert.eq(list(("A" + "😿Z"[1:]).elems()),
           ["A", "\x9f", "\x98", "\xbf", "Z"])
-assert.eq(list("".split_elems()), [])
+assert.eq(list("".elems()), [])
 
 # indexing, x[i]
 assert.eq("Hello, 世界!"[0], "H")

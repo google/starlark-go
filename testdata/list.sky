@@ -14,7 +14,7 @@ assert.true([0])
 assert.true(not [])
 
 # indexing, x[i]
-abc = list("abc".split_elems())
+abc = list("abc".elems())
 assert.fails(lambda: abc[-4], "list index -1 out of range \\[0:3\\]")
 assert.eq(abc[-3], "a")
 assert.eq(abc[-2], "b")
@@ -58,7 +58,7 @@ assert.eq([(x, y) for x in [1, 2] for y in [3, 4]],
           [(1, 3), (1, 4), (2, 3), (2, 4)])
 assert.eq([(x, y) for x in [1, 2] if x == 2 for y in [3, 4]],[(2, 3), (2, 4)])
 assert.eq([2 * x for x in (1, 2, 3)], [2, 4, 6])
-assert.eq([x for x in "abc".split_elems()], ["a", "b", "c"])
+assert.eq([x for x in "abc".elems()], ["a", "b", "c"])
 assert.eq([x for x in {"a": 1, "b": 2}], ["a", "b"])
 assert.eq([(y, x) for x, y in {1: 2, 3: 4}.items()], [(2, 1), (4, 3)])
 # corner cases of parsing:
@@ -68,7 +68,7 @@ assert.eq([x for x in [1, 2] if (lambda: 3 if True else 4)], [1, 2])
 
 # list function
 assert.eq(list(), [])
-assert.eq(list("ab".split_elems()), ["a", "b"])
+assert.eq(list("ab".elems()), ["a", "b"])
 
 # A list comprehension defines a separate lexical block,
 # whether at top-level...
@@ -153,7 +153,7 @@ assert.eq(x5, [1, 2, 3, 4, "abc"])
 
 # extend
 x5a = [1, 2, 3]
-x5a.extend("abc".split_elems()) # string
+x5a.extend("abc".elems()) # string
 x5a.extend((True, False))       # tuple
 assert.eq(x5a, [1, 2, 3, "a", "b", "c", True, False])
 
@@ -182,7 +182,7 @@ assert.eq(remove(4), [3, 1, 1])
 assert.fails(lambda: [3, 1, 4, 1].remove(42), "remove: element not found")
 
 # list.index
-bananas = list("bananas".split_elems())
+bananas = list("bananas".elems())
 assert.eq(bananas.index('a'), 1) # bAnanas
 assert.fails(lambda: bananas.index('d'), "value not in list")
 # start
@@ -202,11 +202,11 @@ assert.fails(lambda: bananas.index('s', -1000, 6), "value not in list")
 assert.fails(lambda: bananas.index('d', -1000, 1000), "value not in list")
 
 # slicing, x[i:j:k]
-assert.eq(bananas[6::-2], list("snnb".split_elems()))
-assert.eq(bananas[5::-2], list("aaa".split_elems()))
-assert.eq(bananas[4::-2], list("nnb".split_elems()))
-assert.eq(bananas[99::-2], list("snnb".split_elems()))
-assert.eq(bananas[100::-2], list("snnb".split_elems()))
+assert.eq(bananas[6::-2], list("snnb".elems()))
+assert.eq(bananas[5::-2], list("aaa".elems()))
+assert.eq(bananas[4::-2], list("nnb".elems()))
+assert.eq(bananas[99::-2], list("snnb".elems()))
+assert.eq(bananas[100::-2], list("snnb".elems()))
 # TODO(adonovan): many more tests
 
 # iterator invalidation

@@ -400,17 +400,23 @@ func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), o
 // either numerically or as successive substrings.
 type stringIterable struct {
 	s          String
-	split      bool
+	ords       bool
 	codepoints bool
 }
 
 var _ Iterable = (*stringIterable)(nil)
 
 func (si stringIterable) String() string {
-	if si.split {
-		return si.s.String() + ".split_" + si.Type() + "()"
+	var etype string
+	if si.codepoints {
+		etype = "codepoint"
 	} else {
-		return si.s.String() + "." + si.Type() + "()"
+		etype = "elem"
+	}
+	if si.ords {
+		return si.s.String() + "." + etype + "_ords()"
+	} else {
+		return si.s.String() + "." + etype + "s()"
 	}
 }
 func (si stringIterable) Type() string {
@@ -437,7 +443,7 @@ func (it *stringIterator) Next(p *Value) bool {
 	}
 	if it.si.codepoints {
 		r, sz := utf8.DecodeRuneInString(string(s))
-		if it.si.split {
+		if !it.si.ords {
 			*p = s[:sz]
 		} else {
 			*p = MakeInt(int(r))
@@ -445,7 +451,7 @@ func (it *stringIterator) Next(p *Value) bool {
 		it.i += sz
 	} else {
 		b := int(s[0])
-		if it.si.split {
+		if !it.si.ords {
 			*p = s[:1]
 		} else {
 			*p = MakeInt(b)
