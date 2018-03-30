@@ -165,10 +165,8 @@ assert.fails(iterator3, "insert.*during iteration")
 def f():
   x = {1:2, 2:4}
   a, x[0] = x
-  # There are two possible outcomes, depending on iteration order:
-  if not (a == 1 and x == {0: 2, 1: 2, 2: 4} or
-          a == 2 and x == {0: 1, 1: 2, 2: 4}):
-    assert.fail("unexpected results: a=%s x=%s" % (a, x))
+  assert.eq(a, 1)
+  assert.eq(x, {1: 2, 2: 4, 0: 2})
 f()
 
 # Regression test for a bug in hashtable.delete
@@ -206,3 +204,33 @@ def test_delete():
   assert.eq(str(d), '{}')
 
 test_delete()
+
+---
+# Verify position of an "unhashable key" error in a dict literal.
+
+_ = {
+    "one": 1,
+    ["two"]: 2, ### "unhashable type: list"
+    "three": 3,
+}
+
+---
+# Verify position of a "duplicate key" error in a dict literal.
+
+_ = {
+    "one": 1,
+    "one": 1, ### `duplicate key: "one"`
+    "three": 3,
+}
+
+---
+# Verify position of an "unhashable key" error in a dict comprehension.
+
+_ = {
+    k: v ### "unhashable type: list"
+    for k, v in [
+        ("one", 1),
+        (["two"], 2),
+        ("three", 3),
+    ]
+}

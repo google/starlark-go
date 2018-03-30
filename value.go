@@ -73,6 +73,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/google/skylark/internal/compile"
 	"github.com/google/skylark/syntax"
 )
 
@@ -465,34 +466,40 @@ func (*stringIterator) Done() {}
 
 // A Function is a function defined by a Skylark def statement.
 type Function struct {
-	name        string          // "lambda" for anonymous functions
-	position    syntax.Position // position of def or lambda token
-	syntax      *syntax.Function
+	funcode     *compile.Funcode
 	predeclared StringDict // names predeclared in the current module
 	globals     []Value    // globals of the current module
 	defaults    Tuple
 	freevars    Tuple
 }
 
-func (fn *Function) Name() string          { return fn.name }
-func (fn *Function) Hash() (uint32, error) { return hashString(fn.name), nil }
+func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
+func (fn *Function) Hash() (uint32, error) { return hashString(fn.funcode.Name), nil }
 func (fn *Function) Freeze()               { fn.defaults.Freeze(); fn.freevars.Freeze() }
 func (fn *Function) String() string        { return toString(fn) }
 func (fn *Function) Type() string          { return "function" }
 func (fn *Function) Truth() Bool           { return true }
 
-// syntax accessors
-//
-// We do not expose the syntax tree; future versions of Function may dispense with it.
-
-func (fn *Function) Position() syntax.Position { return fn.position }
-func (fn *Function) NumParams() int            { return len(fn.syntax.Params) }
-func (fn *Function) Param(i int) (string, syntax.Position) {
-	id := fn.syntax.Locals[i]
-	return id.Name, id.NamePos
+// Globals returns a new, unfrozen StringDict containing all global
+// variables so far defined in the function's module.
+func (fn *Function) Globals() StringDict {
+	m := make(StringDict, len(fn.funcode.Prog.Globals))
+	for i, id := range fn.funcode.Prog.Globals {
+		if v := fn.globals[i]; v != nil {
+			m[id.Name] = v
+		}
+	}
+	return m
 }
-func (fn *Function) HasVarargs() bool { return fn.syntax.HasVarargs }
-func (fn *Function) HasKwargs() bool  { return fn.syntax.HasKwargs }
+
+func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
+func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
+func (fn *Function) Param(i int) (string, syntax.Position) {
+	id := fn.funcode.Locals[i]
+	return id.Name, id.Pos
+}
+func (fn *Function) HasVarargs() bool { return fn.funcode.HasVarargs }
+func (fn *Function) HasKwargs() bool  { return fn.funcode.HasKwargs }
 
 // A Builtin is a function implemented in Go.
 type Builtin struct {

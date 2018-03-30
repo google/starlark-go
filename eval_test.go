@@ -321,18 +321,15 @@ f()
 	buf := new(bytes.Buffer)
 	print := func(thread *skylark.Thread, msg string) {
 		caller := thread.Caller()
-		name := "<module>"
-		if caller.Function() != nil {
-			name = caller.Function().Name()
-		}
-		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Position(), name, msg)
+		fmt.Fprintf(buf, "%s: %s: %s\n",
+			caller.Position(), caller.Function().Name(), msg)
 	}
 	thread := &skylark.Thread{Print: print}
 	if _, err := skylark.ExecFile(thread, "foo.go", src, nil); err != nil {
 		t.Fatal(err)
 	}
-	want := "foo.go:2:6: <module>: hello\n" +
-		"foo.go:3:15: f: world\n"
+	want := "foo.go:2: <toplevel>: hello\n" +
+		"foo.go:3: f: world\n"
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
@@ -427,12 +424,13 @@ i()
 	switch err := err.(type) {
 	case *skylark.EvalError:
 		got := err.Backtrace()
+		// Compiled code currently has no column information.
 		const want = `Traceback (most recent call last):
-  crash.go:6:2: in <toplevel>
-  crash.go:5:18: in i
-  crash.go:4:20: in h
-  crash.go:3:12: in g
-  crash.go:2:19: in f
+  crash.go:6: in <toplevel>
+  crash.go:5: in i
+  crash.go:4: in h
+  crash.go:3: in g
+  crash.go:2: in f
 Error: floored division by zero`
 		if got != want {
 			t.Errorf("error was %s, want %s", got, want)
@@ -447,23 +445,12 @@ Error: floored division by zero`
 // TestRepeatedExec parses and resolves a file syntax tree once then
 // executes it repeatedly with different values of its predeclared variables.
 func TestRepeatedExec(t *testing.T) {
-	f, err := syntax.Parse("repeat.sky", "y = 2 * x", 0)
+	predeclared := skylark.StringDict{"x": skylark.None}
+	_, prog, err := skylark.SourceProgram("repeat.sky", "y = 2 * x", predeclared.Has)
 	if err != nil {
-		t.Fatal(f) // parse error
+		t.Fatal(err)
 	}
 
-	isPredeclared := func(name string) bool { return name == "x" } // x, but not y
-
-	if err := resolve.File(f, isPredeclared, skylark.Universe.Has); err != nil {
-		t.Fatal(err) // resolve error
-	}
-
-	const yIndex = 0
-	if yName := f.Globals[yIndex].Name; yName != "y" {
-		t.Fatalf("global[%d] = %s, want y", yIndex, yName)
-	}
-
-	thread := new(skylark.Thread)
 	for _, test := range []struct {
 		x, want skylark.Value
 	}{
@@ -471,17 +458,15 @@ func TestRepeatedExec(t *testing.T) {
 		{x: skylark.String("mur"), want: skylark.String("murmur")},
 		{x: skylark.Tuple{skylark.None}, want: skylark.Tuple{skylark.None, skylark.None}},
 	} {
-		predeclared := skylark.StringDict{"x": test.x}
-		globals := make([]skylark.Value, len(f.Globals))
-		fr := thread.Push(predeclared, globals, len(f.Locals))
-		if err := fr.ExecStmts(f.Stmts); err != nil {
+		predeclared["x"] = test.x // update the values in dictionary
+		thread := new(skylark.Thread)
+		if globals, err := prog.Init(thread, predeclared); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // exec error
-		} else if eq, err := skylark.Equal(globals[yIndex], test.want); err != nil {
+		} else if eq, err := skylark.Equal(globals["y"], test.want); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // comparison error
 		} else if !eq {
-			t.Errorf("x=%v: got y=%v, want %v", test.x, globals[yIndex], test.want)
+			t.Errorf("x=%v: got y=%v, want %v", test.x, globals["y"], test.want)
 		}
-		thread.Pop()
 	}
 }
 

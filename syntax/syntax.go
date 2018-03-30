@@ -298,7 +298,7 @@ type CallExpr struct {
 	commentsRef
 	Fn     Expr
 	Lparen Position
-	Args   []Expr
+	Args   []Expr // arg = expr | ident=expr | *expr | **expr
 	Rparen Position
 }
 

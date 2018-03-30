@@ -181,6 +181,9 @@ func (p Position) Filename() string {
 	return "<unknown>"
 }
 
+// MakePosition returns position with the specified components.
+func MakePosition(file *string, line, col int32) Position { return Position{file, line, col} }
+
 // add returns the position at the end of s, assuming it starts at p.
 func (p Position) add(s string) Position {
 	if n := strings.Count(s, "\n"); n > 0 {
@@ -193,7 +196,10 @@ func (p Position) add(s string) Position {
 }
 
 func (p Position) String() string {
-	return fmt.Sprintf("%s:%d:%d", p.Filename(), p.Line, p.Col)
+	if p.Col > 0 {
+		return fmt.Sprintf("%s:%d:%d", p.Filename(), p.Line, p.Col)
+	}
+	return fmt.Sprintf("%s:%d", p.Filename(), p.Line)
 }
 
 func (p Position) isBefore(q Position) bool {

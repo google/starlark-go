@@ -32,7 +32,6 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/google/skylark"
-	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/syntax"
 )
 
@@ -164,30 +163,20 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 
 // execFileNoFreeze is skylark.ExecFile without globals.Freeze().
 func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.StringDict) error {
-	// parse
-	f, err := syntax.Parse("<stdin>", src, 0)
+	_, prog, err := skylark.SourceProgram("<stdin>", src, globals.Has)
 	if err != nil {
 		return err
 	}
 
-	// resolve
-	if err := resolve.File(f, globals.Has, skylark.Universe.Has); err != nil {
-		return err
-	}
+	res, err := prog.Init(thread, globals)
 
-	// execute
-	// The global names from the previous call become the predeclared names of this call.
-	globalsArray := make([]skylark.Value, len(f.Globals))
-	fr := thread.Push(globals, globalsArray, len(f.Locals))
-	err = fr.ExecStmts(f.Stmts)
-	thread.Pop()
+	// The global names from the previous call become
+	// the predeclared names of this call.
 
 	// Copy globals back to the caller's map.
 	// If execution failed, some globals may be undefined.
-	for i, id := range f.Globals {
-		if v := globalsArray[i]; v != nil {
-			globals[id.Name] = v
-		}
+	for k, v := range res {
+		globals[k] = v
 	}
 
 	return err

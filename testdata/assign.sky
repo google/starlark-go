@@ -258,7 +258,7 @@ assert.fails(lambda: setX(hf), "cannot set field on a frozen hasfields")
 assert.fails(lambda: setY(hf), "cannot set field on a frozen hasfields")
 
 ---
-# destucturing assigmnent in a for loop.
+# destucturing assignment in a for loop.
 load("assert.sky", "assert")
 
 def f():

@@ -7,14 +7,14 @@ package skylark
 import (
 	"bytes"
 	"fmt"
-	"log"
+	"io"
 	"math"
-	"math/big"
 	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/google/skylark/internal/compile"
 	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/syntax"
 )
@@ -105,14 +105,10 @@ func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 // A Frame holds the execution state of a single Skylark function call
 // or module toplevel.
 type Frame struct {
-	thread      *Thread         // thread-associated state
-	parent      *Frame          // caller's frame (or nil)
-	posn        syntax.Position // source position of PC (set during call and error)
-	fn          *Function       // current function (nil at toplevel)
-	predeclared StringDict      // names predeclared for this module
-	globals     []Value         // global variables of enclosing module
-	locals      []Value         // local variables, starting with parameters
-	result      Value           // operand of current function's return statement
+	parent *Frame          // caller's frame (or nil)
+	posn   syntax.Position // source position of PC, set during error
+	callpc uint32          // PC of position of active call, set during call
+	fn     *Function       // current function (or toplevel)
 }
 
 func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}) *EvalError {
@@ -122,57 +118,18 @@ func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}
 }
 
 // Position returns the source position of the current point of execution in this frame.
-func (fr *Frame) Position() syntax.Position { return fr.posn }
+func (fr *Frame) Position() syntax.Position {
+	if fr.posn.IsValid() {
+		return fr.posn // leaf frame only (the error)
+	}
+	return fr.fn.funcode.Position(fr.callpc) // position of active call
+}
 
 // Function returns the frame's function, or nil for the top-level of a module.
 func (fr *Frame) Function() *Function { return fr.fn }
 
 // Parent returns the frame of the enclosing function call, if any.
 func (fr *Frame) Parent() *Frame { return fr.parent }
-
-// set updates the environment binding for name to value.
-func (fr *Frame) set(id *syntax.Ident, v Value) {
-	switch resolve.Scope(id.Scope) {
-	case resolve.Local:
-		fr.locals[id.Index] = v
-	case resolve.Global:
-		fr.globals[id.Index] = v
-	default:
-		log.Fatalf("%s: set(%s): neither global nor local (%d)", id.NamePos, id.Name, id.Scope)
-	}
-}
-
-// lookup returns the value of name in the environment.
-func (fr *Frame) lookup(id *syntax.Ident) (Value, error) {
-	switch resolve.Scope(id.Scope) {
-	case resolve.Local:
-		if v := fr.locals[id.Index]; v != nil {
-			return v, nil
-		}
-	case resolve.Free:
-		return fr.fn.freevars[id.Index], nil
-	case resolve.Global:
-		if v := fr.globals[id.Index]; v != nil {
-			return v, nil
-		}
-	case resolve.Predeclared:
-		if v := fr.predeclared[id.Name]; v != nil {
-			return v, nil
-		}
-		if id.Name == "PACKAGE_NAME" {
-			// Gross spec, gross hack.
-			// Users should just call package_name() function.
-			if v, ok := fr.predeclared["package_name"].(*Builtin); ok {
-				return v.fn(fr.thread, v, nil, nil)
-			}
-		}
-		return nil, fr.errorf(id.NamePos, "internal error: predeclared variable %s is uninitialized", id.Name)
-	case resolve.Universal:
-		return Universe[id.Name], nil
-	}
-	return nil, fr.errorf(id.NamePos, "%s variable %s referenced before assignment",
-		resolve.Scope(id.Scope), id.Name)
-}
 
 // An EvalError is a Skylark evaluation error and its associated call stack.
 type EvalError struct {
@@ -198,16 +155,7 @@ func (fr *Frame) WriteBacktrace(out *bytes.Buffer) {
 	print = func(fr *Frame) {
 		if fr != nil {
 			print(fr.parent)
-
-			name := "<toplevel>"
-			if fr.fn != nil {
-				name = fr.fn.Name()
-			}
-			fmt.Fprintf(out, "  %s:%d:%d: in %s\n",
-				fr.posn.Filename(),
-				fr.posn.Line,
-				fr.posn.Col,
-				name)
+			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.fn.Name())
 		}
 	}
 	print(fr)
@@ -222,109 +170,113 @@ func (e *EvalError) Stack() []*Frame {
 	return stack
 }
 
+// A Program is a compiled Skylark program.
+//
+// Programs are immutable, and contain no Values.
+// A Program may be created by parsing a source file (see SourceProgram)
+// or by loading a previously saved compiled program (see CompiledProgram).
+type Program struct {
+	compiled *compile.Program
+}
+
+// CompilerVersion is the version number of the protocol for compiled
+// files. Applications must not run programs compiled by one version
+// with an interpreter at another version, and should thus incorporate
+// the compiler version into the cache key when reusing compiled code.
+const CompilerVersion = compile.Version
+
+// NumLoads returns the number of load statements in the compiled program.
+func (prog *Program) NumLoads() int { return len(prog.compiled.Loads) }
+
+// Load(i) returns the name and position of the i'th module directly
+// loaded by this one, where 0 <= i < NumLoads().
+// The name is unresolved---exactly as it appears in the source.
+func (prog *Program) Load(i int) (string, syntax.Position) {
+	id := prog.compiled.Loads[i]
+	return id.Name, id.Pos
+}
+
+// WriteTo writes the compiled module to the specified output stream.
+func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out) }
+
 // ExecFile parses, resolves, and executes a Skylark file in the
 // specified global environment, which may be modified during execution.
 //
-// The filename and src parameters are as for syntax.Parse.
+// Thread is the state associated with the Skylark thread.
+//
+// The filename and src parameters are as for syntax.Parse:
+// filename is the name of the file to execute,
+// and the name that appears in error messages;
+// src is an optional source of bytes to use
+// instead of filename.
+//
+// predeclared defines the predeclared names specific to this module.
+// Execution does not modify this dictionary, though it may mutate
+// its values.
 //
 // If ExecFile fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDict) (StringDict, error) {
-	return Exec(ExecOptions{
-		Thread:      thread,
-		Filename:    filename,
-		Source:      src,
-		Predeclared: predeclared,
-	})
-}
-
-// ExecOptions specifies the arguments to Exec.
-type ExecOptions struct {
-	// Thread is the state associated with the Skylark thread.
-	Thread *Thread
-
-	// Filename is the name of the file to execute,
-	// and the name that appears in error messages.
-	Filename string
-
-	// Source is an optional source of bytes to use
-	// instead of Filename.  See syntax.Parse for details.
-	Source interface{}
-
-	// Predeclared defines the predeclared names specific to this module.
-	// Execution does not modify this dictionary.
-	Predeclared StringDict
-
-	// BeforeExec is an optional function that is called after the
-	// syntax tree has been resolved but before execution.  If it
-	// returns an error, execution is not attempted.
-	BeforeExec func(*Thread, syntax.Node) error
-}
-
-// Exec is a variant of ExecFile that gives the client greater control
-// over optional features.
-func Exec(opts ExecOptions) (StringDict, error) {
-	if debug {
-		fmt.Printf("ExecFile %s\n", opts.Filename)
-		defer fmt.Printf("ExecFile %s done\n", opts.Filename)
-	}
-	f, err := syntax.Parse(opts.Filename, opts.Source, 0)
+	// Parse, resolve, and compile a Skylark source file.
+	_, mod, err := SourceProgram(filename, src, predeclared.Has)
 	if err != nil {
 		return nil, err
 	}
 
-	predeclared := opts.Predeclared
-	if err := resolve.File(f, predeclared.Has, Universe.Has); err != nil {
+	g, err := mod.Init(thread, predeclared)
+	g.Freeze()
+	return g, err
+}
+
+// SourceProgram produces a new program by parsing, resolving,
+// and compiling a Skylark source file.
+// On success, it returns the parsed file and the compiled program.
+// The filename and src parameters are as for syntax.Parse.
+//
+// The isPredeclared predicate reports whether a name is
+// a pre-declared identifier of the current module.
+// Its typical value is predeclared.Has,
+// where predeclared is a StringDict of pre-declared values.
+func SourceProgram(filename string, src interface{}, isPredeclared func(string) bool) (*syntax.File, *Program, error) {
+	f, err := syntax.Parse(filename, src, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := resolve.File(f, isPredeclared, Universe.Has); err != nil {
+		return f, nil, err
+	}
+
+	compiled := compile.File(f.Stmts, f.Locals, f.Globals)
+
+	return f, &Program{compiled}, nil
+}
+
+// CompiledProgram produces a new program from the representation
+// of a compiled program previously saved by Program.Write.
+func CompiledProgram(in io.Reader) (*Program, error) {
+	prog, err := compile.ReadProgram(in)
+	if err != nil {
 		return nil, err
 	}
-
-	thread := opts.Thread
-
-	if opts.BeforeExec != nil {
-		if err := opts.BeforeExec(thread, f); err != nil {
-			return nil, err
-		}
-	}
-
-	globals := make([]Value, len(f.Globals))
-	fr := thread.Push(predeclared, globals, len(f.Locals))
-	err = fr.ExecStmts(f.Stmts)
-	thread.Pop()
-
-	// Convert the global environment to a map, and freeze it.
-	// We return a (partial) map even in case of error.
-	globalsMap := make(StringDict, len(f.Globals))
-	for i, id := range f.Globals {
-		if v := globals[i]; v != nil {
-			v.Freeze()
-			globalsMap[id.Name] = v
-		}
-	}
-
-	return globalsMap, err
+	return &Program{prog}, nil
 }
 
-// Push pushes a new Frame on the specified thread's stack, and returns it.
-// It must be followed by a call to Pop when the frame is no longer needed.
-//
-// Most clients do not need this low-level function; use ExecFile or Eval instead.
-func (thread *Thread) Push(predeclared StringDict, globals []Value, nlocals int) *Frame {
-	fr := &Frame{
-		thread:      thread,
-		parent:      thread.frame,
+// Init creates a set of global variables for the program,
+// executes the toplevel code of the specified program,
+// and returns a new, unfrozen dictionary of the globals.
+func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
+	toplevel := &Function{
+		funcode:     prog.compiled.Toplevel,
 		predeclared: predeclared,
-		globals:     globals,
-		locals:      make([]Value, nlocals),
+		globals:     make([]Value, len(prog.compiled.Globals)),
 	}
-	thread.frame = fr
-	return fr
-}
 
-// Pop removes the topmost frame from the thread's stack.
-//
-// Most clients do not need this low-level function; use ExecFile or Eval instead.
-func (thread *Thread) Pop() {
-	thread.frame = thread.frame.parent
+	_, err := toplevel.Call(thread, nil, nil)
+
+	// Convert the global environment to a map and freeze it.
+	// We return a (partial) map even in case of error.
+	return toplevel.Globals(), err
 }
 
 // Eval parses, resolves, and evaluates an expression within the
@@ -348,229 +300,15 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 		return nil, err
 	}
 
-	// There are no globals.
-	fr := thread.Push(env, nil, len(locals))
-	v, err := eval(fr, expr)
-	thread.Pop()
-	return v, err
-}
-
-// Sentinel values used for control flow.  Internal use only.
-var (
-	errContinue = fmt.Errorf("continue")
-	errBreak    = fmt.Errorf("break")
-	errReturn   = fmt.Errorf("return")
-)
-
-// ExecStmts executes the statements in the context of the specified
-// frame, which must provide sufficient local slots.
-//
-// Most clients do not need this function; use Exec or Eval instead.
-func (fr *Frame) ExecStmts(stmts []syntax.Stmt) error {
-	for _, stmt := range stmts {
-		if err := exec(fr, stmt); err != nil {
-			return err
-		}
+	f := &Function{
+		funcode:     compile.Expr(expr, locals),
+		predeclared: env,
+		globals:     nil,
 	}
-	return nil
+	return f.Call(thread, nil, nil)
 }
 
-func exec(fr *Frame, stmt syntax.Stmt) error {
-	switch stmt := stmt.(type) {
-	case *syntax.ExprStmt:
-		_, err := eval(fr, stmt.X)
-		return err
-
-	case *syntax.BranchStmt:
-		switch stmt.Token {
-		case syntax.PASS:
-			return nil // no-op
-		case syntax.BREAK:
-			return errBreak
-		case syntax.CONTINUE:
-			return errContinue
-		}
-
-	case *syntax.IfStmt:
-		cond, err := eval(fr, stmt.Cond)
-		if err != nil {
-			return err
-		}
-		if cond.Truth() {
-			return fr.ExecStmts(stmt.True)
-		} else {
-			return fr.ExecStmts(stmt.False)
-		}
-
-	case *syntax.AssignStmt:
-		switch stmt.Op {
-		case syntax.EQ:
-			// simple assignment: x = y
-			y, err := eval(fr, stmt.RHS)
-			if err != nil {
-				return err
-			}
-			return assign(fr, stmt.OpPos, stmt.LHS, y)
-
-		case syntax.PLUS_EQ,
-			syntax.MINUS_EQ,
-			syntax.STAR_EQ,
-			syntax.SLASH_EQ,
-			syntax.SLASHSLASH_EQ,
-			syntax.PERCENT_EQ:
-			// augmented assignment: x += y
-
-			var old Value // old value loaded from "address" x
-			var set func(fr *Frame, new Value) error
-
-			// Evaluate "address" of x exactly once to avoid duplicate side-effects.
-			switch lhs := stmt.LHS.(type) {
-			case *syntax.Ident:
-				// x += ...
-				x, err := fr.lookup(lhs)
-				if err != nil {
-					return err
-				}
-				old = x
-				set = func(fr *Frame, new Value) error {
-					fr.set(lhs, new)
-					return nil
-				}
-
-			case *syntax.IndexExpr:
-				// x[y] += ...
-				x, err := eval(fr, lhs.X)
-				if err != nil {
-					return err
-				}
-				y, err := eval(fr, lhs.Y)
-				if err != nil {
-					return err
-				}
-				old, err = getIndex(fr, lhs.Lbrack, x, y)
-				if err != nil {
-					return err
-				}
-				set = func(fr *Frame, new Value) error {
-					return setIndex(fr, lhs.Lbrack, x, y, new)
-				}
-
-			case *syntax.DotExpr:
-				// x.f += ...
-				x, err := eval(fr, lhs.X)
-				if err != nil {
-					return err
-				}
-				old, err = getAttr(fr, x, lhs)
-				if err != nil {
-					return err
-				}
-				set = func(fr *Frame, new Value) error {
-					return setField(fr, x, lhs, new)
-				}
-			}
-
-			y, err := eval(fr, stmt.RHS)
-			if err != nil {
-				return err
-			}
-
-			// Special case, following Python:
-			// If x is a list, x += y is sugar for x.extend(y).
-			if xlist, ok := old.(*List); ok && stmt.Op == syntax.PLUS_EQ {
-				// It's possible that y is not Iterable but
-				// nonetheless defines x+y, in which case we
-				// should fall back to the general case.
-				if yiter, ok := y.(Iterable); ok {
-					if err := xlist.checkMutable("apply += to", true); err != nil {
-						return fr.errorf(stmt.OpPos, "%v", err)
-					}
-					listExtend(xlist, yiter)
-					return nil
-				}
-			}
-
-			new, err := Binary(stmt.Op-syntax.PLUS_EQ+syntax.PLUS, old, y)
-			if err != nil {
-				return fr.errorf(stmt.OpPos, "%v", err)
-			}
-			return set(fr, new)
-
-		default:
-			log.Fatalf("%s: unexpected assignment operator: %s", stmt.OpPos, stmt.Op)
-		}
-
-	case *syntax.DefStmt:
-		f, err := evalFunction(fr, stmt.Def, stmt.Name.Name, &stmt.Function)
-		if err != nil {
-			return err
-		}
-		fr.set(stmt.Name, f)
-		return nil
-
-	case *syntax.ForStmt:
-		x, err := eval(fr, stmt.X)
-		if err != nil {
-			return err
-		}
-		iter := Iterate(x)
-		if iter == nil {
-			return fr.errorf(stmt.For, "%s value is not iterable", x.Type())
-		}
-		defer iter.Done()
-		var elem Value
-		for iter.Next(&elem) {
-			if err := assign(fr, stmt.For, stmt.Vars, elem); err != nil {
-				return err
-			}
-			if err := fr.ExecStmts(stmt.Body); err != nil {
-				if err == errBreak {
-					break
-				} else if err == errContinue {
-					continue
-				} else {
-					return err
-				}
-			}
-		}
-		return nil
-
-	case *syntax.ReturnStmt:
-		if stmt.Result != nil {
-			x, err := eval(fr, stmt.Result)
-			if err != nil {
-				return err
-			}
-			fr.result = x
-		} else {
-			fr.result = None
-		}
-		return errReturn
-
-	case *syntax.LoadStmt:
-		module := stmt.ModuleName()
-		if fr.thread.Load == nil {
-			return fr.errorf(stmt.Load, "load not implemented by this application")
-		}
-		fr.posn = stmt.Load
-		dict, err := fr.thread.Load(fr.thread, module)
-		if err != nil {
-			return fr.errorf(stmt.Load, "cannot load %s: %v", module, err)
-		}
-		for i, from := range stmt.From {
-			v, ok := dict[from.Name]
-			if !ok {
-				return fr.errorf(stmt.From[i].NamePos, "load: name %s not found in module %s", from.Name, module)
-			}
-			fr.set(stmt.To[i], v)
-		}
-		return nil
-	}
-
-	start, _ := stmt.Span()
-	log.Fatalf("%s: exec: unexpected statement %T", start, stmt)
-	panic("unreachable")
-}
+// The following functions are primitive operations of the byte code interpreter.
 
 // list += iterable
 func listExtend(x *List, y Iterable) {
@@ -588,38 +326,36 @@ func listExtend(x *List, y Iterable) {
 }
 
 // getAttr implements x.dot.
-func getAttr(fr *Frame, x Value, dot *syntax.DotExpr) (Value, error) {
-	name := dot.Name.Name
-
+func getAttr(fr *Frame, x Value, name string) (Value, error) {
 	// field or method?
 	if x, ok := x.(HasAttrs); ok {
 		if v, err := x.Attr(name); v != nil || err != nil {
-			return v, wrapError(fr, dot.Dot, err)
+			return v, err
 		}
 	}
 
-	return nil, fr.errorf(dot.Dot, "%s has no .%s field or method", x.Type(), name)
+	return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
 }
 
 // setField implements x.name = y.
-func setField(fr *Frame, x Value, dot *syntax.DotExpr, y Value) error {
+func setField(fr *Frame, x Value, name string, y Value) error {
 	if x, ok := x.(HasSetField); ok {
-		err := x.SetField(dot.Name.Name, y)
-		return wrapError(fr, dot.Dot, err)
+		err := x.SetField(name, y)
+		return err
 	}
-	return fr.errorf(dot.Dot, "can't assign to .%s field of %s", dot.Name.Name, x.Type())
+	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())
 }
 
 // getIndex implements x[y].
-func getIndex(fr *Frame, lbrack syntax.Position, x, y Value) (Value, error) {
+func getIndex(fr *Frame, x, y Value) (Value, error) {
 	switch x := x.(type) {
 	case Mapping: // dict
 		z, found, err := x.Get(y)
 		if err != nil {
-			return nil, fr.errorf(lbrack, "%v", err)
+			return nil, err
 		}
 		if !found {
-			return nil, fr.errorf(lbrack, "key %v not in %s", y, x.Type())
+			return nil, fmt.Errorf("key %v not in %s", y, x.Type())
 		}
 		return z, nil
 
@@ -627,297 +363,45 @@ func getIndex(fr *Frame, lbrack syntax.Position, x, y Value) (Value, error) {
 		n := x.Len()
 		i, err := AsInt32(y)
 		if err != nil {
-			return nil, fr.errorf(lbrack, "%s index: %s", x.Type(), err)
+			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
 		}
 		if i < 0 {
 			i += n
 		}
 		if i < 0 || i >= n {
-			return nil, fr.errorf(lbrack, "%s index %d out of range [0:%d]",
+			return nil, fmt.Errorf("%s index %d out of range [0:%d]",
 				x.Type(), i, n)
 		}
 		return x.Index(i), nil
 	}
-	return nil, fr.errorf(lbrack, "unhandled index operation %s[%s]", x.Type(), y.Type())
+	return nil, fmt.Errorf("unhandled index operation %s[%s]", x.Type(), y.Type())
 }
 
 // setIndex implements x[y] = z.
-func setIndex(fr *Frame, lbrack syntax.Position, x, y, z Value) error {
+func setIndex(fr *Frame, x, y, z Value) error {
 	switch x := x.(type) {
 	case *Dict:
 		if err := x.Set(y, z); err != nil {
-			return fr.errorf(lbrack, "%v", err)
+			return err
 		}
 
 	case HasSetIndex:
 		i, err := AsInt32(y)
 		if err != nil {
-			return wrapError(fr, lbrack, err)
+			return err
 		}
 		if i < 0 {
 			i += x.Len()
 		}
 		if i < 0 || i >= x.Len() {
-			return fr.errorf(lbrack, "%s index %d out of range [0:%d]", x.Type(), i, x.Len())
+			return fmt.Errorf("%s index %d out of range [0:%d]", x.Type(), i, x.Len())
 		}
-		return wrapError(fr, lbrack, x.SetIndex(i, z))
+		return x.SetIndex(i, z)
 
 	default:
-		return fr.errorf(lbrack, "%s value does not support item assignment", x.Type())
+		return fmt.Errorf("%s value does not support item assignment", x.Type())
 	}
 	return nil
-}
-
-// assign implements lhs = rhs for arbitrary expressions lhs.
-func assign(fr *Frame, pos syntax.Position, lhs syntax.Expr, rhs Value) error {
-	switch lhs := lhs.(type) {
-	case *syntax.Ident:
-		// x = rhs
-		fr.set(lhs, rhs)
-
-	case *syntax.TupleExpr:
-		// (x, y) = rhs
-		return assignSequence(fr, pos, lhs.List, rhs)
-
-	case *syntax.ListExpr:
-		// [x, y] = rhs
-		return assignSequence(fr, pos, lhs.List, rhs)
-
-	case *syntax.IndexExpr:
-		// x[y] = rhs
-		x, err := eval(fr, lhs.X)
-		if err != nil {
-			return err
-		}
-		y, err := eval(fr, lhs.Y)
-		if err != nil {
-			return err
-		}
-		return setIndex(fr, lhs.Lbrack, x, y, rhs)
-
-	case *syntax.DotExpr:
-		// x.f = rhs
-		x, err := eval(fr, lhs.X)
-		if err != nil {
-			return err
-		}
-		return setField(fr, x, lhs, rhs)
-
-	case *syntax.ParenExpr:
-		return assign(fr, pos, lhs.X, rhs)
-
-	default:
-		return fr.errorf(pos, "ill-formed assignment: %T", lhs)
-	}
-	return nil
-}
-
-func assignSequence(fr *Frame, pos syntax.Position, lhs []syntax.Expr, rhs Value) error {
-	nlhs := len(lhs)
-	n := Len(rhs)
-	if n < 0 {
-		return fr.errorf(pos, "got %s in sequence assignment", rhs.Type())
-	} else if n > nlhs {
-		return fr.errorf(pos, "too many values to unpack (got %d, want %d)", n, nlhs)
-	} else if n < nlhs {
-		return fr.errorf(pos, "too few values to unpack (got %d, want %d)", n, nlhs)
-	}
-
-	// If the rhs is not indexable, extract its elements into a
-	// temporary tuple before doing the assignment.
-	ix, ok := rhs.(Indexable)
-	if !ok {
-		tuple := make(Tuple, n)
-		iter := Iterate(rhs)
-		if iter == nil {
-			return fr.errorf(pos, "non-iterable sequence: %s", rhs.Type())
-		}
-		for i := 0; i < n; i++ {
-			iter.Next(&tuple[i])
-		}
-		iter.Done()
-		ix = tuple
-	}
-
-	for i := 0; i < n; i++ {
-		if err := assign(fr, pos, lhs[i], ix.Index(i)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func eval(fr *Frame, e syntax.Expr) (Value, error) {
-	switch e := e.(type) {
-	case *syntax.Ident:
-		return fr.lookup(e)
-
-	case *syntax.Literal:
-		switch e.Token {
-		case syntax.INT:
-			switch e.Value.(type) {
-			case int64:
-				return MakeInt64(e.Value.(int64)), nil
-			case *big.Int:
-				return Int{e.Value.(*big.Int)}, nil
-			}
-		case syntax.FLOAT:
-			return Float(e.Value.(float64)), nil
-		case syntax.STRING:
-			return String(e.Value.(string)), nil
-		}
-
-	case *syntax.ListExpr:
-		vals := make([]Value, len(e.List))
-		for i, x := range e.List {
-			v, err := eval(fr, x)
-			if err != nil {
-				return nil, err
-			}
-			vals[i] = v
-		}
-		return NewList(vals), nil
-
-	case *syntax.CondExpr:
-		cond, err := eval(fr, e.Cond)
-		if err != nil {
-			return nil, err
-		}
-		if cond.Truth() {
-			return eval(fr, e.True)
-		} else {
-			return eval(fr, e.False)
-		}
-
-	case *syntax.IndexExpr:
-		x, err := eval(fr, e.X)
-		if err != nil {
-			return nil, err
-		}
-		y, err := eval(fr, e.Y)
-		if err != nil {
-			return nil, err
-		}
-		return getIndex(fr, e.Lbrack, x, y)
-
-	case *syntax.SliceExpr:
-		return evalSliceExpr(fr, e)
-
-	case *syntax.Comprehension:
-		var result Value
-		if e.Curly {
-			result = new(Dict)
-		} else {
-			result = new(List)
-		}
-		return result, evalComprehension(fr, e, result, 0)
-
-	case *syntax.TupleExpr:
-		n := len(e.List)
-		tuple := make(Tuple, n)
-		for i, x := range e.List {
-			v, err := eval(fr, x)
-			if err != nil {
-				return nil, err
-			}
-			tuple[i] = v
-		}
-		return tuple, nil
-
-	case *syntax.DictExpr:
-		dict := new(Dict)
-		for i, entry := range e.List {
-			entry := entry.(*syntax.DictEntry)
-			k, err := eval(fr, entry.Key)
-			if err != nil {
-				return nil, err
-			}
-			v, err := eval(fr, entry.Value)
-			if err != nil {
-				return nil, err
-			}
-			if err := dict.Set(k, v); err != nil {
-				return nil, fr.errorf(e.Lbrace, "%v", err)
-			}
-			if dict.Len() != i+1 {
-				return nil, fr.errorf(e.Lbrace, "duplicate key: %v", k)
-			}
-		}
-		return dict, nil
-
-	case *syntax.UnaryExpr:
-		x, err := eval(fr, e.X)
-		if err != nil {
-			return nil, err
-		}
-		y, err := Unary(e.Op, x)
-		if err != nil {
-			return nil, fr.errorf(e.OpPos, "%s", err)
-		}
-		return y, nil
-
-	case *syntax.BinaryExpr:
-		x, err := eval(fr, e.X)
-		if err != nil {
-			return nil, err
-		}
-
-		// short-circuit operators
-		switch e.Op {
-		case syntax.OR:
-			if x.Truth() {
-				return x, nil
-			}
-			return eval(fr, e.Y)
-		case syntax.AND:
-			if !x.Truth() {
-				return x, nil
-			}
-			return eval(fr, e.Y)
-		}
-
-		y, err := eval(fr, e.Y)
-		if err != nil {
-			return nil, err
-		}
-
-		// comparisons
-		switch e.Op {
-		case syntax.EQL, syntax.NEQ, syntax.GT, syntax.LT, syntax.LE, syntax.GE:
-			ok, err := Compare(e.Op, x, y)
-			if err != nil {
-				return nil, fr.errorf(e.OpPos, "%s", err)
-			}
-			return Bool(ok), nil
-		}
-
-		// binary operators
-		z, err := Binary(e.Op, x, y)
-		if err != nil {
-			return nil, fr.errorf(e.OpPos, "%s", err)
-		}
-		return z, nil
-
-	case *syntax.DotExpr:
-		x, err := eval(fr, e.X)
-		if err != nil {
-			return nil, err
-		}
-		return getAttr(fr, x, e)
-
-	case *syntax.CallExpr:
-		return evalCall(fr, e)
-
-	case *syntax.LambdaExpr:
-		return evalFunction(fr, e.Lambda, "lambda", &e.Function)
-
-	case *syntax.ParenExpr:
-		return eval(fr, e.X)
-	}
-
-	start, _ := e.Span()
-	log.Fatalf("%s: unexpected expr %T", start, e)
-	panic("unreachable")
 }
 
 // Unary applies a unary operator (+, -, not) to its operand.
@@ -1283,139 +767,6 @@ func repeat(elems []Value, n int) (res []Value) {
 	return res
 }
 
-func evalCall(fr *Frame, call *syntax.CallExpr) (Value, error) {
-	var fn Value
-
-	// Use optimized path for calling methods of built-ins: x.f(...)
-	if dot, ok := call.Fn.(*syntax.DotExpr); ok {
-		recv, err := eval(fr, dot.X)
-		if err != nil {
-			return nil, err
-		}
-
-		name := dot.Name.Name
-		if method := builtinMethodOf(recv, name); method != nil {
-			args, kwargs, err := evalArgs(fr, call)
-			if err != nil {
-				return nil, err
-			}
-
-			// Make the call.
-			res, err := method(name, recv, args, kwargs)
-			return res, wrapError(fr, call.Lparen, err)
-		}
-
-		// Fall back to usual path.
-		fn, err = getAttr(fr, recv, dot)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		var err error
-		fn, err = eval(fr, call.Fn)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	args, kwargs, err := evalArgs(fr, call)
-	if err != nil {
-		return nil, err
-	}
-
-	// Make the call.
-	fr.posn = call.Lparen
-	res, err := Call(fr.thread, fn, args, kwargs)
-	return res, wrapError(fr, call.Lparen, err)
-}
-
-// wrapError wraps the error in a skylark.EvalError only if needed.
-func wrapError(fr *Frame, posn syntax.Position, err error) error {
-	switch err := err.(type) {
-	case nil, *EvalError:
-		return err
-	}
-	return fr.errorf(posn, "%s", err.Error())
-}
-
-func evalArgs(fr *Frame, call *syntax.CallExpr) (args Tuple, kwargs []Tuple, err error) {
-	// evaluate arguments.
-	var kwargsAlloc Tuple // allocate a single backing array
-	for i, arg := range call.Args {
-		// keyword argument, k=v
-		if binop, ok := arg.(*syntax.BinaryExpr); ok && binop.Op == syntax.EQ {
-			k := binop.X.(*syntax.Ident).Name
-			v, err := eval(fr, binop.Y)
-			if err != nil {
-				return nil, nil, err
-			}
-			if kwargs == nil {
-				nkwargs := len(call.Args) - i // more than enough
-				kwargsAlloc = make(Tuple, 2*nkwargs)
-				kwargs = make([]Tuple, 0, nkwargs)
-			}
-			pair := kwargsAlloc[:2:2]
-			kwargsAlloc = kwargsAlloc[2:]
-			pair[0], pair[1] = String(k), v
-			kwargs = append(kwargs, pair)
-			continue
-		}
-
-		// *args and **kwargs arguments
-		if unop, ok := arg.(*syntax.UnaryExpr); ok {
-			if unop.Op == syntax.STAR {
-				// *args
-				x, err := eval(fr, unop.X)
-				if err != nil {
-					return nil, nil, err
-				}
-				iter := Iterate(x)
-				if iter == nil {
-					return nil, nil, fr.errorf(unop.OpPos, "argument after * must be iterable, not %s", x.Type())
-				}
-				defer iter.Done()
-				var elem Value
-				for iter.Next(&elem) {
-					args = append(args, elem)
-				}
-				continue
-			}
-
-			if unop.Op == syntax.STARSTAR {
-				// **kwargs
-				x, err := eval(fr, unop.X)
-				if err != nil {
-					return nil, nil, err
-				}
-				xdict, ok := x.(*Dict)
-				if !ok {
-					return nil, nil, fr.errorf(unop.OpPos, "argument after ** must be a mapping, not %s", x.Type())
-				}
-				items := xdict.Items()
-				for _, item := range items {
-					if _, ok := item[0].(String); !ok {
-						return nil, nil, fr.errorf(unop.OpPos, "keywords must be strings, not %s", item[0].Type())
-					}
-				}
-				if kwargs == nil {
-					kwargs = items
-				} else {
-					kwargs = append(kwargs, items...)
-				}
-				continue
-			}
-		}
-
-		// ordinary argument
-		v, err := eval(fr, arg)
-		if err != nil {
-			return nil, nil, err
-		}
-		args = append(args, v)
-	}
-	return args, kwargs, err
-}
-
 // Call calls the function fn with the specified positional and keyword arguments.
 func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	c, ok := fn.(Callable)
@@ -1428,41 +779,6 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
 	return res, err
-}
-
-func evalSliceExpr(fr *Frame, e *syntax.SliceExpr) (Value, error) {
-	// Unlike Python, Skylark does not allow a slice on the LHS of
-	// an assignment statement.
-
-	x, err := eval(fr, e.X)
-	if err != nil {
-		return nil, err
-	}
-
-	var lo, hi, step Value = None, None, None
-	if e.Lo != nil {
-		lo, err = eval(fr, e.Lo)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if e.Hi != nil {
-		hi, err = eval(fr, e.Hi)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if e.Step != nil {
-		step, err = eval(fr, e.Step)
-		if err != nil {
-			return nil, err
-		}
-	}
-	res, err := slice(x, lo, hi, step)
-	if err != nil {
-		return nil, fr.errorf(e.Lbrack, "%s", err)
-	}
-	return res, nil
 }
 
 func slice(x, lo, hi, step_ Value) (Value, error) {
@@ -1615,150 +931,9 @@ func asIndex(v Value, len int, result *int) error {
 	return nil
 }
 
-func evalComprehension(fr *Frame, comp *syntax.Comprehension, result Value, clauseIndex int) error {
-	if clauseIndex == len(comp.Clauses) {
-		if comp.Curly {
-			// dict: {k:v for ...}
-			// Parser ensures that body is of form k:v.
-			// Python-style set comprehensions {body for vars in x}
-			// are not supported.
-			entry := comp.Body.(*syntax.DictEntry)
-			k, err := eval(fr, entry.Key)
-			if err != nil {
-				return err
-			}
-			v, err := eval(fr, entry.Value)
-			if err != nil {
-				return err
-			}
-			if err := result.(*Dict).Set(k, v); err != nil {
-				return fr.errorf(entry.Colon, "%v", err)
-			}
-		} else {
-			// list: [body for vars in x]
-			x, err := eval(fr, comp.Body)
-			if err != nil {
-				return err
-			}
-			list := result.(*List)
-			list.elems = append(list.elems, x)
-		}
-		return nil
-	}
-
-	clause := comp.Clauses[clauseIndex]
-	switch clause := clause.(type) {
-	case *syntax.IfClause:
-		cond, err := eval(fr, clause.Cond)
-		if err != nil {
-			return err
-		}
-		if cond.Truth() {
-			return evalComprehension(fr, comp, result, clauseIndex+1)
-		}
-		return nil
-
-	case *syntax.ForClause:
-		x, err := eval(fr, clause.X)
-		if err != nil {
-			return err
-		}
-		iter := Iterate(x)
-		if iter == nil {
-			return fr.errorf(clause.For, "%s value is not iterable", x.Type())
-		}
-		defer iter.Done()
-		var elem Value
-		for iter.Next(&elem) {
-			if err := assign(fr, clause.For, clause.Vars, elem); err != nil {
-				return err
-			}
-
-			if err := evalComprehension(fr, comp, result, clauseIndex+1); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	start, _ := clause.Span()
-	log.Fatalf("%s: unexpected comprehension clause %T", start, clause)
-	panic("unreachable")
-}
-
-func evalFunction(fr *Frame, pos syntax.Position, name string, function *syntax.Function) (Value, error) {
-	// Example: f(x, y=dflt, *args, **kwargs)
-
-	// Evaluate parameter defaults.
-	var defaults Tuple // parameter default values
-	for _, param := range function.Params {
-		if binary, ok := param.(*syntax.BinaryExpr); ok {
-			// e.g. y=dflt
-			dflt, err := eval(fr, binary.Y)
-			if err != nil {
-				return nil, err
-			}
-			defaults = append(defaults, dflt)
-		}
-	}
-
-	// Capture the values of the function's
-	// free variables from the lexical environment.
-	freevars := make([]Value, len(function.FreeVars))
-	for i, freevar := range function.FreeVars {
-		v, err := fr.lookup(freevar)
-		if err != nil {
-			return nil, fr.errorf(pos, "%s", err)
-		}
-		freevars[i] = v
-	}
-
-	return &Function{
-		name:        name,
-		position:    pos,
-		syntax:      function,
-		predeclared: fr.predeclared,
-		globals:     fr.globals,
-		defaults:    defaults,
-		freevars:    freevars,
-	}, nil
-}
-
-func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	if debug {
-		fmt.Printf("call of %s %v %v\n", fn.Name(), args, kwargs)
-	}
-
-	// detect recursion
-	for fr := thread.frame; fr != nil; fr = fr.parent {
-		// We look for the same syntactic function,
-		// not function value, otherwise the user could
-		// defeat the check by writing the Y combinator.
-		if fr.fn != nil && fr.fn.syntax == fn.syntax {
-			return nil, fmt.Errorf("function %s called recursively", fn.Name())
-		}
-	}
-
-	fr := thread.Push(fn.predeclared, fn.globals, len(fn.syntax.Locals))
-	fr.fn = fn
-	err := fn.setArgs(fr, args, kwargs)
-	if err == nil {
-		err = fr.ExecStmts(fn.syntax.Body)
-	}
-	thread.Pop()
-
-	if err != nil {
-		if err == errReturn {
-			return fr.result, nil
-		}
-		return nil, err
-	}
-	return None, nil
-}
-
 // setArgs sets the values of the formal parameters of function fn in
-// frame fr based on the actual parameter values in args and kwargs.
-func (fn *Function) setArgs(fr *Frame, args Tuple, kwargs []Tuple) error {
+// based on the actual parameter values in args and kwargs.
+func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 	cond := func(x bool, y, z interface{}) interface{} {
 		if x {
 			return y
@@ -1767,27 +942,27 @@ func (fn *Function) setArgs(fr *Frame, args Tuple, kwargs []Tuple) error {
 	}
 
 	// nparams is the number of ordinary parameters (sans * or **).
-	nparams := len(fn.syntax.Params)
-	if fn.syntax.HasVarargs {
+	nparams := fn.NumParams()
+	if fn.HasVarargs() {
 		nparams--
 	}
-	if fn.syntax.HasKwargs {
+	if fn.HasKwargs() {
 		nparams--
 	}
 
 	// This is the algorithm from PyEval_EvalCodeEx.
 	var kwdict *Dict
 	n := len(args)
-	if nparams > 0 || fn.syntax.HasVarargs || fn.syntax.HasKwargs {
-		if fn.syntax.HasKwargs {
+	if nparams > 0 || fn.HasVarargs() || fn.HasKwargs() {
+		if fn.HasKwargs() {
 			kwdict = new(Dict)
-			fr.locals[len(fn.syntax.Params)-1] = kwdict
+			locals[fn.NumParams()-1] = kwdict
 		}
 
 		// too many args?
 		if len(args) > nparams {
-			if !fn.syntax.HasVarargs {
-				return fr.errorf(fn.position, "function %s takes %s %d argument%s (%d given)",
+			if !fn.HasVarargs() {
+				return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
 					fn.Name(),
 					cond(len(fn.defaults) > 0, "at most", "exactly"),
 					nparams,
@@ -1803,32 +978,32 @@ func (fn *Function) setArgs(fr *Frame, args Tuple, kwargs []Tuple) error {
 
 		// ordinary parameters
 		for i := 0; i < n; i++ {
-			fr.locals[i] = args[i]
+			locals[i] = args[i]
 			defined.set(i)
 		}
 
 		// variadic arguments
-		if fn.syntax.HasVarargs {
+		if fn.HasVarargs() {
 			tuple := make(Tuple, len(args)-n)
 			for i := n; i < len(args); i++ {
 				tuple[i-n] = args[i]
 			}
-			fr.locals[nparams] = tuple
+			locals[nparams] = tuple
 		}
 
 		// keyword arguments
-		paramIdents := fn.syntax.Locals[:nparams]
+		paramIdents := fn.funcode.Locals[:nparams]
 		for _, pair := range kwargs {
 			k, v := pair[0].(String), pair[1]
 			if i := findParam(paramIdents, string(k)); i >= 0 {
 				if defined.set(i) {
-					return fr.errorf(fn.position, "function %s got multiple values for keyword argument %s", fn.Name(), k)
+					return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
 				}
-				fr.locals[i] = v
+				locals[i] = v
 				continue
 			}
 			if kwdict == nil {
-				return fr.errorf(fn.position, "function %s got an unexpected keyword argument %s", fn.Name(), k)
+				return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
 			}
 			kwdict.Set(k, v)
 		}
@@ -1841,9 +1016,9 @@ func (fn *Function) setArgs(fr *Frame, args Tuple, kwargs []Tuple) error {
 			i := len(args)
 			for ; i < m; i++ {
 				if !defined.get(i) {
-					return fr.errorf(fn.position, "function %s takes %s %d argument%s (%d given)",
+					return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
 						fn.Name(),
-						cond(fn.syntax.HasVarargs || len(fn.defaults) > 0, "at least", "exactly"),
+						cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
 						m,
 						cond(m == 1, "", "s"),
 						defined.len())
@@ -1853,17 +1028,17 @@ func (fn *Function) setArgs(fr *Frame, args Tuple, kwargs []Tuple) error {
 			// set default values
 			for ; i < nparams; i++ {
 				if !defined.get(i) {
-					fr.locals[i] = fn.defaults[i-m]
+					locals[i] = fn.defaults[i-m]
 				}
 			}
 		}
 	} else if nactual := len(args) + len(kwargs); nactual > 0 {
-		return fr.errorf(fn.position, "function %s takes no arguments (%d given)", fn.Name(), nactual)
+		return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
 	}
 	return nil
 }
 
-func findParam(params []*syntax.Ident, name string) int {
+func findParam(params []compile.Ident, name string) int {
 	for i, param := range params {
 		if param.Name == name {
 			return i
