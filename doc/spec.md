@@ -2086,6 +2086,32 @@ _ = [x for x in [2]]            # new variable x is local to the comprehension
 print(x)                        # 1
 ```
 
+The operand of a comprehension's first clause (always a `for`) is
+resolved in the lexical block enclosing the comprehension.
+In the examples below, identifiers referring to the outer variable
+named `x` have been distinguished by subscript.
+
+```python
+x₀ = (1, 2, 3)
+[x*x for x in x₀]               # [1, 4, 9]
+[x*x for x in x₀ if x%2 == 0]   # [4]
+```
+
+All subsequent `for` and `if` expressions are resolved within the
+comprehension's lexical block, as in this rather obscure example:
+
+```python
+x₀ = ([1, 2], [3, 4], [5, 6])
+[x*x for x in x₀ for x in x if x%2 == 0]     # [4, 16, 36]
+```
+
+which would be more clearly rewritten as:
+
+```python
+x = ([1, 2], [3, 4], [5, 6])
+[z*z for y in x for z in y if z%2 == 0]     # [4, 16, 36]
+```
+
 
 ### Function and method calls
 

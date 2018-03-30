@@ -554,13 +554,21 @@ func (r *resolver) expr(e syntax.Expr) {
 		}
 
 	case *syntax.Comprehension:
+		// The 'in' operand of the first clause (always a ForClause)
+		// is resolved in the outer block; consider: [x for x in x].
+		clause := e.Clauses[0].(*syntax.ForClause)
+		r.expr(clause.X)
+
 		// A list/dict comprehension defines a new lexical block.
 		// Locals defined within the block will be allotted
 		// distinct slots in the locals array of the innermost
 		// enclosing container (function/module) block.
 		r.push(&block{comp: e})
+
 		const allowRebind = false
-		for _, clause := range e.Clauses {
+		r.assign(clause.Vars, allowRebind)
+
+		for _, clause := range e.Clauses[1:] {
 			switch clause := clause.(type) {
 			case *syntax.IfClause:
 				r.expr(clause.Cond)
