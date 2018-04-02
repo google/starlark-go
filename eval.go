@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 	"unicode"
@@ -266,17 +268,41 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
-	toplevel := &Function{
-		funcode:     prog.compiled.Toplevel,
-		predeclared: predeclared,
-		globals:     make([]Value, len(prog.compiled.Globals)),
-	}
+	toplevel := makeToplevelFunction(prog.compiled.Toplevel, predeclared)
 
 	_, err := toplevel.Call(thread, nil, nil)
 
 	// Convert the global environment to a map and freeze it.
 	// We return a (partial) map even in case of error.
 	return toplevel.Globals(), err
+}
+
+func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Function {
+	// Create the Skylark value denoted by each program constant c.
+	constants := make([]Value, len(funcode.Prog.Constants))
+	for i, c := range funcode.Prog.Constants {
+		var v Value
+		switch c := c.(type) {
+		case int64:
+			v = MakeInt64(c)
+		case *big.Int:
+			v = Int{c}
+		case string:
+			v = String(c)
+		case float64:
+			v = Float(c)
+		default:
+			log.Fatalf("unexpected constant %T: %v", c, c)
+		}
+		constants[i] = v
+	}
+
+	return &Function{
+		funcode:     funcode,
+		predeclared: predeclared,
+		globals:     make([]Value, len(funcode.Prog.Globals)),
+		constants:   constants,
+	}
 }
 
 // Eval parses, resolves, and evaluates an expression within the
@@ -300,12 +326,9 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 		return nil, err
 	}
 
-	f := &Function{
-		funcode:     compile.Expr(expr, locals),
-		predeclared: env,
-		globals:     nil,
-	}
-	return f.Call(thread, nil, nil)
+	fn := makeToplevelFunction(compile.Expr(expr, locals), env)
+
+	return fn.Call(thread, nil, nil)
 }
 
 // The following functions are primitive operations of the byte code interpreter.

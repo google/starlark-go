@@ -464,13 +464,17 @@ func (it *stringIterator) Next(p *Value) bool {
 
 func (*stringIterator) Done() {}
 
-// A Function is a function defined by a Skylark def statement.
+// A Function is a function defined by a Skylark def statement or lambda expression.
+// The initialization behavior of a Skylark module is also represented by a Function.
 type Function struct {
-	funcode     *compile.Funcode
-	predeclared StringDict // names predeclared in the current module
-	globals     []Value    // globals of the current module
-	defaults    Tuple
-	freevars    Tuple
+	funcode  *compile.Funcode
+	defaults Tuple
+	freevars Tuple
+
+	// These fields are shared by all functions in a module.
+	predeclared StringDict
+	globals     []Value
+	constants   []Value
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions

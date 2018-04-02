@@ -26,9 +26,9 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/google/skylark/resolve"
 	"github.com/google/skylark/syntax"
@@ -37,7 +37,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 1
+const Version = 2
 
 type Opcode uint8
 
@@ -106,10 +106,7 @@ const (
 	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator]
 	//       or:          - ITERJMP<addr> -      (and jump)
 
-	INT         //                - INT<constant>       value
-	FLOAT       //                - FLOAT<constant>     value
-	BIGINT      //                - BIGINT<constant>    value
-	STRING      //                - STRING<constant>    value
+	CONSTANT    //                - CONSTANT<constant>  value
 	MAKETUPLE   //        x1 ... xn MAKETUPLE<n>        tuple
 	MAKELIST    //        x1 ... xn MAKELIST<n>         list
 	MAKEFUNC    //      args kwargs MAKEFUNC<func>      fn
@@ -141,17 +138,16 @@ var opcodeNames = [...]string{
 	AMP:         "amp",
 	APPEND:      "append",
 	ATTR:        "attr",
-	BIGINT:      "bigint",
 	CALL:        "call",
 	CALL_KW:     "call_kw ",
 	CALL_VAR:    "call_var",
 	CALL_VAR_KW: "call_var_kw",
 	CJMP:        "cjmp",
-	DUP:         "dup",
+	CONSTANT:    "constant",
 	DUP2:        "dup2",
+	DUP:         "dup",
 	EQL:         "eql",
 	FALSE:       "false",
-	FLOAT:       "float",
 	FREE:        "free",
 	GE:          "ge",
 	GLOBAL:      "global",
@@ -159,7 +155,6 @@ var opcodeNames = [...]string{
 	IN:          "in",
 	INDEX:       "index",
 	INPLACE_ADD: "inplace_add",
-	INT:         "int",
 	ITERJMP:     "iterjmp",
 	ITERPOP:     "iterpop",
 	ITERPUSH:    "iterpush",
@@ -193,7 +188,6 @@ var opcodeNames = [...]string{
 	SLASHSLASH:  "slashslash",
 	SLICE:       "slice",
 	STAR:        "star",
-	STRING:      "string",
 	TRUE:        "true",
 	UMINUS:      "uminus",
 	UNIVERSAL:   "universal",
@@ -209,17 +203,16 @@ var stackEffect = [...]int8{
 	AMP:         -1,
 	APPEND:      -2,
 	ATTR:        0,
-	BIGINT:      +1,
 	CALL:        variableStackEffect,
 	CALL_KW:     variableStackEffect,
 	CALL_VAR:    variableStackEffect,
 	CALL_VAR_KW: variableStackEffect,
 	CJMP:        -1,
-	DUP:         +1,
+	CONSTANT:    +1,
 	DUP2:        +2,
+	DUP:         +1,
 	EQL:         -1,
 	FALSE:       +1,
-	FLOAT:       +1,
 	FREE:        +1,
 	GE:          -1,
 	GLOBAL:      +1,
@@ -227,10 +220,9 @@ var stackEffect = [...]int8{
 	IN:          -1,
 	INDEX:       -1,
 	INPLACE_ADD: -1,
-	INT:         +1,
 	ITERJMP:     variableStackEffect,
-	ITERPUSH:    -1,
 	ITERPOP:     0,
+	ITERPUSH:    -1,
 	JMP:         0,
 	LE:          -1,
 	LOAD:        -1,
@@ -246,10 +238,10 @@ var stackEffect = [...]int8{
 	NOP:         0,
 	NOT:         0,
 	PERCENT:     -1,
-	PREDECLARED: +1,
 	PIPE:        -1,
 	PLUS:        -1,
 	POP:         -1,
+	PREDECLARED: +1,
 	RETURN:      -1,
 	SETDICT:     -3,
 	SETDICTUNIQ: -3,
@@ -261,10 +253,9 @@ var stackEffect = [...]int8{
 	SLASHSLASH:  -1,
 	SLICE:       -3,
 	STAR:        -1,
-	STRING:      +1,
 	TRUE:        +1,
-	UNPACK:      variableStackEffect,
 	UNIVERSAL:   +1,
+	UNPACK:      variableStackEffect,
 }
 
 func (op Opcode) String() string {
@@ -281,7 +272,7 @@ func (op Opcode) String() string {
 type Program struct {
 	Loads     []Ident       // name (really, string) and position of each load stmt
 	Names     []string      // names of attributes and predeclared variables
-	Constants []interface{} // = string | int64 | float64
+	Constants []interface{} // = string | int64 | float64 | *big.Int
 	Functions []*Funcode
 	Globals   []Ident  // for error messages and tracing
 	Toplevel  *Funcode // module initialization function
@@ -741,10 +732,13 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 
 	var comment string
 	switch op {
-	case INT, FLOAT, BIGINT:
-		comment = fmt.Sprint(fn.Prog.Constants[arg])
-	case STRING:
-		comment = fmt.Sprintf("%q", fn.Prog.Constants[arg])
+	case CONSTANT:
+		switch x := fn.Prog.Constants[arg].(type) {
+		case string:
+			comment = strconv.Quote(x)
+		default:
+			comment = fmt.Sprint(x)
+		}
 	case MAKEFUNC:
 		comment = fn.Prog.Functions[arg].Name
 	case SETLOCAL, LOCAL:
@@ -856,12 +850,7 @@ func (pcomp *pcomp) functionIndex(fn *Funcode) uint32 {
 
 // string emits code to push the specified string.
 func (fcomp *fcomp) string(s string) {
-	fcomp.emit1(STRING, fcomp.pcomp.constantIndex(s))
-}
-
-// int64 emits code to push the specified integer.
-func (fcomp *fcomp) int64(i int64) {
-	fcomp.emit1(INT, fcomp.pcomp.constantIndex(i))
+	fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(s))
 }
 
 // setPos sets the current source position.
@@ -1137,19 +1126,8 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		fcomp.lookup(e)
 
 	case *syntax.Literal:
-		switch e.Token {
-		case syntax.INT:
-			switch e.Value.(type) {
-			case int64:
-				fcomp.int64(e.Value.(int64))
-			case *big.Int:
-				fcomp.emit1(BIGINT, fcomp.pcomp.constantIndex(e.Value.(*big.Int).String()))
-			}
-		case syntax.FLOAT:
-			fcomp.emit1(FLOAT, fcomp.pcomp.constantIndex(e.Value.(float64)))
-		case syntax.STRING:
-			fcomp.string(e.Value.(string))
-		}
+		// e.Value is int64, float64, *bigInt, or string.
+		fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(e.Value))
 
 	case *syntax.ListExpr:
 		for _, x := range e.List {

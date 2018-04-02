@@ -4,9 +4,7 @@ package skylark
 
 import (
 	"fmt"
-	"math/big"
 	"os"
-	"unsafe"
 
 	"github.com/google/skylark/internal/compile"
 	"github.com/google/skylark/syntax"
@@ -433,29 +431,8 @@ loop:
 			}
 			sp--
 
-		case compile.INT:
-			stack[sp] = MakeInt64(f.Prog.Constants[arg].(int64))
-			sp++
-
-		case compile.BIGINT:
-			s := f.Prog.Constants[arg].(string)
-			bigint := new(big.Int)
-			if _, ok := bigint.SetString(s, 10); !ok {
-				err = fmt.Errorf("internal error: failed to parse compiled large integer constant")
-				break loop
-			}
-			stack[sp] = Int{bigint}
-			sp++
-
-		case compile.FLOAT:
-			stack[sp] = Float(f.Prog.Constants[arg].(float64))
-			sp++
-
-		case compile.STRING:
-			// TODO(adonovan): opt: avoid allocation here
-			// by prematerializing String values.
-			// stack[sp] = String(f.Prog.Constants[arg].(string))
-			stack[sp] = string2String(f.Prog.Constants[arg])
+		case compile.CONSTANT:
+			stack[sp] = fr.fn.constants[arg]
 			sp++
 
 		case compile.MAKETUPLE:
@@ -483,6 +460,7 @@ loop:
 				funcode:     funcode,
 				predeclared: fr.fn.predeclared,
 				globals:     fr.fn.globals,
+				constants:   fr.fn.constants,
 				defaults:    defaults,
 				freevars:    freevars,
 			}
@@ -585,28 +563,3 @@ loop:
 	}
 	return result, err
 }
-
-// string2String converts an empty interface containing a string into a
-// Value containing a String, without allocating a new string header;
-// see github.com/golang/go/issues/24582.
-// TODO(adonovan): do this safely by preconverting constants a priori.
-// This requires that Program provide a field for use by the interpreter.
-func string2String(x interface{}) (y Value) {
-	// Equivalent to:
-	//   return String(x.(string))
-	// but avoids allocation.
-
-	_ = x.(string)
-	type iface struct {
-		typ, data unsafe.Pointer
-	}
-	xi := (*iface)((unsafe.Pointer)(&x))
-	yi := (*iface)((unsafe.Pointer)(&y))
-	si := (*iface)((unsafe.Pointer)(&dummystr))
-
-	yi.typ = si.typ
-	yi.data = xi.data
-	return y
-}
-
-var dummystr Value = String("")
