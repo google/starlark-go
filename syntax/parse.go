@@ -11,7 +11,7 @@ package syntax
 // package.  Verify that error positions are correct using the
 // chunkedfile mechanism.
 
-import "log"
+import log "log"
 
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false
@@ -579,7 +579,7 @@ func (p *parser) parseBinopExpr(prec int) Expr {
 		op := p.tok
 		pos := p.nextToken()
 		y := p.parseTestPrec(opprec + 1)
-		x = makeBinaryExpr(op, pos, x, y)
+		x = &BinaryExpr{OpPos: pos, Op: op, X: x, Y: y}
 	}
 }
 
@@ -611,24 +611,6 @@ func init() {
 			precedence[tok] = int8(level)
 		}
 	}
-}
-
-func makeBinaryExpr(op Token, pos Position, x, y Expr) Expr {
-	// Concatenate literal strings during parsing.
-	if op == PLUS {
-		if x, ok := x.(*Literal); ok && x.Token == STRING {
-			if y, ok := y.(*Literal); ok && y.Token == STRING {
-				// The Span of this synthetic node will be wrong.
-				return &Literal{
-					Token:    STRING,
-					TokenPos: x.TokenPos,
-					Raw:      x.Raw + " + " + y.Raw, // ugh
-					Value:    x.Value.(string) + y.Value.(string),
-				}
-			}
-		}
-	}
-	return &BinaryExpr{OpPos: pos, Op: op, X: x, Y: y}
 }
 
 // primary_with_suffix = primary

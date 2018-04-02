@@ -85,7 +85,7 @@ func TestExprParseTrees(t *testing.T) {
 		{`-1 + +2`,
 			`(BinaryExpr X=(UnaryExpr Op=- X=1) Op=+ Y=(UnaryExpr Op=+ X=2))`},
 		{`"foo" + "bar"`,
-			`"foobar"`}, // concatenated
+			`(BinaryExpr X="foo" Op=+ Y="bar")`},
 		{`-1 * 2`, // prec(unary -) > prec(binary *)
 			`(BinaryExpr X=(UnaryExpr Op=- X=1) Op=* Y=2)`},
 		{`-x[i]`, // prec(unary -) < prec(x[i])

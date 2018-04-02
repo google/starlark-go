@@ -111,3 +111,23 @@ load('assert.sky', 'assert', 'matches') ### "matches not found in module"
 ---
 # Load does not expose universals accessible in other modules.
 load('assert.sky', 'len') ### "len not found in module"
+
+
+---
+# Test plus folding optimization.
+load('assert.sky', 'assert')
+
+s = "s"
+l = [4]
+t = (4,)
+
+assert.eq("a" + "b" + "c", "abc")
+assert.eq("a" + "b" + s + "c", "absc")
+assert.eq(() + (1,) + (2, 3), (1, 2, 3))
+assert.eq(() + (1,) + t + (2, 3), (1, 4, 2, 3))
+assert.eq([] + [1] + [2, 3], [1, 2, 3])
+assert.eq([] + [1] + l + [2, 3], [1, 4, 2, 3])
+
+assert.fails(lambda: "a" + "b" + 1 + "c", "unknown binary op: string \\+ int")
+assert.fails(lambda: () + () + 1 + (), "unknown binary op: tuple \\+ int")
+assert.fails(lambda: [] + [] + 1 + [], "unknown binary op: list \\+ int")

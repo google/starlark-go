@@ -22,26 +22,6 @@
 //
 package compile
 
-// TODO(adonovan):
-// Optimizations:
-// - add dynamic checks for missing opcodes in the various tables.
-//
-// - optimize the + operator, which is often applied to many strings or lists
-//   in sequence, leading to quadratic behavior:
-//   1) simplify a left tree of plusses ((a+b)+c) into a sequence [a, +b, +c].
-//      We need to keep each + that could fail, to report the correct position.
-//   2) in the sequence, combine adjacent list/tuple/string literals:
-//      [a...]+[b...] -> [a... b...]
-//      (a...)+(b...) -> (a... b...)
-//      "a..."+"b..." -> "a... b..."
-//   3) in the sequence, implement a + op of a literal and following
-//      non-literals by a buffer:
-//      e.g. "a..." + x + y
-//        => s=stringbuf(); s.append("a..."); s.append(x); s.append(y); s.string()
-//      e.g. [a...] + x + y
-//        => z=list(); z.append(each of a...); z.extend(x); z.extend(y); z
-//      The apparent position of each append op is that of the '+' token.
-
 import (
 	"bytes"
 	"fmt"
@@ -155,6 +135,8 @@ const (
 	OpcodeMax    = CALL_VAR_KW
 )
 
+// TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
+
 var opcodeNames = [...]string{
 	AMP:         "amp",
 	APPEND:      "append",
@@ -179,8 +161,8 @@ var opcodeNames = [...]string{
 	INPLACE_ADD: "inplace_add",
 	INT:         "int",
 	ITERJMP:     "iterjmp",
-	ITERPUSH:    "iterpush",
 	ITERPOP:     "iterpop",
+	ITERPUSH:    "iterpush",
 	JMP:         "jmp",
 	LE:          "le",
 	LOAD:        "load",
@@ -1256,9 +1238,9 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		}
 
 	case *syntax.BinaryExpr:
+		switch e.Op {
 		// short-circuit operators
 		// TODO(adonovan): use ifelse to simplify conditions.
-		switch e.Op {
 		case syntax.OR:
 			// x or y  =>  if x then x else y
 			done := fcomp.newBlock()
@@ -1274,7 +1256,6 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 			fcomp.jump(done)
 
 			fcomp.block = done
-			return
 
 		case syntax.AND:
 			// x and y  =>  if x then y else x
@@ -1291,13 +1272,16 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 			fcomp.jump(done)
 
 			fcomp.block = done
-			return
-		}
 
-		// strict binary operator (includes comparisons)
-		fcomp.expr(e.X)
-		fcomp.expr(e.Y)
-		fcomp.binop(e.OpPos, e.Op)
+		case syntax.PLUS:
+			fcomp.plus(e)
+
+		default:
+			// all other strict binary operator (includes comparisons)
+			fcomp.expr(e.X)
+			fcomp.expr(e.Y)
+			fcomp.binop(e.OpPos, e.Op)
+		}
 
 	case *syntax.DotExpr:
 		fcomp.expr(e.X)
@@ -1314,6 +1298,142 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		start, _ := e.Span()
 		log.Fatalf("%s: unexpected expr %T", start, e)
 	}
+}
+
+type summand struct {
+	x       syntax.Expr
+	plusPos syntax.Position
+}
+
+// plus emits optimized code for ((a+b)+...)+z that avoid naive
+// quadratic behavior for strings, tuples, and lists,
+// and folds together adjacent literals of the same type.
+func (fcomp *fcomp) plus(e *syntax.BinaryExpr) {
+	// Gather all the right operands of the left tree of plusses.
+	// A tree (((a+b)+c)+d) becomes summmands=[a +b +c +d].
+	args := make([]summand, 0, 2) // common case: 2 operands
+	for plus := e; ; {
+		args = append(args, summand{unparen(plus.Y), plus.OpPos})
+		left := unparen(plus.X)
+		x, ok := left.(*syntax.BinaryExpr)
+		if !ok || x.Op != syntax.PLUS {
+			args = append(args, summand{x: left})
+			break
+		}
+		plus = x
+	}
+	// Reverse args to syntactic order.
+	for i, n := 0, len(args)/2; i < n; i++ {
+		j := len(args) - 1 - i
+		args[i], args[j] = args[j], args[i]
+	}
+
+	// Fold sums of adjacent literals of the same type: ""+"", []+[], ()+().
+	out := args[:0] // compact in situ
+	for i := 0; i < len(args); {
+		j := i + 1
+		if code := addable(args[i].x); code != 0 {
+			for j < len(args) && addable(args[j].x) == code {
+				j++
+			}
+			if j > i+1 {
+				args[i].x = add(code, args[i:j])
+			}
+		}
+		out = append(out, args[i])
+		i = j
+	}
+	args = out
+
+	// Emit code for an n-ary sum (n >= 0).
+	fcomp.expr(args[0].x)
+	for _, summand := range args[1:] {
+		fcomp.expr(summand.x)
+		fcomp.setPos(summand.plusPos)
+		fcomp.emit(PLUS)
+	}
+
+	// If len(args) > 2, use of an accumulator instead of a chain of
+	// PLUS operations may be more efficient.
+	// However, no gain was measured on a workload analogous to Bazel loading;
+	// TODO(adonovan): opt: re-evaluate on a Bazel analysis-like workload.
+	//
+	// We cannot use a single n-ary SUM operation
+	//    a b c SUM<3>
+	// because we need to report a distinct error for each
+	// individual '+' operation, so three additional operations are
+	// needed:
+	//
+	//   ACCSTART => create buffer and append to it
+	//   ACCUM    => append to buffer
+	//   ACCEND   => get contents of buffer
+	//
+	// For string, list, and tuple values, the interpreter can
+	// optimize these operations by using a mutable buffer.
+	// For all other types, ACCSTART and ACCEND would behave like
+	// the identity function and ACCUM behaves like PLUS.
+	// ACCUM must correctly support user-defined operations
+	// such as list+foo.
+	//
+	// fcomp.emit(ACCSTART)
+	// for _, summand := range args[1:] {
+	// 	fcomp.expr(summand.x)
+	// 	fcomp.setPos(summand.plusPos)
+	// 	fcomp.emit(ACCUM)
+	// }
+	// fcomp.emit(ACCEND)
+}
+
+// addable reports whether e is a statically addable
+// expression: a [s]tring, [l]ist, or [t]uple.
+func addable(e syntax.Expr) rune {
+	switch e := e.(type) {
+	case *syntax.Literal:
+		// TODO(adonovan): opt: support INT/FLOAT/BIGINT constant folding.
+		switch e.Token {
+		case syntax.STRING:
+			return 's'
+		}
+	case *syntax.ListExpr:
+		return 'l'
+	case *syntax.TupleExpr:
+		return 't'
+	}
+	return 0
+}
+
+// add returns an expression denoting the sum of args,
+// which are all addable values of the type indicated by code.
+// The resulting syntax may be degenerate.
+func add(code rune, args []summand) syntax.Expr {
+	switch code {
+	case 's':
+		var buf bytes.Buffer
+		for _, arg := range args {
+			buf.WriteString(arg.x.(*syntax.Literal).Value.(string))
+		}
+		return &syntax.Literal{Token: syntax.STRING, Value: buf.String()}
+	case 'l':
+		var elems []syntax.Expr
+		for _, arg := range args {
+			elems = append(elems, arg.x.(*syntax.ListExpr).List...)
+		}
+		return &syntax.ListExpr{List: elems}
+	case 't':
+		var elems []syntax.Expr
+		for _, arg := range args {
+			elems = append(elems, arg.x.(*syntax.TupleExpr).List...)
+		}
+		return &syntax.TupleExpr{List: elems}
+	}
+	panic(code)
+}
+
+func unparen(e syntax.Expr) syntax.Expr {
+	if p, ok := e.(*syntax.ParenExpr); ok {
+		return unparen(p.X)
+	}
+	return e
 }
 
 func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
