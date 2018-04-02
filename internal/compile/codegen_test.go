@@ -20,39 +20,37 @@ func TestPlusFolding(t *testing.T) {
 	}{
 		{
 			// string folding
-			// const + const + const + const => const
 			`"a" + "b" + "c" + "d"`,
-			`string "abcd"; return`,
+			`constant "abcd"; return`,
 		},
 		{
 			// string folding with variable:
-			// const + const + var + const + const => sum(const, var, const)
 			`"a" + "b" + x + "c" + "d"`,
-			`string "ab"; predeclared x; plus; string "cd"; plus; return`,
+			`constant "ab"; predeclared x; plus; constant "cd"; plus; return`,
 		},
 		{
 			// list folding
 			`[1] + [2] + [3]`,
-			`int 1; int 2; int 3; makelist<3>; return`,
+			`constant 1; constant 2; constant 3; makelist<3>; return`,
 		},
 		{
 			// list folding with variable
 			`[1] + [2] + x + [3]`,
-			`int 1; int 2; makelist<2>; ` +
+			`constant 1; constant 2; makelist<2>; ` +
 				`predeclared x; plus; ` +
-				`int 3; makelist<1>; plus; ` +
+				`constant 3; makelist<1>; plus; ` +
 				`return`,
 		},
 		{
 			// tuple folding
 			`() + (1,) + (2, 3)`,
-			`int 1; int 2; int 3; maketuple<3>; return`,
+			`constant 1; constant 2; constant 3; maketuple<3>; return`,
 		},
 		{
 			// tuple folding with variable
 			`() + (1,) + x + (2, 3)`,
-			`int 1; maketuple<1>; predeclared x; plus; ` +
-				`int 2; int 3; maketuple<2>; plus; ` +
+			`constant 1; maketuple<1>; predeclared x; plus; ` +
+				`constant 2; constant 3; maketuple<2>; plus; ` +
 				`return`,
 		},
 	} {
@@ -100,10 +98,13 @@ func disassemble(f *Funcode) string {
 		fmt.Fprintf(out, "%s", op)
 		if op >= OpcodeArgMin {
 			switch op {
-			case INT, FLOAT, BIGINT:
-				fmt.Fprintf(out, " %v", f.Prog.Constants[arg])
-			case STRING:
-				fmt.Fprintf(out, " %q", f.Prog.Constants[arg])
+			case CONSTANT:
+				switch x := f.Prog.Constants[arg].(type) {
+				case string:
+					fmt.Fprintf(out, " %q", x)
+				default:
+					fmt.Fprintf(out, " %v", x)
+				}
 			case LOCAL:
 				fmt.Fprintf(out, " %s", f.Locals[arg].Name)
 			case PREDECLARED:
