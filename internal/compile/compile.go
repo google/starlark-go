@@ -1283,12 +1283,12 @@ type summand struct {
 	plusPos syntax.Position
 }
 
-// plus emits optimized code for ((a+b)+...)+z that avoid naive
+// plus emits optimized code for ((a+b)+...)+z that avoids naive
 // quadratic behavior for strings, tuples, and lists,
 // and folds together adjacent literals of the same type.
 func (fcomp *fcomp) plus(e *syntax.BinaryExpr) {
 	// Gather all the right operands of the left tree of plusses.
-	// A tree (((a+b)+c)+d) becomes summmands=[a +b +c +d].
+	// A tree (((a+b)+c)+d) becomes args=[a +b +c +d].
 	args := make([]summand, 0, 2) // common case: 2 operands
 	for plus := e; ; {
 		args = append(args, summand{unparen(plus.Y), plus.OpPos})
@@ -1323,7 +1323,7 @@ func (fcomp *fcomp) plus(e *syntax.BinaryExpr) {
 	}
 	args = out
 
-	// Emit code for an n-ary sum (n >= 0).
+	// Emit code for an n-ary sum (n > 0).
 	fcomp.expr(args[0].x)
 	for _, summand := range args[1:] {
 		fcomp.expr(summand.x)
@@ -1382,7 +1382,7 @@ func addable(e syntax.Expr) rune {
 
 // add returns an expression denoting the sum of args,
 // which are all addable values of the type indicated by code.
-// The resulting syntax may be degenerate.
+// The resulting syntax is degenerate, lacking position, etc.
 func add(code rune, args []summand) syntax.Expr {
 	switch code {
 	case 's':
@@ -1415,9 +1415,6 @@ func unparen(e syntax.Expr) syntax.Expr {
 }
 
 func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
-	// TODO(adonovan): opt: simplify constant expressions, especially string+string.
-	// See comment at top.
-
 	// TODO(adonovan): simplify by assuming syntax and compiler constants align.
 	fcomp.setPos(pos)
 	switch op {
@@ -1460,7 +1457,7 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 
 func (fcomp *fcomp) call(call *syntax.CallExpr) {
 	// TODO(adonovan): opt: Use optimized path for calling methods
-	// of built-ins: x.f(...).
+	// of built-ins: x.f(...) to avoid materializing a closure.
 	// if dot, ok := call.Fcomp.(*syntax.DotExpr); ok {
 	// 	fcomp.expr(dot.X)
 	// 	fcomp.args(call)
@@ -1526,7 +1523,7 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 		fcomp.expr(kwargs)
 	}
 
-	// TODO(adonovan): don't do this.
+	// TODO(adonovan): avoid this with a more flexible encoding.
 	if p >= 256 || n >= 256 {
 		log.Fatalf("%s: compiler error: too many arguments in call", call.Lparen)
 	}
