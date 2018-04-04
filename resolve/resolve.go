@@ -348,8 +348,6 @@ func (r *resolver) useGlobal(id *syntax.Ident) binding {
 		id.Index = prev.Index
 	} else if r.isPredeclared(id.Name) {
 		scope = Predeclared // use of pre-declared
-	} else if id.Name == "PACKAGE_NAME" {
-		scope = Predeclared // nasty hack in Skylark spec; will go away (b/34240042).
 	} else if r.isUniversal(id.Name) {
 		scope = Universal // use of universal name
 		if !AllowFloat && id.Name == "float" {

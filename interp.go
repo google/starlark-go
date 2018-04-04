@@ -526,17 +526,8 @@ loop:
 			name := f.Prog.Names[arg]
 			x := fr.fn.predeclared[name]
 			if x == nil {
-				if name == "PACKAGE_NAME" {
-					// Gross spec, gross hack.
-					// Users should just call package_name() function.
-					if v, ok := fr.fn.predeclared["package_name"].(*Builtin); ok {
-						x, _ = v.fn(thread, v, nil, nil)
-					}
-				}
-				if x == nil {
-					err = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name)
-					break loop
-				}
+				err = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name)
+				break loop
 			}
 			stack[sp] = x
 			sp++
