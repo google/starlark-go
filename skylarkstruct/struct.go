@@ -6,13 +6,20 @@
 // an optional language extension.
 package skylarkstruct
 
-// TODO(adonovan):
-//
-// - every struct instance should reference a (shared) fields dictionary
-//   to afford type safety (eager checking of allowed field names),
-//   and also making field lookup a constant time operation.
-//
-// - there should be a way to get the constructor symbol out of a struct.
+// It is tempting to introduce a variant of Struct that is a wrapper
+// around a Go struct value, for stronger typing guarantees and more
+// efficient and convenient field lookup. However:
+// 1) all fields of Skylark structs are optional, so we cannot represent
+//    them using more specific types such as String, Int, *Depset, and
+//    *File, as such types give no way to represent missing fields.
+// 2) the efficiency gain of direct struct field access is rather
+//    marginal: finding the index of a field by binary searching on the
+//    sorted list of field names is quite fast compared to the other
+//    overheads.
+// 3) the gains in compactness and spatial locality are also rather
+//    marginal: the array behind the []entry slice is (due to field name
+//    strings) only a factor of 2 larger than the corresponding Go struct
+//    would be, and, like the Go struct, requires only a single allocation.
 
 import (
 	"bytes"
@@ -77,7 +84,7 @@ func FromStringDict(constructor skylark.Value, d skylark.StringDict) *Struct {
 }
 
 // Struct is an immutable Skylark type that maps field names to values.
-// It is not iterable.
+// It is not iterable and does not support len.
 //
 // A struct has a constructor, a distinct value that identifies a class
 // of structs, and which appears in the struct's string representation.
@@ -126,6 +133,8 @@ func (s *Struct) ToStringDict(d skylark.StringDict) {
 func (s *Struct) String() string {
 	var buf bytes.Buffer
 	if s.constructor == Default {
+		// NB: The Java implementation always prints struct
+		// even for Bazel provider instances.
 		buf.WriteString("struct") // avoid String()'s quotation
 	} else {
 		buf.WriteString(s.constructor.String())
@@ -183,7 +192,7 @@ func (x *Struct) Binary(op syntax.Token, y skylark.Value, side skylark.Side) (sk
 				x.constructor, y.constructor)
 		}
 
-		z := make(skylark.StringDict, x.Len()+y.Len())
+		z := make(skylark.StringDict, x.len()+y.len())
 		for _, e := range x.entries {
 			z[e.name] = e.value
 		}
@@ -373,11 +382,12 @@ func goQuoteIsSafe(s string) bool {
 	return true
 }
 
-func (s *Struct) Len() int { return len(s.entries) }
+func (s *Struct) len() int { return len(s.entries) }
 
 // AttrNames returns a new sorted list of the struct fields.
 //
-// The deprecated struct methods "to_json" and "to_proto" do not
+// Unlike in the Java implementation,
+// the deprecated struct methods "to_json" and "to_proto" do not
 // appear in AttrNames, and hence dir(struct), since that would force
 // the majority to have to ignore them, but they may nonetheless be
 // called if the struct does not have fields of these names. Ideally
@@ -404,7 +414,7 @@ func (x *Struct) CompareSameType(op syntax.Token, y_ skylark.Value, depth int) (
 }
 
 func structsEqual(x, y *Struct, depth int) (bool, error) {
-	if x.Len() != y.Len() {
+	if x.len() != y.len() {
 		return false, nil
 	}
 
@@ -415,7 +425,7 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 		return false, nil
 	}
 
-	for i, n := 0, x.Len(); i < n; i++ {
+	for i, n := 0, x.len(); i < n; i++ {
 		if x.entries[i].name != y.entries[i].name {
 			return false, nil
 		} else if eq, err := skylark.EqualDepth(x.entries[i].value, y.entries[i].value, depth-1); err != nil {
