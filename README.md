@@ -48,7 +48,7 @@ languages and compilers.
 Build the code:
 
 ```shell
-$ go get github.com/google/skylark
+$ go get github.com/google/skylark/...
 $ go build github.com/google/skylark/cmd/skylark
 ```
 
