@@ -179,6 +179,18 @@ type Indexable interface {
 	Len() int
 }
 
+// A Sliceable is a sequence that can be cut into pieces with the slice operator (x[i:j:step]).
+//
+// All native indexable objects are sliceable.
+// This is a separate interface for backwards-compatibility.
+type Sliceable interface {
+	Indexable
+	// For positive strides (step > 0), 0 <= start <= end <= n.
+	// For negative strides (step < 0), -1 <= end <= start < n.
+	// The caller must ensure that the start and end indices are valid.
+	Slice(start, end, step int) Value
+}
+
 // A HasSetIndex is an Indexable value whose elements may be assigned (x[i] = y).
 //
 // The implementation should not add Len to a negative index as the
@@ -192,6 +204,9 @@ var (
 	_ HasSetIndex = (*List)(nil)
 	_ Indexable   = Tuple(nil)
 	_ Indexable   = String("")
+	_ Sliceable   = Tuple(nil)
+	_ Sliceable   = String("")
+	_ Sliceable   = (*List)(nil)
 )
 
 // An Iterator provides a sequence of values to the caller.
@@ -385,6 +400,19 @@ func (s String) Truth() Bool           { return len(s) > 0 }
 func (s String) Hash() (uint32, error) { return hashString(string(s)), nil }
 func (s String) Len() int              { return len(s) } // bytes
 func (s String) Index(i int) Value     { return s[i : i+1] }
+
+func (s String) Slice(start, end, step int) Value {
+	if step == 1 {
+		return String(s[start:end])
+	}
+
+	sign := signum(step)
+	var str []byte
+	for i := start; signum(end-i) == sign; i += step {
+		str = append(str, s[i])
+	}
+	return String(str)
+}
 
 func (s String) Attr(name string) (Value, error) { return builtinAttr(s, name, stringMethods) }
 func (s String) AttrNames() []string             { return builtinAttrNames(stringMethods) }
@@ -650,6 +678,20 @@ func (l *List) Truth() Bool           { return l.Len() > 0 }
 func (l *List) Len() int              { return len(l.elems) }
 func (l *List) Index(i int) Value     { return l.elems[i] }
 
+func (l *List) Slice(start, end, step int) Value {
+	if step == 1 {
+		elems := append([]Value{}, l.elems[start:end]...)
+		return NewList(elems)
+	}
+
+	sign := signum(step)
+	var list []Value
+	for i := start; signum(end-i) == sign; i += step {
+		list = append(list, l.elems[i])
+	}
+	return NewList(list)
+}
+
 func (l *List) Attr(name string) (Value, error) { return builtinAttr(l, name, listMethods) }
 func (l *List) AttrNames() []string             { return builtinAttrNames(listMethods) }
 
@@ -744,6 +786,20 @@ type Tuple []Value
 
 func (t Tuple) Len() int          { return len(t) }
 func (t Tuple) Index(i int) Value { return t[i] }
+
+func (t Tuple) Slice(start, end, step int) Value {
+	if step == 1 {
+		return t[start:end]
+	}
+
+	sign := signum(step)
+	var tuple Tuple
+	for i := start; signum(end-i) == sign; i += step {
+		tuple = append(tuple, t[i])
+	}
+	return tuple
+}
+
 func (t Tuple) Iterate() Iterator { return &tupleIterator{elems: t} }
 func (t Tuple) Freeze() {
 	for _, elem := range t {

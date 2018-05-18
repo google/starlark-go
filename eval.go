@@ -805,11 +805,12 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 }
 
 func slice(x, lo, hi, step_ Value) (Value, error) {
-	n := Len(x)
-	if n < 0 {
-		n = 0 // n < 0 => invalid operand; will be rejected by type switch
+	sliceable, ok := x.(Sliceable)
+	if !ok {
+		return nil, fmt.Errorf("invalid slice operand %s", x.Type())
 	}
 
+	n := sliceable.Len()
 	step := 1
 	if step_ != None {
 		var err error
@@ -837,19 +838,6 @@ func slice(x, lo, hi, step_ Value) (Value, error) {
 		if end < start {
 			end = start // => empty result
 		}
-
-		if step == 1 {
-			// common case: simple subsequence
-			switch x := x.(type) {
-			case String:
-				return String(x[start:end]), nil
-			case *List:
-				elems := append([]Value{}, x.elems[start:end]...)
-				return NewList(elems), nil
-			case Tuple:
-				return x[start:end], nil
-			}
-		}
 	} else {
 		// negative stride
 		// default indices are effectively [n-1:-1], though to
@@ -876,31 +864,7 @@ func slice(x, lo, hi, step_ Value) (Value, error) {
 		}
 	}
 
-	// For positive strides, the loop condition is i < end.
-	// For negative strides, the loop condition is i > end.
-	sign := signum(step)
-	switch x := x.(type) {
-	case String:
-		var str []byte
-		for i := start; signum(end-i) == sign; i += step {
-			str = append(str, x[i])
-		}
-		return String(str), nil
-	case *List:
-		var list []Value
-		for i := start; signum(end-i) == sign; i += step {
-			list = append(list, x.elems[i])
-		}
-		return NewList(list), nil
-	case Tuple:
-		var tuple Tuple
-		for i := start; signum(end-i) == sign; i += step {
-			tuple = append(tuple, x[i])
-		}
-		return tuple, nil
-	}
-
-	return nil, fmt.Errorf("invalid slice operand %s", x.Type())
+	return sliceable.Slice(start, end, step), nil
 }
 
 // From Hacker's Delight, section 2.8.

@@ -878,12 +878,32 @@ var (
 	_ Indexable  = rangeValue{}
 	_ Sequence   = rangeValue{}
 	_ Comparable = rangeValue{}
+	_ Sliceable  = rangeValue{}
 )
 
 func (r rangeValue) Len() int          { return r.len }
 func (r rangeValue) Index(i int) Value { return MakeInt(r.start + i*r.step) }
 func (r rangeValue) Iterate() Iterator { return &rangeIterator{r, 0} }
-func (r rangeValue) Freeze()           {} // immutable
+
+func (r rangeValue) Slice(start, end, step int) Value {
+	newStart := r.start + r.step*start
+	newStop := r.start + r.step*end
+	newStep := r.step * step
+	var newLen int
+	if step > 0 {
+		newLen = (newStop-1-newStart)/newStep + 1
+	} else {
+		newLen = (newStart-1-newStop)/-newStep + 1
+	}
+	return rangeValue{
+		start: newStart,
+		stop:  newStop,
+		step:  newStep,
+		len:   newLen,
+	}
+}
+
+func (r rangeValue) Freeze() {} // immutable
 func (r rangeValue) String() string {
 	if r.step != 1 {
 		return fmt.Sprintf("range(%d, %d, %d)", r.start, r.stop, r.step)
