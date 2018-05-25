@@ -16,9 +16,9 @@ import (
 	"github.com/google/skylark"
 )
 
-// ExampleEmbedding demonstrates a simple embedding
+// ExampleExecFile demonstrates a simple embedding
 // of the Skylark interpreter into a Go program.
-func ExampleEmbedding() {
+func ExampleExecFile() {
 	const data = `
 print(greeting + ", world")
 
@@ -58,9 +58,9 @@ squares = [x*x for x in range(10)]
 	// squares (list) = [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 }
 
-// ExampleLoadSequential demonstrates a simple caching
+// ExampleThread_Load_sequential demonstrates a simple caching
 // implementation of 'load' that works sequentially.
-func ExampleLoadSequential() {
+func ExampleThread_Load_sequential() {
 	fakeFilesystem := map[string]string{
 		"c.sky": `load("b.sky", "b"); c = b + "!"`,
 		"b.sky": `load("a.sky", "a"); b = a + ", world"`,
@@ -109,9 +109,9 @@ func ExampleLoadSequential() {
 	// "Hello, world!"
 }
 
-// ExampleLoadParallel demonstrates a parallel implementation
+// ExampleThread_Load_parallel demonstrates a parallel implementation
 // of 'load' with caching, duplicate suppression, and cycle detection.
-func ExampleLoadParallel() {
+func ExampleThread_Load_parallel() {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
@@ -146,9 +146,9 @@ func ExampleLoadParallel() {
 	// c = 2
 }
 
-// ExampleLoadParallelCycle demonstrates detection
+// ExampleThread_Load_parallelCycle demonstrates detection
 // of cycles during parallel loading.
-func ExampleLoadParallelCycle() {
+func ExampleThread_Load_parallelCycle() {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
