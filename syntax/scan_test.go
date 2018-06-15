@@ -224,7 +224,7 @@ var dataFile = func(pkgdir, filename string) string {
 }
 
 func BenchmarkScan(b *testing.B) {
-	filename := dataFile("skylark/syntax", "testdata/def.bzl")
+	filename := dataFile("skylark/syntax", "testdata/scan.sky")
 	b.StopTimer()
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
