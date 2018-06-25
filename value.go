@@ -389,8 +389,10 @@ func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y)
 
 // String is the type of a Skylark string.
 //
-// A String is an immutable sequence of bytes.  Strings are iterable;
-// iteration over a string yields each of its 1-byte substrings in order.
+// A String encapsulates an an immutable sequence of bytes,
+// but strings are not directly iterable. Instead, iterate
+// over the result of calling one of these four methods:
+// codepoints, codepoint_ords, elems, elem_ords.
 type String string
 
 func (s String) String() string        { return strconv.Quote(string(s)) }
