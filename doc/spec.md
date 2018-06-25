@@ -3508,11 +3508,20 @@ They are interpreted according to Skylark's [indexing conventions](#indexing).
 <a id='string·endswith'></a>
 ### string·endswith
 
-`S.endswith(suffix)` reports whether the string S has the specified suffix.
+`S.endswith(suffix[, start[, end]])` reports whether the string
+`S[start:end]` has the specified suffix.
 
 ```python
 "filename.sky".endswith(".sky")         # True
 ```
+
+The `suffix` argument may be a tuple of strings, in which case the
+function reports whether any one of them is a suffix.
+
+```python
+'foo.cc'.endswith(('.cc', '.h'))         # True
+```
+
 
 <a id='string·find'></a>
 ### string·find
@@ -3878,10 +3887,20 @@ the final element does not necessarily end with a line terminator.
 <a id='string·startswith'></a>
 ### string·startswith
 
-`S.startswith(suffix)` reports whether the string S has the specified prefix.
+`S.startswith(prefix[, start[, end]])` reports whether the string
+`S[start:end]` has the specified prefix.
 
 ```python
 "filename.sky".startswith("filename")         # True
+```
+
+The `prefix` argument may be a tuple of strings, in which case the
+function reports whether any one of them is a prefix.
+
+```python
+'abc'.startswith(('a', 'A'))                  # True
+'ABC'.startswith(('a', 'A'))                  # True
+'def'.startswith(('a', 'A'))                  # False
 ```
 
 <a id='string·strip'></a>

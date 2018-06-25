@@ -102,8 +102,8 @@ var (
 		"codepoints":     string_iterable, // sic
 		"count":          string_count,
 		"elem_ords":      string_iterable,
-		"elems":          string_iterable, // sic
-		"endswith":       string_endswith,
+		"elems":          string_iterable,   // sic
+		"endswith":       string_startswith, // sic
 		"find":           string_find,
 		"format":         string_format,
 		"index":          string_index,
@@ -1480,16 +1480,6 @@ func string_count(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value
 	return MakeInt(strings.Count(slice, sub)), nil
 }
 
-// https://github.com/google/skylark/blob/master/doc/spec.md#string·endswith
-func string_endswith(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
-	recv := string(recv_.(String))
-	var suffix string
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &suffix); err != nil {
-		return nil, err
-	}
-	return Bool(strings.HasSuffix(recv, suffix)), nil
-}
-
 // https://github.com/google/skylark/blob/master/doc/spec.md#string·isalnum
 func string_isalnum(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
@@ -1855,13 +1845,47 @@ func string_rstrip(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value
 }
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#string·startswith
+// https://github.com/google/skylark/blob/master/doc/spec.md#string·endswith
 func string_startswith(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
-	recv := string(recv_.(String))
-	var prefix string
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &prefix); err != nil {
+	var x Value
+	var start, end Value = None, None
+	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &x, &start, &end); err != nil {
 		return nil, err
 	}
-	return Bool(strings.HasPrefix(recv, prefix)), nil
+
+	// compute effective substring.
+	s := string(recv_.(String))
+	if start, end, err := indices(start, end, len(s)); err != nil {
+		return nil, err
+	} else {
+		if end < start {
+			end = start // => empty result
+		}
+		s = s[start:end]
+	}
+
+	f := strings.HasPrefix
+	if fnname[0] == 'e' { // endswith
+		f = strings.HasSuffix
+	}
+
+	switch x := x.(type) {
+	case Tuple:
+		for i, x := range x {
+			prefix, ok := AsString(x)
+			if !ok {
+				return nil, fmt.Errorf("%s: want string, got %s, for element %d",
+					fnname, x.Type(), i)
+			}
+			if f(s, prefix) {
+				return True, nil
+			}
+		}
+		return False, nil
+	case String:
+		return Bool(f(s, string(x))), nil
+	}
+	return nil, fmt.Errorf("%s: got %s, want string or tuple of string", fnname, x.Type())
 }
 
 // https://github.com/google/skylark/blob/master/doc/spec.md#string·strip

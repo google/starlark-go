@@ -267,6 +267,23 @@ assert.true(not "foo".endswith("x"))
 assert.true("foo".startswith("fo"))
 assert.true(not "foo".startswith("x"))
 assert.fails(lambda: "foo".startswith(1), "got int.*want string")
+#
+assert.true('abc'.startswith(('a', 'A')))
+assert.true('ABC'.startswith(('a', 'A')))
+assert.true(not 'ABC'.startswith(('b', 'B')))
+assert.fails(lambda: '123'.startswith((1, 2)), 'got int, for element 0')
+assert.fails(lambda: '123'.startswith(['3']), 'got list')
+#
+assert.true('abc'.endswith(('c', 'C')))
+assert.true('ABC'.endswith(('c', 'C')))
+assert.true(not 'ABC'.endswith(('b', 'B')))
+assert.fails(lambda: '123'.endswith((1, 2)), 'got int, for element 0')
+assert.fails(lambda: '123'.endswith(['3']), 'got list')
+# start/end
+assert.true('abc'.startswith('bc', 1))
+assert.true(not 'abc'.startswith('b', 999))
+assert.true('abc'.endswith('ab', None, -1))
+assert.true(not 'abc'.endswith('b', None, -999))
 
 # str.replace
 assert.eq("banana".replace("a", "o", 1), "bonana")
