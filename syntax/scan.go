@@ -323,6 +323,7 @@ func (sc *scanner) peekRune() rune {
 func (sc *scanner) readRune() rune {
 	if len(sc.rest) == 0 {
 		sc.error(sc.pos, "internal scanner error: readRune at EOF")
+		return 0 // unreachable but eliminates bounds-check below
 	}
 
 	// fast path: ASCII
