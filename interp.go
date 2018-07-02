@@ -28,12 +28,12 @@ func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, err
 		// We look for the same function code,
 		// not function value, otherwise the user could
 		// defeat the check by writing the Y combinator.
-		if fr.fn != nil && fr.fn.funcode == fn.funcode {
+		if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == fn.funcode {
 			return nil, fmt.Errorf("function %s called recursively", fn.Name())
 		}
 	}
 
-	thread.frame = &Frame{parent: thread.frame, fn: fn}
+	thread.frame = &Frame{parent: thread.frame, callable: fn}
 	result, err := call(thread, args, kwargs)
 	thread.frame = thread.frame.parent
 	return result, err
@@ -41,15 +41,16 @@ func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, err
 
 func call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	fr := thread.frame
-	f := fr.fn.funcode
+	fn := fr.callable.(*Function)
+	f := fn.funcode
 	nlocals := len(f.Locals)
 	stack := make([]Value, nlocals+f.MaxStack)
 	locals := stack[:nlocals:nlocals] // local variables, starting with parameters
 	stack = stack[nlocals:]
 
-	err := setArgs(locals, fr.fn, args, kwargs)
+	err := setArgs(locals, fn, args, kwargs)
 	if err != nil {
-		return nil, fr.errorf(fr.fn.Position(), "%v", err)
+		return nil, fr.errorf(fr.Position(), "%v", err)
 	}
 
 	if vmdebug {
@@ -432,7 +433,7 @@ loop:
 			sp--
 
 		case compile.CONSTANT:
-			stack[sp] = fr.fn.constants[arg]
+			stack[sp] = fn.constants[arg]
 			sp++
 
 		case compile.MAKETUPLE:
@@ -458,9 +459,9 @@ loop:
 			sp -= 2
 			stack[sp] = &Function{
 				funcode:     funcode,
-				predeclared: fr.fn.predeclared,
-				globals:     fr.fn.globals,
-				constants:   fr.fn.constants,
+				predeclared: fn.predeclared,
+				globals:     fn.globals,
+				constants:   fn.constants,
 				defaults:    defaults,
 				freevars:    freevars,
 			}
@@ -497,7 +498,7 @@ loop:
 			sp--
 
 		case compile.SETGLOBAL:
-			fr.fn.globals[arg] = stack[sp-1]
+			fn.globals[arg] = stack[sp-1]
 			sp--
 
 		case compile.LOCAL:
@@ -510,11 +511,11 @@ loop:
 			sp++
 
 		case compile.FREE:
-			stack[sp] = fr.fn.freevars[arg]
+			stack[sp] = fn.freevars[arg]
 			sp++
 
 		case compile.GLOBAL:
-			x := fr.fn.globals[arg]
+			x := fn.globals[arg]
 			if x == nil {
 				err = fmt.Errorf("global variable %s referenced before assignment", f.Prog.Globals[arg].Name)
 				break loop
@@ -524,7 +525,7 @@ loop:
 
 		case compile.PREDECLARED:
 			name := f.Prog.Names[arg]
-			x := fr.fn.predeclared[name]
+			x := fn.predeclared[name]
 			if x == nil {
 				err = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name)
 				break loop

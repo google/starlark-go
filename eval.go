@@ -62,11 +62,12 @@ func (thread *Thread) Local(key string) interface{} {
 	return thread.locals[key]
 }
 
-// Caller returns the frame of the innermost enclosing Skylark function.
+// Caller returns the frame of the caller of the current function.
 // It should only be used in built-ins called from Skylark code.
-func (thread *Thread) Caller() *Frame {
-	return thread.frame
-}
+func (thread *Thread) Caller() *Frame { return thread.frame.parent }
+
+// TopFrame returns the topmost stack frame.
+func (thread *Thread) TopFrame() *Frame { return thread.frame }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
@@ -104,14 +105,18 @@ func (d StringDict) Freeze() {
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
-// A Frame holds the execution state of a single Skylark function call
-// or module toplevel.
+// A Frame records a call to a Skylark function (including module toplevel)
+// or a built-in function or method.
 type Frame struct {
-	parent *Frame          // caller's frame (or nil)
-	posn   syntax.Position // source position of PC, set during error
-	callpc uint32          // PC of position of active call, set during call
-	fn     *Function       // current function (or toplevel)
+	parent   *Frame          // caller's frame (or nil)
+	callable Callable        // current function (or toplevel) or built-in
+	posn     syntax.Position // source position of PC, set during error
+	callpc   uint32          // PC of position of active call, set during call
 }
+
+// The Frames of a thread are structured as a spaghetti stack, not a
+// slice, so that an EvalError can copy a stack efficiently and immutably.
+// In hindsight using a slice would have led to a more convenient API.
 
 func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}) *EvalError {
 	fr.posn = posn
@@ -124,11 +129,16 @@ func (fr *Frame) Position() syntax.Position {
 	if fr.posn.IsValid() {
 		return fr.posn // leaf frame only (the error)
 	}
-	return fr.fn.funcode.Position(fr.callpc) // position of active call
+	if fn, ok := fr.callable.(*Function); ok {
+		return fn.funcode.Position(fr.callpc) // position of active call
+	}
+	return syntax.MakePosition(&builtinFilename, 1, 0)
 }
 
-// Function returns the frame's function, or nil for the top-level of a module.
-func (fr *Frame) Function() *Function { return fr.fn }
+var builtinFilename = "<builtin>"
+
+// Function returns the frame's function or built-in.
+func (fr *Frame) Callable() Callable { return fr.callable }
 
 // Parent returns the frame of the enclosing function call, if any.
 func (fr *Frame) Parent() *Frame { return fr.parent }
@@ -157,7 +167,7 @@ func (fr *Frame) WriteBacktrace(out *bytes.Buffer) {
 	print = func(fr *Frame) {
 		if fr != nil {
 			print(fr.parent)
-			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.fn.Name())
+			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.Callable().Name())
 		}
 	}
 	print(fr)

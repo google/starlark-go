@@ -322,7 +322,7 @@ f()
 	print := func(thread *skylark.Thread, msg string) {
 		caller := thread.Caller()
 		fmt.Fprintf(buf, "%s: %s: %s\n",
-			caller.Position(), caller.Function().Name(), msg)
+			caller.Position(), caller.Callable().Name(), msg)
 	}
 	thread := &skylark.Thread{Print: print}
 	if _, err := skylark.ExecFile(thread, "foo.go", src, nil); err != nil {
@@ -420,17 +420,18 @@ def i(): return h()
 i()
 `
 	thread := new(skylark.Thread)
-	_, err := skylark.ExecFile(thread, "crash.go", src, nil)
+	_, err := skylark.ExecFile(thread, "crash.sky", src, nil)
 	switch err := err.(type) {
 	case *skylark.EvalError:
 		got := err.Backtrace()
 		// Compiled code currently has no column information.
 		const want = `Traceback (most recent call last):
-  crash.go:6: in <toplevel>
-  crash.go:5: in i
-  crash.go:4: in h
-  crash.go:3: in g
-  crash.go:2: in f
+  crash.sky:6: in <toplevel>
+  crash.sky:5: in i
+  crash.sky:4: in h
+  <builtin>:1: in min
+  crash.sky:3: in g
+  crash.sky:2: in f
 Error: floored division by zero`
 		if got != want {
 			t.Errorf("error was %s, want %s", got, want)
