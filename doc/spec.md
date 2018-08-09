@@ -233,12 +233,13 @@ Comments are treated like other white space.
 characters are tokens:
 
 ```text
-+    -    *    /    //   %
-&    |    **
++    -    *    /    //   %   ^
+&    |    **                     <<    >>
+&=   |=
 .    ,    =    ;    :
 (    )    [    ]    {    }
 <    >    >=   <=   ==   !=
-+=   -=   *=   /=   //=  %=
++=   -=   *=   /=   //=  %=  ^=  <<=   >>=
 ```
 
 *Keywords*: The following tokens are keywords and may not be used as
@@ -424,8 +425,11 @@ The `/` operator implements real division, and
 yields a `float` result even when its operands are both of type `int`.
 
 Integers, including negative values, may be interpreted as bit vectors.
-The `|` and `&` operators implement bitwise OR and AND, respectively.
-(This feature is not part of the Java implementation.)
+The `|`, `&`, and `^` operators implement bitwise OR, AND, and XOR,
+respectively. The unary `~` operator yields the bitwise inversion of its
+integer argument. The `<<` and `>>` operators shift the first argument
+to the left or right by the number of bits given by the second argument.
+(These features are not part of the Java implementation.)
 
 Any bool, number, or string may be interpreted as an integer by using
 the `int` built-in function.
@@ -448,6 +452,10 @@ arithmetic is exact, motivated by the need for lossless manipulation
 of protocol messages which may contain signed and unsigned 64-bit
 integers.
 The Java implementation currently supports only signed 32-bit integers.
+
+The Go implementation of the Skylark REPL requires the `-bitwise` flag to
+enable support for `&`, `|`, `^`, `~`, `<<`, and `>>` operations.
+The Java implementation does not support `^`, `~`, `<<`, and `>>` operations.
 
 
 ### Floating-point numbers
@@ -834,6 +842,8 @@ applied to sets.  The right operand of the `|` operator may be any
 iterable value.  The binary `in` operator performs a set membership
 test when its right operand is a set.
 
+The binary `^` operator performs symmetric difference of two sets.
+
 Sets are instantiated by calling the built-in `set` function, which
 returns a set containing all the elements of its optional argument,
 which must be an iterable sequence.  Sets have no literal syntax.
@@ -844,7 +854,8 @@ A set used in a Boolean context is considered true if it is non-empty.
 
 <b>Implementation note:</b>
 The Go implementation of the Skylark REPL requires the `-set` flag to
-enable support for sets.
+enable support for sets and the `-bitwise` flag to enable support for
+the `&`, `|`, and `^` operators.
 The Java implementation does not support sets.
 
 
@@ -1632,11 +1643,12 @@ Examples:
 ### Unary operators
 
 There are three unary operators, all appearing before their operand:
-`+`, `-`, and `not`.
+`+`, `-`, `~`, and `not`.
 
 ```grammar {.good}
 UnaryExpr = '+' PrimaryExpr
           | '-' PrimaryExpr
+          | '~' PrimaryExpr
           | 'not' Test
           .
 ```
@@ -1644,6 +1656,7 @@ UnaryExpr = '+' PrimaryExpr
 ```text
 + number        unary positive          (int, float)
 - number        unary negation          (int, float)
+~ number        unary bitwise inversion (int)
 not x           logical negation        (any type)
 ```
 
@@ -1673,9 +1686,18 @@ not ""                          # True
 not 0                           # True
 ```
 
+The `~` operator yields the bitwise inversion of its integer argument.
+The bitwise inversion of x is defined as -(x+1).
+
+```python
+~1                              # -2
+~-1                             # 0
+~0                              # -1
+```
+
 <b>Implementation note:</b>
 The parser in the Java implementation of Skylark does not accept unary
-`+` expressions.
+`+` and `~` expressions.
 
 ### Binary operators
 
@@ -1685,11 +1707,13 @@ Skylark has the following binary operators, arranged in order of increasing prec
 or
 and
 not
-==   !=   <   >   <=   >=   in   not in
+==   !=   <    >   <=   >=   in   not in
 |
+^
 &
--   +
-*   /   //   %
+<<   >>
+-    +
+*    /    //   %
 ```
 
 Comparison operators, `in`, and `not in` are non-associative,
@@ -1704,9 +1728,11 @@ Binop = 'or'
       | 'not'
       | '==' | '!=' | '<' | '>' | '<=' | '>=' | 'in' | 'not' 'in'
       | '|'
+      | '^'
       | '&'
       | '-' | '+'
       | '*' | '%' | '/' | '//'
+      | '<<' | '>>'
       .
 ```
 
@@ -1805,6 +1831,9 @@ Arithmetic (int or float; result has type float unless both operands have type i
    number / number              # real division  (result is always a float)
    number // number             # floored division
    number % number              # remainder of floored division
+   number ^ number              # bitwise XOR
+   number << number             # bitwise left shift
+   number >> number             # bitwise right shift
 
 Concatenation
    string + string
@@ -1824,6 +1853,7 @@ Sets
       set | set                 # set union
       int & int                 # bitwise intersection (AND)
       set & set                 # set intersection
+      set ^ set                 # set symmetric difference
 ```
 
 The operands of the arithmetic operators `+`, `-`, `*`, `//`, and
@@ -1876,12 +1906,26 @@ The result of `set | set` is a new set whose elements are the
 union of the operands, preserving the order of the elements of the
 operands, left before right.
 
+The `^` operator accepts operands of either `int` or `set` type.
+For integers, it yields the bitwise XOR (exclusive OR) of its operands.
+For sets, it yields a new set containing elements of either first or second
+operand but not both (symmetric difference).
+
+The `<<` and `>>` operators require operands of `int` type both. They shift
+the first operand to the left or right by the number of bits given by the
+second operand. It is a dynamic error if the second operand is negative.
+Implementations may impose a limit on the second operand of a left shift.
+
 ```python
 0x12345678 & 0xFF               # 0x00000078
 0x12345678 | 0xFF               # 0x123456FF
+0b01011101 ^ 0b110101101        # 0b111110000
+0b01011101 >> 2                 # 0b010111
+0b01011101 << 2                 # 0b0101110100
 
 set([1, 2]) & set([2, 3])       # set([2])
 set([1, 2]) | set([2, 3])       # set([1, 2, 3])
+set([1, 2]) ^ set([2, 3])       # set([1, 3])
 ```
 
 <b>Implementation note:</b>
@@ -2421,11 +2465,11 @@ In the Java implementation, targets cannot be dot expressions.
 
 An augmented assignment, which has the form `lhs op= rhs` updates the
 variable `lhs` by applying a binary arithmetic operator `op` (one of
-`+`, `-`, `*`, `/`, `//`, `%`) to the previous value of `lhs` and the value
-of `rhs`.
+`+`, `-`, `*`, `/`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`) to the previous
+value of `lhs` and the value of `rhs`.
 
 ```grammar {.good}
-AssignStmt = Expression ('=' | '+=' | '-=' | '*=' | '/=' | '//=' | '%=') Expression .
+AssignStmt = Expression ('=' | '+=' | '-=' | '*=' | '/=' | '//=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=') Expression .
 ```
 
 The left-hand side must be a simple target:

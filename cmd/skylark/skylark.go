@@ -32,6 +32,7 @@ func init() {
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
 	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
 	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")
+	flag.BoolVar(&resolve.AllowBitwise, "bitwise", resolve.AllowBitwise, "allow bitwise operations (&, |, ^, ~, <<, and >>)")
 }
 
 func main() {

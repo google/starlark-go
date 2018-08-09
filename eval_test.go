@@ -25,6 +25,7 @@ func init() {
 	resolve.AllowNestedDef = true
 	resolve.AllowFloat = true
 	resolve.AllowSet = true
+	resolve.AllowBitwise = true
 }
 
 func TestEvalExpr(t *testing.T) {
