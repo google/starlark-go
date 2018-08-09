@@ -233,13 +233,12 @@ Comments are treated like other white space.
 characters are tokens:
 
 ```text
-+    -    *    /    //   %   ^
-&    |    **                     <<    >>
-&=   |=
-.    ,    =    ;    :
++    -    *    /    //   %    =
++=   -=   *=   /=   //=  %=   ==   !=
+^    <    >    <<   >>   &    |
+^=   <=   >=   <<=  >>=  &=   |=
+.    ,    ;    :    ~    **
 (    )    [    ]    {    }
-<    >    >=   <=   ==   !=
-+=   -=   *=   /=   //=  %=  ^=  <<=   >>=
 ```
 
 *Keywords*: The following tokens are keywords and may not be used as
@@ -274,7 +273,8 @@ The Go implementation permits `assert` to be used as an identifier,
 and this feature is widely used in its tests.
 
 <b>Implementation note:</b>
-The Java implementation does not recognize `&` as a valid token.
+The Java implementation does not recognize the following tokens:
+`&`, `&=`, `|=`, `<<`, `>>`, `<<=`, `>>=`, `^`, `^=`, `~`.
 
 *Identifiers*: an identifier is a sequence of Unicode letters, decimal
  digits, and underscores (`_`), not starting with a digit.
@@ -3986,6 +3986,7 @@ eventually to eliminate all such differences on a case-by-case basis.
 
 * Integers are represented with infinite precision.
 * Integer arithmetic is exact.
+* Integers support bitwise operators `&`, `|`, `<<`, `>>`, `^`, `~`, and their assignment forms.
 * Floating-point literals are supported (option: `-float`).
 * The `float` built-in function is provided (option: `-float`).
 * Real division using `float / float` is supported (option: `-float`).
@@ -3996,10 +3997,9 @@ eventually to eliminate all such differences on a case-by-case basis.
 * Strings have the additional methods `elem_ords`, `codepoint_ords`, and `codepoints`.
 * The `chr` and `ord` built-in functions are supported.
 * The `set` built-in function is provided (option: `-set`).
+* `set & set` and `set | set` compute set intersection and union, respectively.
 * `x += y` rebindings are permitted at top level.
 * `assert` is a valid identifier.
-* `&` is a token; `int & int` and `set & set` are supported.
-* `int | int` is supported.
 * The parser accepts unary `+` expressions.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
