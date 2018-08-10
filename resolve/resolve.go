@@ -271,7 +271,7 @@ func (b *block) String() string {
 		return "function block at " + fmt.Sprint(b.function.Span())
 	}
 	if b.comp != nil {
-		return "comprehension block at " + fmt.Sprint(b.function.Span())
+		return "comprehension block at " + fmt.Sprint(b.comp.Span())
 	}
 	return "module block"
 }
