@@ -1,0 +1,31 @@
+
+load("assert.sky", "assert")
+load("time.sky", "time")
+
+assert.eq(type(time.now()), "time.time")
+
+year = 365.25 * 24 * time.hour
+# assert.eq((time.now() - time.zero) / year, 292.271) # years since zero, approx
+
+# The clock is set to Sat Mar  7 11:06:39 PST 2015.
+assert.eq(time.now().year, 2015)
+assert.eq(time.now().month, "March")
+assert.eq(time.now().day, 7)
+assert.eq(time.now().hour, 11)
+assert.eq(time.now(), time.time("Sat Mar  7 11:06:39 PST 2015")) # TODO: decide on formats
+
+assert.eq(str(300 * time.millisecond), "300ms")
+assert.eq(str(135 * time.second + 2 * time.minute), "4m15s")
+assert.eq(str(time.second * 135 + time.minute * 2), "4m15s")
+assert.eq(str(time.hour * 2), "2h0m0s")
+assert.eq(str(time.hour * 2.0), "2h0m0s")
+assert.eq((time.hour * 1.25 - 15 * time.minute) / time.second, 3600)
+assert.eq(str(time.hour / 2), "30m0s")
+assert.eq(str(time.hour / 2.0), "30m0s")
+assert.fails(lambda: time.hour // 2, "unknown binary op: time.duration // int")
+assert.fails(lambda: time.hour // 2.0, "unknown binary op: time.duration // float")
+
+assert.eq(time.duration("300.0ms"), 300 * time.millisecond)
+assert.eq(time.duration("300.0ms"), 300.0 * time.millisecond)
+assert.eq(type(time.duration("1s")), "time.duration")
+assert.eq(str(time.duration("1.00s")), "1s")

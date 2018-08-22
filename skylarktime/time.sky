@@ -1,0 +1,5 @@
+#  the time module
+
+time = struct(
+    now = now,
+)
