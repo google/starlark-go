@@ -1140,6 +1140,7 @@ nested in any order, to any depth.
 If name is bound anywhere within a block, all uses of the name within
 the block are treated as references to that binding, even uses that
 appear before the binding.
+This is true even in the module block, unlike Python.
 The binding of `y` on the last line of the example below makes `y`
 local to the function `hello`, so the use of `y` in the print
 statement also refers to the local `y`, even though it appears

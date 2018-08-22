@@ -191,22 +191,26 @@ f()
 z += 3 ### "global variable z referenced before assignment"
 
 ---
-# It's ok to define a global that shadows a built-in.
-
 load("assert.sky", "assert")
 
-assert.eq(type(list), "builtin_function_or_method")
+# It's ok to define a global that shadows a built-in...
 list = []
 assert.eq(type(list), "list")
 
-# set and float are dialect-specific,
-# but we shouldn't notice any difference.
+# ...but then all uses refer to the global,
+# even if they occur before the binding use.
+# See github.com/google/skylark/issues/116.
+assert.fails(lambda: tuple, "global variable tuple referenced before assignment")
+tuple = ()
 
-assert.eq(type(float), "builtin_function_or_method")
+---
+# Same as above, but set and float are dialect-specific;
+# we shouldn't notice any difference.
+load("assert.sky", "assert")
+
 float = 1.0
 assert.eq(type(float), "float")
 
-assert.eq(type(set), "builtin_function_or_method")
 set = [1, 2, 3]
 assert.eq(type(set), "list")
 

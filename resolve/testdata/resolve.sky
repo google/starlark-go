@@ -9,8 +9,8 @@ x = 1
 _ = x
 
 ---
-# premature use of global
-_ = x ### "undefined: x"
+# premature use of global is not a static error; see issue 116.
+_ = x
 x = 1
 
 ---
@@ -35,6 +35,12 @@ M = 2 ### "cannot reassign global M declared at .*/resolve.sky"
 # universal predeclared name
 U = 1 # ok
 U = 1 ### "cannot reassign global U declared at .*/resolve.sky"
+
+---
+# A global declaration shadows all references to a predeclared; see issue 116.
+
+a = U # ok: U is a reference to the global defined on the next line.
+U = 1
 
 ---
 # reference to predeclared name
@@ -79,7 +85,6 @@ def f():
      i()
      i = lambda: 0
 
-
 def g():
   f()
 
@@ -115,8 +120,6 @@ e = 1
 
 ---
 # This program should resolve successfully but fail dynamically.
-# However, the Java implementation currently reports the dynamic
-# error at the x=2 statement.
 x = 1
 
 def f():
