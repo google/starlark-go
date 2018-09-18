@@ -124,8 +124,11 @@ it does not need to be completed again.
 
 We reserve the right to make breaking language and API changes at this
 stage in the project, although we will endeavor to keep them to a minimum.
-Once the project has its long-term name (see below) and location, and
-the Bazel team has finalized the version 1 language specification,
+Now that the project's long-term name ("Starlark") has been decided,
+we plan to copy this repository to github.com/google/starlark and
+change the canonical import path for all packages to starlark.net/starlark.
+The current github.com/google/skylark repository will be frozen.
+Once the Bazel team has finalized the version 1 language specification,
 we will be more rigorous with interface stability.
 
 ### Credits
@@ -153,7 +156,7 @@ It is provided under a 3-clause BSD license:
 [LICENSE](https://github.com/google/skylark/blob/master/LICENSE).
 
 The name "Skylark" is a code name of the Bazel project.
-We plan to rename the language before the end of 2017 to reflect its
+The Bazel team plans to rename the language to "Starlark" to reflect its
 applicability to projects unrelated to Bazel.
 
 Skylark in Go is not an official Google product.
