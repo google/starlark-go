@@ -538,7 +538,7 @@ func (p *parser) parseTestPrec(prec int) Expr {
 	// expr = NOT expr
 	if p.tok == NOT && prec == int(precedence[NOT]) {
 		pos := p.nextToken()
-		x := p.parseTestPrec(prec + 1)
+		x := p.parseTestPrec(prec)
 		return &UnaryExpr{
 			OpPos: pos,
 			Op:    NOT,
@@ -591,16 +591,16 @@ var precedence [maxToken]int8
 // Unary MINUS, unary PLUS, and TILDE have higher precedence so are handled in parsePrimary.
 // See https://github.com/google/skylark/blob/master/doc/spec.md#binary-operators
 var preclevels = [...][]Token{
-	{OR},  // or
-	{AND}, // and
-	{NOT}, // not (unary)
+	{OR},                                   // or
+	{AND},                                  // and
+	{NOT},                                  // not (unary)
 	{EQL, NEQ, LT, GT, LE, GE, IN, NOT_IN}, // == != < > <= >= in not in
-	{PIPE},                             // |
-	{CIRCUMFLEX},                       // ^
-	{AMP},                              // &
-	{LTLT, GTGT},                       // << >>
-	{MINUS, PLUS},                      // -
-	{STAR, PERCENT, SLASH, SLASHSLASH}, // * % / //
+	{PIPE},                                 // |
+	{CIRCUMFLEX},                           // ^
+	{AMP},                                  // &
+	{LTLT, GTGT},                           // << >>
+	{MINUS, PLUS},                          // -
+	{STAR, PERCENT, SLASH, SLASHSLASH},     // * % / //
 }
 
 func init() {
@@ -759,7 +759,7 @@ func (p *parser) parseArgs() []Expr {
 //          | '[' ...                    // list literal or comprehension
 //          | '{' ...                    // dict literal or comprehension
 //          | '(' ...                    // tuple or parenthesized expression
-//          | ('-'|'+') primary_with_suffix
+//          | ('-'|'+'|'~') primary_with_suffix
 func (p *parser) parsePrimary() Expr {
 	switch p.tok {
 	case IDENT:
@@ -805,8 +805,7 @@ func (p *parser) parsePrimary() Expr {
 			Rparen: rparen,
 		}
 
-	case MINUS, PLUS, TILDE:
-		// unary minus/plus/tilde:
+	case MINUS, PLUS, TILDE: // unary
 		tok := p.tok
 		pos := p.nextToken()
 		x := p.parsePrimaryWithSuffix()
