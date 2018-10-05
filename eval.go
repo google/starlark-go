@@ -413,8 +413,8 @@ func getIndex(fr *Frame, x, y Value) (Value, error) {
 // setIndex implements x[y] = z.
 func setIndex(fr *Frame, x, y, z Value) error {
 	switch x := x.(type) {
-	case *Dict:
-		if err := x.Set(y, z); err != nil {
+	case HasSetKey:
+		if err := x.SetKey(y, z); err != nil {
 			return err
 		}
 
@@ -508,10 +508,10 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			if y, ok := y.(*Dict); ok {
 				z := new(Dict)
 				for _, item := range x.Items() {
-					z.Set(item[0], item[1])
+					z.SetKey(item[0], item[1])
 				}
 				for _, item := range y.Items() {
-					z.Set(item[0], item[1])
+					z.SetKey(item[0], item[1])
 				}
 				return z, nil
 			}
@@ -1048,7 +1048,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 			if kwdict == nil {
 				return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
 			}
-			kwdict.Set(k, v)
+			kwdict.SetKey(k, v)
 		}
 
 		// default values

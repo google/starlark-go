@@ -1278,7 +1278,7 @@ func dict_setdefault(fnname string, recv Value, args Tuple, kwargs []Tuple) (Val
 	} else if ok {
 		return v, nil
 	} else {
-		return dflt, dict.Set(key, dflt)
+		return dflt, dict.SetKey(key, dflt)
 	}
 }
 
@@ -2122,7 +2122,7 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 		case *Dict:
 			// Iterate over dict's key/value pairs, not just keys.
 			for _, item := range updates.Items() {
-				if err := dict.Set(item[0], item[1]); err != nil {
+				if err := dict.SetKey(item[0], item[1]); err != nil {
 					return err // dict is frozen
 				}
 			}
@@ -2150,7 +2150,7 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 				var k, v Value
 				iter2.Next(&k)
 				iter2.Next(&v)
-				if err := dict.Set(k, v); err != nil {
+				if err := dict.SetKey(k, v); err != nil {
 					return err
 				}
 			}
@@ -2159,7 +2159,7 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 
 	// Then add the kwargs.
 	for _, pair := range kwargs {
-		if err := dict.Set(pair[0], pair[1]); err != nil {
+		if err := dict.SetKey(pair[0], pair[1]); err != nil {
 			return err // dict is frozen
 		}
 	}
