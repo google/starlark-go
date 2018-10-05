@@ -6,6 +6,7 @@ load("assert.sky", "assert")
 assert.true(True)
 assert.true(not False)
 assert.true(not not True)
+assert.true(not not 1 >= 1)
 
 # bool conversion
 assert.eq(
