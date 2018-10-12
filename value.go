@@ -102,6 +102,8 @@ type Value interface {
 	// Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y).
 	// Hash may fail if the value's type is not hashable, or if the value
 	// contains a non-hashable value.
+	//
+	// TODO(adonovan): return a uintptr (a breaking change).
 	Hash() (uint32, error)
 }
 

@@ -5,12 +5,32 @@
 package skylark
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 )
 
 func TestHashtable(t *testing.T) {
 	testHashtable(t, make(map[int]bool))
+}
+
+func BenchmarkStringHash(b *testing.B) {
+	for len := 1; len <= 1024; len *= 2 {
+		buf := make([]byte, len)
+		rand.New(rand.NewSource(0)).Read(buf)
+		s := string(buf)
+
+		b.Run(fmt.Sprintf("hard-%d", len), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				hashString(s)
+			}
+		})
+		b.Run(fmt.Sprintf("soft-%d", len), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				softHashString(s)
+			}
+		})
+	}
 }
 
 func BenchmarkHashtable(b *testing.B) {
