@@ -403,9 +403,16 @@ func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y)
 // but strings are not directly iterable. Instead, iterate
 // over the result of calling one of these four methods:
 // codepoints, codepoint_ords, elems, elem_ords.
+//
+// Warning: the contract of the Value interface's String method is that
+// it returns the value printed in Skylark notation,
+// so s.String() or fmt.Sprintf("%s", s) returns a quoted string.
+// Use string(s) or s.GoString() or fmt.Sprintf("%#v", s) to obtain the raw contents
+// of a Skylark string as a Go string.
 type String string
 
 func (s String) String() string        { return strconv.Quote(string(s)) }
+func (s String) GoString() string      { return string(s) }
 func (s String) Type() string          { return "string" }
 func (s String) Freeze()               {} // immutable
 func (s String) Truth() Bool           { return len(s) > 0 }
@@ -622,7 +629,7 @@ func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, di
 func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
 
 // Set is an backwards-compatibility alias for SetKey.
-func (d *Dict) Set(k, v Value) error { return d.SetKey(k, v)}
+func (d *Dict) Set(k, v Value) error { return d.SetKey(k, v) }
 
 func (x *Dict) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Dict)
