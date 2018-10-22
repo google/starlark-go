@@ -37,7 +37,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 2
+const Version = 3
 
 type Opcode uint8
 
