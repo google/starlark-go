@@ -298,6 +298,8 @@ def f(a, b=42, *args, **kwargs):
 		{`f(0, b=1)`, `(0, 1, (), {})`},
 		{`f(0, a=1)`, `function f got multiple values for keyword argument "a"`},
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
+		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
+			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
 	} {
 		var got string
 		if v, err := skylark.Eval(thread, "<expr>", test.src, globals); err != nil {

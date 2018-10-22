@@ -184,3 +184,24 @@ def f(a, b, x, y):
   return a+b+x+y
 
 assert.eq(f(*("a", "b"), **dict(y="y", x="x")) + ".", 'abxy.')
+---
+# Order of evaluation of function arguments.
+# Regression test for github.com/google/skylark/issues/135.
+load("assert.sky", "assert")
+
+r = []
+
+def id(x):
+       r.append(x)
+       return x
+
+def f(*args, **kwargs):
+  return (args, kwargs)
+
+y = f(id(1), id(2), x=id(3), *[id(4)], y=id(5), **dict(z=id(6)))
+assert.eq(y, ((1, 2, 4), dict(x=3, y=5, z=6)))
+
+# This matches Python2, but not Skylark-in-Java:
+# *args and *kwargs are evaluated last.
+# See github.com/bazelbuild/starlark#13 for pending spec change.
+assert.eq(r, [1, 2, 3, 5, 4, 6])

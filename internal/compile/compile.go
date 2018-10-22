@@ -1502,11 +1502,14 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 	var callmode int
 	// Compute the number of each kind of parameter.
-	// TODO(adonovan): do this in resolver.
 	var p, n int // number of  positional, named arguments
 	var varargs, kwargs syntax.Expr
 	for _, arg := range call.Args {
 		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
+
+			// named argument (name, value)
+			fcomp.string(binary.X.(*syntax.Ident).Name)
+			fcomp.expr(binary.Y)
 			n++
 			continue
 		}
@@ -1521,21 +1524,33 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 				continue
 			}
 		}
+
+		// positional argument
+		fcomp.expr(arg)
 		p++
 	}
 
-	// positional arguments
-	for _, elem := range call.Args[:p] {
-		fcomp.expr(elem)
-	}
-
-	// named argument pairs (name, value, ..., name, value)
-	named := call.Args[p : p+n]
-	for _, arg := range named {
-		binary := arg.(*syntax.BinaryExpr)
-		fcomp.string(binary.X.(*syntax.Ident).Name)
-		fcomp.expr(binary.Y)
-	}
+	// Python2, Python3, and Skylark-in-Java all permit named arguments
+	// to appear both before and after a *args argument:
+	//   f(1, 2, x=3, *[4], y=5, **dict(z=6))
+	//
+	// However all three implement different argument evaluation orders:
+	//  Python2: 1 2 3 5 4 6 (*args and **kwargs evaluated last)
+	//  Python3: 1 2 4 3 5 6 (positional args evaluated before named args)
+	//  Skylark-in-Java: 1 2 3 4 5 6 (lexical order)
+	//
+	// The Skylark-in-Java semantics are clean but hostile to a
+	// compiler-based implementation because they require that the
+	// compiler emit code for positional, named, *args, more named,
+	// and *kwargs arguments and provide the callee with a map of
+	// the terrain.
+	//
+	// For now we implement the Python2 semantics, but
+	// the spec needs to clarify the correct approach.
+	// Perhaps it would be best if we statically rejected
+	// named arguments after *args (e.g. y=5) so that the
+	// Python2 implementation strategy matches lexical order.
+	// Discussion in github.com/bazelbuild/starlark#13.
 
 	// *args
 	if varargs != nil {
