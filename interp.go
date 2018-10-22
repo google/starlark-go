@@ -18,13 +18,13 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 //   in the thread, and slicing it.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
-func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
+func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	if debug {
 		fmt.Printf("call of %s %v %v\n", fn.Name(), args, kwargs)
 	}
 
 	// detect recursion
-	for fr := thread.frame; fr != nil; fr = fr.parent {
+	for fr := thread.frame.parent; fr != nil; fr = fr.parent {
 		// We look for the same function code,
 		// not function value, otherwise the user could
 		// defeat the check by writing the Y combinator.
@@ -33,10 +33,7 @@ func (fn *Function) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, err
 		}
 	}
 
-	thread.frame = &Frame{parent: thread.frame, callable: fn}
-	result, err := call(thread, args, kwargs)
-	thread.frame = thread.frame.parent
-	return result, err
+	return call(thread, args, kwargs)
 }
 
 func call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {

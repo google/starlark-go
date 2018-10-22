@@ -144,10 +144,12 @@ var (
 )
 
 // A Callable value f may be the operand of a function call, f(x).
+//
+// Clients should use the Call function, never the CallInternal method.
 type Callable interface {
 	Value
 	Name() string
-	Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
+	CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
 }
 
 var (
@@ -577,11 +579,8 @@ func (b *Builtin) Hash() (uint32, error) {
 func (b *Builtin) Receiver() Value { return b.recv }
 func (b *Builtin) String() string  { return toString(b) }
 func (b *Builtin) Type() string    { return "builtin_function_or_method" }
-func (b *Builtin) Call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	thread.frame = &Frame{parent: thread.frame, callable: b}
-	result, err := b.fn(thread, b, args, kwargs)
-	thread.frame = thread.frame.parent
-	return result, err
+func (b *Builtin) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
+	return b.fn(thread, b, args, kwargs)
 }
 func (b *Builtin) Truth() Bool { return true }
 

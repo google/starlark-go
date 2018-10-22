@@ -70,7 +70,7 @@ func (sym *symbol) Freeze()               {} // immutable
 func (sym *symbol) Truth() skylark.Bool   { return skylark.True }
 func (sym *symbol) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", sym.Type()) }
 
-func (sym *symbol) Call(thread *skylark.Thread, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (sym *symbol) CallInternal(thread *skylark.Thread, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	if len(args) > 0 {
 		return nil, fmt.Errorf("%s: unexpected positional arguments", sym)
 	}

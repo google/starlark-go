@@ -80,7 +80,7 @@ func catch(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple, kwarg
 	if err := skylark.UnpackArgs("catch", args, kwargs, "fn", &fn); err != nil {
 		return nil, err
 	}
-	if _, err := fn.Call(thread, nil, nil); err != nil {
+	if _, err := skylark.Call(thread, fn, nil, nil); err != nil {
 		return skylark.String(err.Error()), nil
 	}
 	return skylark.None, nil

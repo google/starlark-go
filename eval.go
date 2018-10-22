@@ -280,7 +280,7 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
 	toplevel := makeToplevelFunction(prog.compiled.Toplevel, predeclared)
 
-	_, err := toplevel.Call(thread, nil, nil)
+	_, err := Call(thread, toplevel, nil, nil)
 
 	// Convert the global environment to a map and freeze it.
 	// We return a (partial) map even in case of error.
@@ -338,7 +338,7 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 
 	fn := makeToplevelFunction(compile.Expr(expr, locals), env)
 
-	return fn.Call(thread, nil, nil)
+	return Call(thread, fn, nil, nil)
 }
 
 // The following functions are primitive operations of the byte code interpreter.
@@ -852,12 +852,17 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
-	res, err := c.Call(thread, args, kwargs)
+
+	thread.frame = &Frame{parent: thread.frame, callable: c}
+	result, err := c.CallInternal(thread, args, kwargs)
+	thread.frame = thread.frame.parent
+
 	// Sanity check: nil is not a valid Skylark value.
-	if err == nil && res == nil {
+	if result == nil && err == nil {
 		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
-	return res, err
+
+	return result, err
 }
 
 func slice(x, lo, hi, step_ Value) (Value, error) {
