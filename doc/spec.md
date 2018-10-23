@@ -1,17 +1,17 @@
-# Skylark in Go: Language definition
+# Starlark in Go: Language definition
 
-Skylark is a dialect of Python intended for use as a configuration
-language.  A Skylark interpreter is typically embedded within a larger
+Starlark is a dialect of Python intended for use as a configuration
+language.  A Starlark interpreter is typically embedded within a larger
 application, and this application may define additional
 domain-specific functions and data types beyond those provided by the
-core language.  For example, Skylark is embedded within (and was
+core language.  For example, Starlark is embedded within (and was
 originally developed for) the [Bazel build tool](https://bazel.build),
-and [Bazel's build language](https://docs.bazel.build/versions/master/skylark/language.html) is based on Skylark.
+and [Bazel's build language](https://docs.bazel.build/versions/master/starlark/language.html) is based on Starlark.
 
-This document describes the Go implementation of Skylark
-at github.com/google/skylark.
+This document describes the Go implementation of Starlark
+at github.com/google/starlark.
 The language it defines is similar but not identical to
-[the Java-based implementation](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/skylark/Skylark.java)
+[the Java-based implementation](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/starlark/Starlark.java)
 used by Bazel.
 We identify places where their behaviors differ, and an
 [appendix](#dialect-differences) provides a summary of those
@@ -24,31 +24,31 @@ It was influenced by the Python specification,
 Copyright 1990&ndash;2017, Python Software Foundation,
 and the Go specification, Copyright 2009&ndash;2017, The Go Authors.
 
-Skylark was designed and implemented in Java by Laurent Le Brun,
+Starlark was designed and implemented in Java by Laurent Le Brun,
 Dmitry Lomov, Jon Brandvin, and Damien Martin-Guillerez, standing on
 the shoulders of the Python community.
 The Go implementation was written by Alan Donovan and Jay Conrod;
 its scanner was derived from one written by Russ Cox.
 
-The name "Skylark" is a code name of the Bazel project.
+The name "Starlark" is a code name of the Bazel project.
 We plan to rename the language before the end of 2017 to reflect its
 applicability to projects unrelated to Bazel.
 
 ## Overview
 
-Skylark is an untyped dynamic language with high-level data types,
+Starlark is an untyped dynamic language with high-level data types,
 first-class functions with lexical scope, and automatic memory
 management or _garbage collection_.
 
-Skylark is strongly influenced by Python, and is almost a subset of
+Starlark is strongly influenced by Python, and is almost a subset of
 that language.  In particular, its data types and syntax for
 statements and expressions will be very familiar to any Python
 programmer.
-However, Skylark is intended not for writing applications but for
+However, Starlark is intended not for writing applications but for
 expressing configuration: its programs are short-lived and have no
 external side effects and their main result is structured data or side
 effects on the host application.
-As a result, Skylark has no need for classes, exceptions, reflection,
+As a result, Starlark has no need for classes, exceptions, reflection,
 concurrency, and other such features of Python.
 
 
@@ -191,10 +191,10 @@ concurrency, and other such features of Python.
 
 ## Lexical elements
 
-A Skylark program consists of one or more modules.
+A Starlark program consists of one or more modules.
 Each module is defined by a single UTF-8-encoded text file.
 
-A complete grammar of Skylark can be found in [grammar.txt](../syntax/grammar.txt).
+A complete grammar of Starlark can be found in [grammar.txt](../syntax/grammar.txt).
 That grammar is presented piecemeal throughout this document
 in boxes such as this one, which explains the notation:
 
@@ -210,7 +210,7 @@ Grammar notation
 - The end of each declaration is marked with a period.
 ```
 
-The contents of a Skylark file are broken into a sequence of tokens of
+The contents of a Starlark file are broken into a sequence of tokens of
 five kinds: white space, punctuation, keywords, identifiers, and literals.
 Each token is formed from the longest sequence of characters that
 would form a valid token of each kind.
@@ -287,7 +287,7 @@ None    True    len
 x       index   starts_with     arg0
 ```
 
-*Literals*: literals are tokens that denote specific values.  Skylark
+*Literals*: literals are tokens that denote specific values.  Starlark
 has string, integer, and floating-point literals.
 
 ```text
@@ -345,7 +345,7 @@ list                         # a fixed-length sequence of values
 tuple                        # a fixed-length sequence of values, unmodifiable
 dict                         # a mapping from values to values
 set                          # a set of values
-function                     # a function implemented in Skylark
+function                     # a function implemented in Starlark
 builtin_function_or_method   # a function or method implemented by the interpreter or host application
 ```
 
@@ -359,7 +359,7 @@ comparison, indexing, and function calls.
 
 <!-- We needn't mention the stringIterable type here. -->
 
-Some operations can be applied to any Skylark value.  For example,
+Some operations can be applied to any Starlark value.  For example,
 every value has a type string that can be obtained with the expression
 `type(x)`, and any value may be converted to a string using the
 expression `str(x)`, or to a Boolean truth value using the expression
@@ -385,7 +385,7 @@ There are two Boolean values, `True` and `False`, representing the
 truth or falsehood of a predicate.  The [type](#type) of a Boolean is `"bool"`.
 
 Boolean values are typically used as conditions in `if`-statements,
-although any Skylark value used as a condition is implicitly
+although any Starlark value used as a condition is implicitly
 interpreted as a Boolean.
 For example, the values `None`, `0`, `0.0`, and the empty sequences
 `""`, `()`, `[]`, and `{}` have a truth value of `False`, whereas non-zero
@@ -406,7 +406,7 @@ else:
 
 ### Integers
 
-The Skylark integer type represents integers.  Its [type](#type) is `"int"`.
+The Starlark integer type represents integers.  Its [type](#type) is `"int"`.
 
 Integers may be positive or negative, and arbitrarily large.
 Integer arithmetic is exact.
@@ -447,20 +447,20 @@ int("ffff", 16)                 # 65535, 0xffff
 ```
 
 <b>Implementation note:</b>
-In the Go implementation of Skylark, integer representation and
+In the Go implementation of Starlark, integer representation and
 arithmetic is exact, motivated by the need for lossless manipulation
 of protocol messages which may contain signed and unsigned 64-bit
 integers.
 The Java implementation currently supports only signed 32-bit integers.
 
-The Go implementation of the Skylark REPL requires the `-bitwise` flag to
+The Go implementation of the Starlark REPL requires the `-bitwise` flag to
 enable support for `&`, `|`, `^`, `~`, `<<`, and `>>` operations.
 The Java implementation does not support `^`, `~`, `<<`, and `>>` operations.
 
 
 ### Floating-point numbers
 
-The Skylark floating-point data type represents an IEEE 754
+The Starlark floating-point data type represents an IEEE 754
 double-precision floating-point number.  Its [type](#type) is `"float"`.
 
 Arithmetic on floats using the `+`, `-`, `*`, `/`, `//`, and `%`
@@ -504,10 +504,10 @@ float(3) / 2                                    # 1.5
 ```
 
 <b>Implementation note:</b>
-The Go implementation of Skylark supports floating-point numbers as an
+The Go implementation of Starlark supports floating-point numbers as an
 optional feature, motivated by the need for lossless manipulation of
 protocol messages.
-The Go implementation of the Skylark REPL requires the `-fp` flag to
+The Go implementation of the Starlark REPL requires the `-fp` flag to
 enable support for floating-point literals, the `float` built-in
 function, and the real division operator `/`.
 The Java implementation does not yet support floating-point numbers.
@@ -593,7 +593,7 @@ intractible; see Google Issue b/36360490.
 
 <b>Implementation note:</b>
 The Java implementation does not consistently treat strings as
-iterable; see `testdata/string.sky` in the test suite and Google Issue
+iterable; see `testdata/string.star` in the test suite and Google Issue
 b/34385336 for further details.
 
 ### Lists
@@ -675,7 +675,7 @@ Observe that for the 1-tuple, the trailing comma is necessary to
 distinguish it from the parenthesized expression `(1)`.
 1-tuples are seldom used.
 
-Skylark, unlike Python, does not permit a trailing comma to appear in
+Starlark, unlike Python, does not permit a trailing comma to appear in
 an unparenthesized tuple expression:
 
 ```python
@@ -788,7 +788,7 @@ for name in coins:
   print(name, coins[name])	# prints "quarter 25", "dime 10", ...
 ```
 
-Like all mutable values in Skylark, a dictionary can be frozen, and
+Like all mutable values in Starlark, a dictionary can be frozen, and
 once frozen, all subsequent operations that attempt to update it will
 fail.
 
@@ -853,7 +853,7 @@ The only method of a set is `union`, which is equivalent to the `|` operator.
 A set used in a Boolean context is considered true if it is non-empty.
 
 <b>Implementation note:</b>
-The Go implementation of the Skylark REPL requires the `-set` flag to
+The Go implementation of the Starlark REPL requires the `-set` flag to
 enable support for sets and the `-bitwise` flag to enable support for
 the `&`, `|`, and `^` operators.
 The Java implementation does not support sets.
@@ -861,7 +861,7 @@ The Java implementation does not support sets.
 
 ### Functions
 
-A function value represents a function defined in Skylark.
+A function value represents a function defined in Starlark.
 Its [type](#type) is `"function"`.
 A function value used in a Boolean context is always considered true.
 
@@ -871,7 +871,7 @@ functions defined by a [`lambda` expression](#lambda-expressions) are anonymous.
 Function definitions may be nested, and an inner function may refer to a local variable of an outer function.
 
 A function definition defines zero or more named parameters.
-Skylark has a rich mechanism for passing arguments to functions.
+Starlark has a rich mechanism for passing arguments to functions.
 
 <!-- TODO break up this explanation into caller-side and callee-side
      parts, and put the former under function calls and the latter
@@ -930,7 +930,7 @@ If the function becomes frozen, its parameters' default values become
 frozen too.
 
 ```python
-# module a.sky
+# module a.star
 def f(x, list=[]):
   list.append(x)
   return list
@@ -939,8 +939,8 @@ f(4, [1,2,3])           # [1, 2, 3, 4]
 f(1)                    # [1]
 f(2)                    # [1, 2], not [2]!
 
-# module b.sky
-load("a.sky", "f")
+# module b.star
+load("a.star", "f")
 f(3)                    # error: cannot append to frozen list
 ```
 
@@ -1035,11 +1035,11 @@ fib(5)
 ```
 
 This rule, combined with the invariant that all loops are iterations
-over finite sequences, implies that Skylark programs are not Turing-complete.
+over finite sequences, implies that Starlark programs are not Turing-complete.
 
-<!-- This rule is supposed to deter people from abusing Skylark for
+<!-- This rule is supposed to deter people from abusing Starlark for
      inappropriate uses, especially in the build system.
-     It may work for that purpose, but it doesn't stop Skylark programs
+     It may work for that purpose, but it doesn't stop Starlark programs
      from consuming too much time or space.  Perhaps it should be a
      dialect option.
 -->
@@ -1054,7 +1054,7 @@ or the application into which the interpreter is embedded.
 The [type](#type) of a built-in function is `"builtin_function_or_method"`.
 <b>Implementation note:</b>
 The Java implementation of `type(x)` returns `"function"` for all
-functions, whether built in or defined in Skylark,
+functions, whether built in or defined in Starlark,
 even though applications distinguish these two types.
 
 A built-in function value used in a Boolean context is always considered true.
@@ -1062,7 +1062,7 @@ A built-in function value used in a Boolean context is always considered true.
 Many built-in functions are predeclared in the environment
 (see [Name Resolution](#name-resolution)).
 Some built-in functions such as `len` are _universal_, that is,
-available to all Skylark programs.
+available to all Starlark programs.
 The host application may predeclare additional built-in functions
 in the environment of a specific module.
 
@@ -1071,8 +1071,8 @@ The parameter names serve merely as documentation.
 
 ## Name binding and variables
 
-After a Skylark file is parsed, but before its execution begins, the
-Skylark interpreter checks statically that the program is well formed.
+After a Starlark file is parsed, but before its execution begins, the
+Starlark interpreter checks statically that the program is well formed.
 For example, `break` and `continue` statements may appear only within
 a loop; `if`, `for`, and `return` statements may appear only within a
 function; and `load` statements may appear only outside any function.
@@ -1085,7 +1085,7 @@ called _bindings_.  A name may denote different bindings at different
 places in the program.  The region of text in which a particular name
 refers to the same binding is called that binding's _scope_.
 
-Four Skylark constructs bind names, as illustrated in the example below:
+Four Starlark constructs bind names, as illustrated in the example below:
 `load` statements (`a` and `b`),
 `def` statements (`c`),
 function parameters (`d`),
@@ -1094,7 +1094,7 @@ Variables may be assigned or re-assigned explicitly (`e`, `h`), or implicitly, a
 in a `for`-loop (`f`) or comprehension (`g`, `i`).
 
 ```python
-load("lib.sky", "a", b="B")
+load("lib.star", "a", b="B")
 
 def c(d):
   e = 0
@@ -1105,7 +1105,7 @@ def c(d):
 h = [2*i for i in a]
 ```
 
-The environment of a Skylark program is structured as a tree of
+The environment of a Starlark program is structured as a tree of
 _lexical blocks_, each of which may contain name bindings.
 The tree of blocks is parallel to the syntax tree.
 Blocks are of four kinds.
@@ -1120,7 +1120,7 @@ these functions are immutable and stateless.
 An application may pre-declare additional names
 to provide domain-specific functions to that file, for example.
 These additional functions may have side effects on the application.
-Skylark programs cannot change the set of predeclared bindings
+Starlark programs cannot change the set of predeclared bindings
 or assign new values to them.
 
 Nested beneath the predeclared block is the _module_ block, which
@@ -1186,7 +1186,7 @@ x = 2                   # static error: cannot reassign global x declared on lin
      documentation more useful, the designers assure me, but
      I am skeptical that it's worth the trouble. -->
 
-If a name was pre-bound by the application, the Skylark program may
+If a name was pre-bound by the application, the Starlark program may
 explicitly bind it, but only once.
 
 <b>Implementation note</b>:
@@ -1237,7 +1237,7 @@ def squarer():
 sq = squarer()
 ```
 
-(Skylark has no equivalent of Python's `nonlocal` or `global`
+(Starlark has no equivalent of Python's `nonlocal` or `global`
 declarations, but as the first version of `squarer` showed, this
 omission can be worked around by using a list of a single element.)
 
@@ -1250,9 +1250,9 @@ on the value returned by `get_filename()`.
 
 ## Value concepts {#value-concepts}
 
-Skylark has eleven core [data types](#data-types).  An application
-that embeds the Skylark intepreter may define additional types that
-behave like Skylark values.  All values, whether core or
+Starlark has eleven core [data types](#data-types).  An application
+that embeds the Starlark intepreter may define additional types that
+behave like Starlark values.  All values, whether core or
 application-defined, implement a few basic behaviors:
 
 ```text
@@ -1264,7 +1264,7 @@ hash(x)		-- return a hash code for x
 
 ### Identity and mutation
 
-Skylark is an imperative language: programs consist of sequences of
+Starlark is an imperative language: programs consist of sequences of
 statements executed for their side effects.
 For example, an assignment statement updates the value held by a
 variable, and calls to some built-in functions such as `print` change
@@ -1273,7 +1273,7 @@ the state of the application that embeds the interpreter.
 Values of some data types, such as `NoneType`, `bool`, `int`, `float`, and
 `string`, are _immutable_; they can never change.
 Immutable values have no notion of _identity_: it is impossible for a
-Skylark program to tell whether two integers, for instance, are
+Starlark program to tell whether two integers, for instance, are
 represented by the same object; it can tell only whether they are
 equal.
 
@@ -1281,7 +1281,7 @@ Values of other data types, such as `list`, `dict`, and `set`, are
 _mutable_: they may be modified by a statement such as `a[i] = 0` or
 `items.clear()`.  Although `tuple` and `function` values are not
 directly mutable, they may refer to mutable values indirectly, so for
-this reason we consider them mutable too.  Skylark values of these
+this reason we consider them mutable too.  Starlark values of these
 types are actually _references_ to variables.
 
 Copying a reference to a variable, using an assignment statement for
@@ -1296,7 +1296,7 @@ x.append(1)                     # changes the variable referred to by x
 print(y)                        # "[1]"; y observes the mutation
 ```
 
-Skylark uses _call-by-value_ parameter passing: in a function call,
+Starlark uses _call-by-value_ parameter passing: in a function call,
 argument values are assigned to function parameters as if by
 assignment statements.  If the values are references, the caller and
 callee may refer to the same variables, so if the called function
@@ -1319,14 +1319,14 @@ refer, is crucial to writing correct programs.
 
 ### Freezing a value
 
-Skylark has a feature unusual among imperative programming languages:
+Starlark has a feature unusual among imperative programming languages:
 a mutable value may be _frozen_ so that all subsequent attempts to
 mutate it fail with a dynamic error; the value, and all other values
 reachable from it, become _immutable_.
 
-Immediately after execution of a Skylark module, all values in its
+Immediately after execution of a Starlark module, all values in its
 top-level environment are frozen. Because all the global variables of
-an initialized Skylark module are immutable, the module may be published to
+an initialized Starlark module are immutable, the module may be published to
 and used by other threads in a parallel program without the need for
 locks. For example, the Bazel build system loads and executes BUILD
 and .bzl files in parallel, and two modules being executed
@@ -1364,7 +1364,7 @@ so their hash values are derived from their identity.
 
 ### Sequence types
 
-Many Skylark data types represent a _sequence_ of values: lists,
+Many Starlark data types represent a _sequence_ of values: lists,
 tuples, and sets are sequences of arbitrary values, and in many
 contexts dictionaries act like a sequence of their keys.
 
@@ -1385,18 +1385,18 @@ the interpreter's Go API.
   element at a given integer index. Example: `list`.
 * `Mapping`: a mapping is an association of keys to values. Example: `dict`.
 
-Although all of Skylark's core data types for sequences implement at
+Although all of Starlark's core data types for sequences implement at
 least the `Sequence` contract, it's possible for an application
-that embeds the Skylark interpreter to define additional data types
+that embeds the Starlark interpreter to define additional data types
 representing sequences of unknown length that implement only the `Iterable` contract.
 
 Strings are not iterable, though they do support the `len(s)` and
-`s[i]` operations. Skylark deviates from Python here to avoid common
+`s[i]` operations. Starlark deviates from Python here to avoid common
 pitfall in which a string is used by mistake where a list containing a
 single string was intended, resulting in its interpretation as a sequence
 of bytes.
 
-Most Skylark operators and built-in functions that need a sequence
+Most Starlark operators and built-in functions that need a sequence
 of values will accept any iterable.
 
 It is a dynamic error to mutate a sequence such as a list, set, or
@@ -1414,13 +1414,13 @@ increment_values(dict)
 
 ### Indexing
 
-Many Skylark operators and functions require an index operand `i`,
+Many Starlark operators and functions require an index operand `i`,
 such as `a[i]` or `list.insert(i, x)`. Others require two indices `i`
 and `j` that indicate the start and end of a sub-sequence, such as
 `a[i:j]`, `list.index(x, i, j)`, or `string.find(x, i, j)`.
 All such operations follow similar conventions, described here.
 
-Indexing in Skylark is *zero-based*. The first element of a string
+Indexing in Starlark is *zero-based*. The first element of a string
 or list has index 0, the next 1, and so on. The last element of a
 sequence of length `n` has index `n-1`.
 
@@ -1483,13 +1483,13 @@ This truncation step does not apply to indices of individual elements:
 
 An expression specifies the computation of a value.
 
-The Skylark grammar defines several categories of expression.
+The Starlark grammar defines several categories of expression.
 An _operand_ is an expression consisting of a single token (such as an
 identifier or a literal), or a bracketed expression.
 Operands are self-delimiting.
 An operand may be followed by any number of dot, call, or slice
 suffixes, to form a _primary_ expression.
-In some places in the Skylark grammar where an expression is expected,
+In some places in the Starlark grammar where an expression is expected,
 it is legal to provide a comma-separated list of expressions denoting
 a tuple.
 The grammar uses `Expression` where a multiple-component expression is allowed,
@@ -1536,7 +1536,7 @@ Lookup of locals and globals may fail if not yet defined.
 
 ### Literals
 
-Skylark supports string literals of three different kinds:
+Starlark supports string literals of three different kinds:
 
 ```grammar {.good}
 Primary = int | float | string
@@ -1584,7 +1584,7 @@ for x in 1, 2:
    print(x)
 ```
 
-Skylark (like Python 3) does not accept an unparenthesized tuple
+Starlark (like Python 3) does not accept an unparenthesized tuple
 expression as the operand of a list comprehension:
 
 ```python
@@ -1697,12 +1697,12 @@ The bitwise inversion of x is defined as -(x+1).
 ```
 
 <b>Implementation note:</b>
-The parser in the Java implementation of Skylark does not accept unary
+The parser in the Java implementation of Starlark does not accept unary
 `+` and `~` expressions.
 
 ### Binary operators
 
-Skylark has the following binary operators, arranged in order of increasing precedence:
+Starlark has the following binary operators, arranged in order of increasing precedence:
 
 ```text
 or
@@ -1744,7 +1744,7 @@ conjunction of their arguments, which need not be Booleans.
 The expression `x or y` yields the value of `x` if its truth value is `True`,
 or the value of `y` otherwise.
 
-```skylark
+```starlark
 False or False		# False
 False or True		# True
 True  or False		# True
@@ -1757,7 +1757,7 @@ True  or True		# True
 Similarly, `x and y` yields the value of `x` if its truth value is
 `False`, or the value of `y` otherwise.
 
-```skylark
+```starlark
 False and False		# False
 False and True		# False
 True  and False		# False
@@ -1930,7 +1930,7 @@ set([1, 2]) ^ set([2, 3])       # set([1, 3])
 ```
 
 <b>Implementation note:</b>
-The Go implementation of the Skylark REPL requires the `-set` flag to
+The Go implementation of the Starlark REPL requires the `-set` flag to
 enable support for sets.
 The Java implementation does not support sets, nor recognize `&` as a
 token, nor support `int | int`.
@@ -1992,7 +1992,7 @@ which must be a tuple with exactly one component per conversion,
 unless the format string contains only a single conversion, in which
 case `args` itself is its operand.
 
-Skylark does not support the flag, width, and padding specifiers
+Starlark does not support the flag, width, and padding specifiers
 supported by Python's `%` and other variants of C's `printf`.
 
 After the optional `(key)` comes a single letter indicating what
@@ -2113,7 +2113,7 @@ assignment:
 [x*y+z for (x, y), z in [((2, 3), 5), (("o", 2), "!")]]         # [11, 'oo!']
 ```
 
-Skylark, following Python 3, does not accept an unparenthesized
+Starlark, following Python 3, does not accept an unparenthesized
 tuple or lambda expression as the operand of a `for` clause:
 
 ```python
@@ -2121,7 +2121,7 @@ tuple or lambda expression as the operand of a `for` clause:
 [x*x for x in lambda: 0]	# parse error: unexpected lambda
 ```
 
-Comprehensions in Skylark, again following Python 3, define a new lexical
+Comprehensions in Starlark, again following Python 3, define a new lexical
 block, so assignments to loop variables have no effect on variables of
 the same name in an enclosing block:
 
@@ -2170,8 +2170,8 @@ Argument  = Test | identifier '=' Test | '*' Test | '**' Test .
 A value `f` of type `function` or `builtin_function_or_method` may be called using the expression `f(...)`.
 Applications may define additional types whose values may be called in the same way.
 
-A method call such as `filename.endswith(".sky")` is the composition
-of two operations, `m = filename.endswith` and `m(".sky")`.
+A method call such as `filename.endswith(".star")` is the composition
+of two operations, `m = filename.endswith` and `m(".star")`.
 The first, a dot operation, yields a _bound method_, a function value
 that pairs a receiver value (the `filename` string) with a choice of
 method ([string·endswith](#string·endswith)).
@@ -2185,7 +2185,7 @@ See [Functions](#functions) for an explanation of function parameter passing.
 A dot expression `x.f` selects the attribute `f` (a field or method)
 of the value `x`.
 
-Fields are possessed by none of the main Skylark [data types](#data-types),
+Fields are possessed by none of the main Starlark [data types](#data-types),
 but some application-defined types have them.
 Methods belong to the built-in types `string`, `list`, `dict`, and
 `set`, and to many application-defined types.
@@ -2260,7 +2260,7 @@ if the dictionary contains no such key.
 An index expression appearing on the left side of an assignment causes
 the specified list or dictionary element to be updated:
 
-```skylark
+```starlark
 a = range(3)            # a == [0, 1, 2]
 a[2] = 7                # a == [0, 1, 7]
 
@@ -2315,7 +2315,7 @@ nearest value in the range -1 to `n`-1, inclusive.
 "banana"[4::-2]         # "nnb" (select alternate elements in reverse, starting at index 4)
 ```
 
-Unlike Python, Skylark does not allow a slice expression on the left
+Unlike Python, Starlark does not allow a slice expression on the left
 side of an assignment.
 
 Slicing a tuple or string may be more efficient than slicing a list
@@ -2374,7 +2374,7 @@ twice = lambda(x): x * 2
 ```
 
 <b>Implementation note:</b>
-The Go implementation of the Skylark REPL requires the `-lambda` flag
+The Go implementation of the Starlark REPL requires the `-lambda` flag
 to enable support for lambda expressions.
 The Java implementation does not support them.
 See Google Issue b/36358844.
@@ -2478,7 +2478,7 @@ a name, an index expression, or a dot expression.
 
 ```python
 x -= 1
-x.filename += ".sky"
+x.filename += ".star"
 a[index()] *= 2
 ```
 
@@ -2488,7 +2488,7 @@ The first two assignments above are thus equivalent to:
 
 ```python
 x = x - 1
-x.filename = x.filename + ".sky"
+x.filename = x.filename + ".star"
 ```
 
 and the third assignment is similar in effect to the following two
@@ -2560,7 +2560,7 @@ current module.
 <!-- this is too implementation-oriented; it's not a spec. -->
 
 <b>Implementation note:</b>
-The Go implementation of the Skylark REPL requires the `-nesteddef`
+The Go implementation of the Starlark REPL requires the `-nesteddef`
 flag to enable support for nested `def` statements.
 The Java implementation does not permit a `def` expression to be
 nested within the body of another function.
@@ -2675,7 +2675,7 @@ for a, i in [["a", 1], ["b", 2], ["c", 3]]:
   print(a, i)                          # prints "a 1", "b 2", "c 3"
 ```
 
-Because Skylark loops always iterate over a finite sequence, they are
+Because Starlark loops always iterate over a finite sequence, they are
 guaranteed to terminate, unlike loops in most languages which can
 execute an arbitrary and perhaps unbounded number of iterations.
 
@@ -2683,7 +2683,7 @@ Within the body of a `for` loop, `break` and `continue` statements may
 be used to stop the execution of the loop or advance to the next
 iteration.
 
-In Skylark, a `for` loop is permitted only within a function definition.
+In Starlark, a `for` loop is permitted only within a function definition.
 A `for` loop at top level results in a static error.
 
 
@@ -2716,14 +2716,14 @@ loop.
 
 ### Load statements
 
-The `load` statement loads another Skylark module, extracts one or
+The `load` statement loads another Starlark module, extracts one or
 more values from it, and binds them to names in the current module.
 
 <!--
 The awkwardness of load statements is a consequence of staying a
 strict subset of Python syntax, which allows reuse of existing tools
 such as editor support. Python import statements are inadequate for
-Skylark because they don't allow arbitrary file names for module names.
+Starlark because they don't allow arbitrary file names for module names.
 -->
 
 Syntactically, a load statement looks like a function call `load(...)`.
@@ -2735,11 +2735,11 @@ LoadStmt = 'load' '(' string {',' [identifier '='] string} [','] ')' .
 A load statement requires at least two "arguments".
 The first must be a literal string; it identifies the module to load.
 Its interpretation is determined by the application into which the
-Skylark interpreter is embedded, and is not specified here.
+Starlark interpreter is embedded, and is not specified here.
 
 During execution, the application determines what action to take for a
 load statement.
-A typical implementation locates and executes a Skylark file,
+A typical implementation locates and executes a Starlark file,
 populating a cache of files executed so far to avoid duplicate work,
 to obtain a module, which is a mapping from global names to values.
 
@@ -2753,8 +2753,8 @@ The name (`y`) specifies the local name;
 if no name is given, the local name matches the quoted name.
 
 ```python
-load("module.sky", "x", "y", "z")       # assigns x, y, and z
-load("module.sky", "x", y2="y", "z")    # assigns x, y2, and z
+load("module.star", "x", "y", "z")       # assigns x, y, and z
+load("module.star", "x", y2="y", "z")    # assigns x, y2, and z
 ```
 
 A load statement within a function is a static error.
@@ -2762,10 +2762,10 @@ A load statement within a function is a static error.
 
 ## Module execution
 
-Each Skylark file defines a _module_, which is a mapping from the
+Each Starlark file defines a _module_, which is a mapping from the
 names of global variables to their values.
-When a Skylark file is executed, whether directly by the application
-or indirectly through a `load` statement, a new Skylark thread is
+When a Starlark file is executed, whether directly by the application
+or indirectly through a `load` statement, a new Starlark thread is
 created, and this thread executes all the top-level statements in the
 file.
 Because if-statements and for-loops cannot appear outside of a function,
@@ -2775,12 +2775,12 @@ If execution reaches the end of the file, module initialization is
 successful.
 At that point, the value of each of the module's global variables is
 frozen, rendering subsequent mutation impossible.
-The module is then ready for use by another Skylark thread, such as
+The module is then ready for use by another Starlark thread, such as
 one executing a load statement.
 Such threads may access values or call functions defined in the loaded
 module.
 
-A Skylark thread may carry state on behalf of the application into
+A Starlark thread may carry state on behalf of the application into
 which it is embedded, and application-defined functions may behave
 differently depending on this thread state.
 Because module initialization always occurs in a new thread, thread
@@ -2789,25 +2789,25 @@ one.
 The initialization behavior of a module is thus independent of
 whichever module triggered its initialization.
 
-If a Skylark thread encounters an error, execution stops and the error
+If a Starlark thread encounters an error, execution stops and the error
 is reported to the application, along with a backtrace showing the
 stack of active function calls at the time of the error.
-If an error occurs during initialization of a Skylark module, any
+If an error occurs during initialization of a Starlark module, any
 active `load` statements waiting for initialization of the module also
 fail.
 
-Skylark provides no mechanism by which errors can be handled within
+Starlark provides no mechanism by which errors can be handled within
 the language.
 
 
 ## Built-in constants and functions
 
-The outermost block of the Skylark environment is known as the "predeclared" block.
-It defines a number of fundamental values and functions needed by all Skylark programs,
+The outermost block of the Starlark environment is known as the "predeclared" block.
+It defines a number of fundamental values and functions needed by all Starlark programs,
 such as `None`, `True`, `False`, and `len`, and possibly additional
 application-specific names.
 
-These names are not reserved words so Skylark programs are free to
+These names are not reserved words so Starlark programs are free to
 redefine them in a smaller block such as a function body or even at
 the top level of a module.  However, doing so may be confusing to the
 reader.  Nonetheless, this rule permits names to be added to the
@@ -2924,7 +2924,7 @@ With no arguments, `float()` returns `0.0`.
 
 <b>Implementation note:</b>
 Floating-point numbers are an optional feature.
-The Go implementation of the Skylark REPL requires the `-fp` flag to
+The Go implementation of the Starlark REPL requires the `-fp` flag to
 enable support for floating-point literals, the `float` built-in
 function, and the real division operator `/`.
 The Java implementation does not yet support floating-point numbers.
@@ -3051,7 +3051,7 @@ print(1, "hi", x=3)	# "1 hi x=3\n"
 ```
 
 Typically the formatted string is printed to the standard error file,
-but the exact behavior is a property of the Skylark thread and is
+but the exact behavior is a property of the Starlark thread and is
 determined by the host application.
 
 ### range
@@ -3132,7 +3132,7 @@ set([3, 1, 4, 1, 5, 9])         # set([3, 1, 4, 5, 9])
 ```
 
 <b>Implementation note:</b>
-Sets are an optional feature of the Go implementation of Skylark.
+Sets are an optional feature of the Go implementation of Starlark.
 
 
 ### sorted
@@ -3543,7 +3543,7 @@ See also: `string·codepoints`.
 `S.count(sub[, start[, end]])` returns the number of occcurences of
 `sub` within the string S, or, if the optional substring indices
 `start` and `end` are provided, within the designated substring of S.
-They are interpreted according to Skylark's [indexing conventions](#indexing).
+They are interpreted according to Starlark's [indexing conventions](#indexing).
 
 ```python
 "hello, world!".count("o")              # 2
@@ -3557,7 +3557,7 @@ They are interpreted according to Skylark's [indexing conventions](#indexing).
 `S[start:end]` has the specified suffix.
 
 ```python
-"filename.sky".endswith(".sky")         # True
+"filename.star".endswith(".star")         # True
 ```
 
 The `suffix` argument may be a tuple of strings, in which case the
@@ -3576,7 +3576,7 @@ occurrence of the substring `sub` within S.
 
 If either or both of `start` or `end` are specified,
 they specify a subrange of S to which the search should be restricted.
-They are interpreted according to Skylark's [indexing conventions](#indexing).
+They are interpreted according to Starlark's [indexing conventions](#indexing).
 
 If no occurrence is found, `found` returns -1.
 
@@ -3936,7 +3936,7 @@ the final element does not necessarily end with a line terminator.
 `S[start:end]` has the specified prefix.
 
 ```python
-"filename.sky".startswith("filename")         # True
+"filename.star".startswith("filename")         # True
 ```
 
 The `prefix` argument may be a tuple of strings, in which case the
@@ -3980,7 +3980,7 @@ Letters are converted to uppercase at the start of words, lowercase elsewhere.
 ## Dialect differences
 
 The list below summarizes features of the Go implementation that are
-known to differ from the Java implementation of Skylark used by Bazel.
+known to differ from the Java implementation of Starlark used by Bazel.
 Some of these features may be controlled by global options to allow
 applications to mimic the Bazel dialect more closely. Our goal is
 eventually to eliminate all such differences on a case-by-case basis.

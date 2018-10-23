@@ -1,9 +1,9 @@
-# Tests of Skylark assignment.
+# Tests of Starlark assignment.
 
 # This is a "chunked" file: each "---" effectively starts a new file.
 
 # tuple assignment
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 a, b, c = 1, 2, 3
 assert.eq(a, 1)
@@ -23,7 +23,7 @@ assert.fails(f5, "too many values to unpack")
 
 ---
 # list assignment
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 [a, b, c] = [1, 2, 3]
 assert.eq(a, 1)
@@ -41,7 +41,7 @@ assert.fails(f4, "too few values to unpack")
 
 ---
 # list-tuple assignment
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 [a, b, c] = (1, 2, 3)
 assert.eq(a, 1)
@@ -67,7 +67,7 @@ assert.eq(n, 4)
 
 ---
 # misc assignment
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def assignment():
   a = [1, 2, 3]
@@ -88,7 +88,7 @@ assignment()
 ---
 # augmented assignment
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def f():
   x = 1
@@ -101,7 +101,7 @@ f()
 ---
 # effects of evaluating LHS occur only once
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 count = [0] # count[0] is the number of calls to f
 
@@ -118,7 +118,7 @@ assert.eq(count[0], 1) # f was called only once
 ---
 # Order of evaluation.
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 calls = []
 
@@ -161,7 +161,7 @@ def f():
 f()
 
 ---
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 printok = [False]
 
@@ -191,7 +191,7 @@ f()
 z += 3 ### "global variable z referenced before assignment"
 
 ---
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # It's ok to define a global that shadows a built-in...
 list = []
@@ -199,14 +199,14 @@ assert.eq(type(list), "list")
 
 # ...but then all uses refer to the global,
 # even if they occur before the binding use.
-# See github.com/google/skylark/issues/116.
+# See github.com/google/starlark/issues/116.
 assert.fails(lambda: tuple, "global variable tuple referenced before assignment")
 tuple = ()
 
 ---
 # Same as above, but set and float are dialect-specific;
 # we shouldn't notice any difference.
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 float = 1.0
 assert.eq(type(float), "float")
@@ -229,7 +229,7 @@ x = [1, 2]
 _ = [x for _ in [3] for x in x] ### "local variable x referenced before assignment"
 
 ---
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # assign singleton sequence to 1-tuple
 (x,) = (1,)
@@ -245,7 +245,7 @@ assert.eq(z[0], 1)
 
 ---
 # assignment to/from fields.
-load("assert.sky", "assert", "freeze")
+load("assert.star", "assert", "freeze")
 
 hf = hasfields()
 hf.x = 1
@@ -263,7 +263,7 @@ assert.fails(lambda: setY(hf), "cannot set field on a frozen hasfields")
 
 ---
 # destucturing assignment in a for loop.
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def f():
   res = []

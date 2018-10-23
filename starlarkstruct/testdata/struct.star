@@ -1,7 +1,7 @@
-# Tests of Skylark 'struct' extension.
-# This is not a standard feature and the Go and Skylark APIs may yet change.
+# Tests of Starlark 'struct' extension.
+# This is not a standard feature and the Go and Starlark APIs may yet change.
 
-load('assert.sky', 'assert')
+load('assert.star', 'assert')
 
 assert.eq(str(struct), '<built-in function struct>')
 

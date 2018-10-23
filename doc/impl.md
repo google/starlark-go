@@ -1,8 +1,8 @@
 
-# Skylark in Go: Implementation
+# Starlark in Go: Implementation
 
 This document (a work in progress) describes some of the design
-choices of the Go implementation of Skylark.
+choices of the Go implementation of Starlark.
 
   * [Scanner](#scanner)
   * [Parser](#parser)
@@ -40,7 +40,7 @@ cases would require additional lookahead.
 The resolver reports structural errors in the program, such as the use
 of `break` and `continue` outside of a loop.
 
-Skylark has stricter syntactic limitations than Python. For example,
+Starlark has stricter syntactic limitations than Python. For example,
 it does not permit `for` loops or `if` statements at top level, nor
 does it permit global variables to be bound more than once.
 These limitations come from the Bazel project's desire to make it easy
@@ -66,7 +66,7 @@ any uses of dialect features that have not been enabled.
 
 <b>Integers:</b> Integers are representing using `big.Int`, an
 arbitrary precision integer. This representation was chosen because,
-for many applications, Skylark must be able to handle without loss
+for many applications, Starlark must be able to handle without loss
 protocol buffer values containing signed and unsigned 64-bit integers,
 which requires 65 bits of precision.
 
@@ -74,7 +74,7 @@ Small integers (<256) are preallocated, but all other values require
 memory allocation. Integer performance is relatively poor, but it
 matters little for Bazel-like workloads which depend much
 more on lists of strings than on integers. (Recall that a typical loop
-over a list in Skylark does not materialize the loop index as an `int`.)
+over a list in Starlark does not materialize the loop index as an `int`.)
 
 An optimization worth trying would be to represent integers using
 either an `int32` or `big.Int`, with the `big.Int` used only when
@@ -95,11 +95,11 @@ greater than, or equal: it may also fail.
 TODO: discuss UTF-8 and string.bytes method.
 
 <b>Dictionaries and sets</b>:
-Skylark dictionaries have predictable iteration order.
-Furthermore, many Skylark values are hashable in Skylark even though
+Starlark dictionaries have predictable iteration order.
+Furthermore, many Starlark values are hashable in Starlark even though
 the Go values that represent them are not hashable in Go: big
 integers, for example.
-Consequently, we cannot use Go maps to implement Skylark's dictionary.
+Consequently, we cannot use Go maps to implement Starlark's dictionary.
 
 We use a simple hash table whose buckets are linked lists, each
 element of which holds up to 8 key/value pairs. In a well-distributed
@@ -108,13 +108,13 @@ key/value item is part of doubly-linked list that maintains the
 insertion order of the elements for iteration.
 
 <b>Struct:</b>
-The `skylarkstruct` Go package provides a non-standard Skylark
+The `starlarkstruct` Go package provides a non-standard Starlark
 extension data type, `struct`, that maps field identifiers to
 arbitrary values. Fields are accessed using dot notation: `y = s.f`.
 This data type is extensively used in Bazel, but its specification is
 currently evolving.
 
-Skylark has no `class` mechanism, nor equivalent of Python's
+Starlark has no `class` mechanism, nor equivalent of Python's
 `namedtuple`, though it is likely that future versions will support
 some way to define a record data type of several fields, with a
 representation more efficient than a hash table.
@@ -123,8 +123,8 @@ representation more efficient than a hash table.
 ### Freezing
 
 All mutable values created during module initialization are _frozen_
-upon its completion. It is this property that permits a Skylark module
-to be referenced by two Skylark threads running concurrently (such as
+upon its completion. It is this property that permits a Starlark module
+to be referenced by two Starlark threads running concurrently (such as
 the initialization threads of two other modules) without the
 possibility of a data race.
 
@@ -162,7 +162,7 @@ extra bookkeeping so that modification of the underlying collection
 invalidates the iterator, and the next attempt to use it fails.
 This often helps to detect subtle mistakes.
 
-Skylark takes this a step further. Instead of mutation of the
+Starlark takes this a step further. Instead of mutation of the
 collection invalidating the iterator, the act of iterating makes the
 collection temporarily immutable, so that an attempt to, say, delete a
 dict element while looping over the dict, will fail. The error is
@@ -182,7 +182,7 @@ to call `Done` on each iterator once it is no longer needed.
 
 ```
 TODO
-skylark.Value interface and subinterfaces
+starlark.Value interface and subinterfaces
 argument passing to builtins: UnpackArgs, UnpackPositionalArgs.
 ```
 
@@ -207,7 +207,7 @@ array from a `make([]Value, n)` allocation always escapes
 ([Go issue 20533](https://github.com/golang/go/issues/20533)).
 Because the bytecode interpreter's operand stack has a non-constant
 length, it must be allocated with `make`. The resulting allocation
-adds to the cost of each Skylark function call; this can be tolerated
+adds to the cost of each Starlark function call; this can be tolerated
 by amortizing one very large stack allocation across many calls.
 More problematic appears to be the cost of the additional GC write
 barriers incurred by every VM operation: every intermediate result is
@@ -227,9 +227,9 @@ Load
 
 ```
 TODO
-skylarktest package
+starlarktest package
 `assert` module
-skylarkstruct
+starlarkstruct
 integration with Go testing.T
 ```
 

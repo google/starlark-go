@@ -1,6 +1,6 @@
-# Tests of Skylark 'dict'
+# Tests of Starlark 'dict'
 
-load("assert.sky", "assert", "freeze")
+load("assert.star", "assert", "freeze")
 
 # literals
 assert.eq({}, {})

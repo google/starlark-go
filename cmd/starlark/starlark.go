@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// The skylark command interprets a Skylark file.
+// The starlark command interprets a Starlark file.
 // With no arguments, it starts a read-eval-print loop (REPL).
 package main
 
@@ -15,9 +15,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/skylark"
-	"github.com/google/skylark/repl"
-	"github.com/google/skylark/resolve"
+	"github.com/google/starlark"
+	"github.com/google/starlark/repl"
+	"github.com/google/starlark/resolve"
 )
 
 // flags
@@ -36,7 +36,7 @@ func init() {
 }
 
 func main() {
-	log.SetPrefix("skylark: ")
+	log.SetPrefix("starlark: ")
 	log.SetFlags(0)
 	flag.Parse()
 
@@ -51,24 +51,24 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	thread := &skylark.Thread{Load: repl.MakeLoad()}
-	globals := make(skylark.StringDict)
+	thread := &starlark.Thread{Load: repl.MakeLoad()}
+	globals := make(starlark.StringDict)
 
 	switch len(flag.Args()) {
 	case 0:
-		fmt.Println("Welcome to Skylark (github.com/google/skylark)")
+		fmt.Println("Welcome to Starlark (github.com/google/starlark)")
 		repl.REPL(thread, globals)
 	case 1:
 		// Execute specified file.
 		filename := flag.Args()[0]
 		var err error
-		globals, err = skylark.ExecFile(thread, filename, nil, nil)
+		globals, err = starlark.ExecFile(thread, filename, nil, nil)
 		if err != nil {
 			repl.PrintError(err)
 			os.Exit(1)
 		}
 	default:
-		log.Fatal("want at most one Skylark file name")
+		log.Fatal("want at most one Starlark file name")
 	}
 
 	// Print the global environment.

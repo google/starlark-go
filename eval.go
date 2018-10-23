@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark
+package starlark
 
 import (
 	"bytes"
@@ -16,21 +16,21 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/skylark/internal/compile"
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/internal/compile"
+	"github.com/google/starlark/resolve"
+	"github.com/google/starlark/syntax"
 )
 
 const debug = false
 
-// A Thread contains the state of a Skylark thread,
+// A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
 type Thread struct {
-	// frame is the current Skylark execution frame.
+	// frame is the current Starlark execution frame.
 	frame *Frame
 
-	// Print is the client-supplied implementation of the Skylark
+	// Print is the client-supplied implementation of the Starlark
 	// 'print' function. If nil, fmt.Fprintln(os.Stderr, msg) is
 	// used instead.
 	Print func(thread *Thread, msg string)
@@ -44,7 +44,7 @@ type Thread struct {
 	Load func(thread *Thread, module string) (StringDict, error)
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
-	// They are accessible to the client but not to any Skylark program.
+	// They are accessible to the client but not to any Starlark program.
 	locals map[string]interface{}
 }
 
@@ -63,7 +63,7 @@ func (thread *Thread) Local(key string) interface{} {
 }
 
 // Caller returns the frame of the caller of the current function.
-// It should only be used in built-ins called from Skylark code.
+// It should only be used in built-ins called from Starlark code.
 func (thread *Thread) Caller() *Frame { return thread.frame.parent }
 
 // TopFrame returns the topmost stack frame.
@@ -71,7 +71,7 @@ func (thread *Thread) TopFrame() *Frame { return thread.frame }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
-// It is not a true skylark.Value.
+// It is not a true starlark.Value.
 type StringDict map[string]Value
 
 func (d StringDict) String() string {
@@ -105,7 +105,7 @@ func (d StringDict) Freeze() {
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
-// A Frame records a call to a Skylark function (including module toplevel)
+// A Frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
 type Frame struct {
 	parent   *Frame          // caller's frame (or nil)
@@ -143,7 +143,7 @@ func (fr *Frame) Callable() Callable { return fr.callable }
 // Parent returns the frame of the enclosing function call, if any.
 func (fr *Frame) Parent() *Frame { return fr.parent }
 
-// An EvalError is a Skylark evaluation error and its associated call stack.
+// An EvalError is a Starlark evaluation error and its associated call stack.
 type EvalError struct {
 	Msg   string
 	Frame *Frame
@@ -182,7 +182,7 @@ func (e *EvalError) Stack() []*Frame {
 	return stack
 }
 
-// A Program is a compiled Skylark program.
+// A Program is a compiled Starlark program.
 //
 // Programs are immutable, and contain no Values.
 // A Program may be created by parsing a source file (see SourceProgram)
@@ -211,10 +211,10 @@ func (prog *Program) Load(i int) (string, syntax.Position) {
 // WriteTo writes the compiled module to the specified output stream.
 func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out) }
 
-// ExecFile parses, resolves, and executes a Skylark file in the
+// ExecFile parses, resolves, and executes a Starlark file in the
 // specified global environment, which may be modified during execution.
 //
-// Thread is the state associated with the Skylark thread.
+// Thread is the state associated with the Starlark thread.
 //
 // The filename and src parameters are as for syntax.Parse:
 // filename is the name of the file to execute,
@@ -229,7 +229,7 @@ func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out
 // If ExecFile fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDict) (StringDict, error) {
-	// Parse, resolve, and compile a Skylark source file.
+	// Parse, resolve, and compile a Starlark source file.
 	_, mod, err := SourceProgram(filename, src, predeclared.Has)
 	if err != nil {
 		return nil, err
@@ -241,7 +241,7 @@ func ExecFile(thread *Thread, filename string, src interface{}, predeclared Stri
 }
 
 // SourceProgram produces a new program by parsing, resolving,
-// and compiling a Skylark source file.
+// and compiling a Starlark source file.
 // On success, it returns the parsed file and the compiled program.
 // The filename and src parameters are as for syntax.Parse.
 //
@@ -288,7 +288,7 @@ func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, e
 }
 
 func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Function {
-	// Create the Skylark value denoted by each program constant c.
+	// Create the Starlark value denoted by each program constant c.
 	constants := make([]Value, len(funcode.Prog.Constants))
 	for i, c := range funcode.Prog.Constants {
 		var v Value
@@ -502,7 +502,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Dict:
 			// Python doesn't have dict+dict, and I can't find
-			// it documented for Skylark.  But it is used; see:
+			// it documented for Starlark.  But it is used; see:
 			//   tools/build_defs/haskell/def.bzl:448
 			// TODO(adonovan): clarify spec; see b/36360157.
 			if y, ok := y.(*Dict); ok {
@@ -857,7 +857,7 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	result, err := c.CallInternal(thread, args, kwargs)
 	thread.frame = thread.frame.parent
 
-	// Sanity check: nil is not a valid Skylark value.
+	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
 		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
@@ -1138,7 +1138,7 @@ func (is *intset) len() int {
 	return len(is.large)
 }
 
-// https://github.com/google/skylark/blob/master/doc/spec.md#string-interpolation
+// https://github.com/google/starlark/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)
@@ -1189,7 +1189,7 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 		}
 
-		// NOTE: Skylark does not support any of these optional Python features:
+		// NOTE: Starlark does not support any of these optional Python features:
 		// - optional conversion flags: [#0- +], etc.
 		// - optional minimum field width (number or *).
 		// - optional precision (.123 or *)

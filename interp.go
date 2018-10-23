@@ -1,4 +1,4 @@
-package skylark
+package starlark
 
 // This file defines the bytecode interpreter.
 
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/skylark/internal/compile"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/internal/compile"
+	"github.com/google/starlark/syntax"
 )
 
 const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of error.

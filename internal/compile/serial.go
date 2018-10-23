@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/syntax"
 )
 
 const magic = "!sky"
@@ -45,7 +45,7 @@ type gobIdent struct {
 	Line, Col int32 // the filename is gobProgram.Filename
 }
 
-// Write writes a compiled Skylark program to out.
+// Write writes a compiled Starlark program to out.
 func (prog *Program) Write(out io.Writer) error {
 	out.Write([]byte(magic))
 
@@ -94,7 +94,7 @@ func (prog *Program) Write(out io.Writer) error {
 	return gob.NewEncoder(out).Encode(gp)
 }
 
-// ReadProgram reads a compiled Skylark program from in.
+// ReadProgram reads a compiled Starlark program from in.
 func ReadProgram(in io.Reader) (*Program, error) {
 	magicBuf := []byte(magic)
 	n, err := in.Read(magicBuf)

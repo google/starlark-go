@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package skylark provides a Skylark interpreter.
+// Package starlark provides a Starlark interpreter.
 //
-// Skylark values are represented by the Value interface.
+// Starlark values are represented by the Value interface.
 // The following built-in Value types are known to the evaluator:
 //
 //      NoneType        -- NoneType
@@ -16,7 +16,7 @@
 //      Tuple           -- tuple
 //      *Dict           -- dict
 //      *Set            -- set
-//      *Function       -- function (implemented in Skylark)
+//      *Function       -- function (implemented in Starlark)
 //      *Builtin        -- builtin_function_or_method (function or method implemented in Go)
 //
 // Client applications may define new data types that satisfy at least
@@ -36,14 +36,14 @@
 //      HasSetKey       -- value supports map update using x[k]=v
 //
 // Client applications may also define domain-specific functions in Go
-// and make them available to Skylark programs.  Use NewBuiltin to
+// and make them available to Starlark programs.  Use NewBuiltin to
 // construct a built-in value that wraps a Go function.  The
 // implementation of the Go function may use UnpackArgs to make sense of
 // the positional and keyword arguments provided by the caller.
 //
-// Skylark's None value is not equal to Go's nil, but nil may be
-// assigned to a Skylark Value.  Be careful to avoid allowing Go nil
-// values to leak into Skylark data structures.
+// Starlark's None value is not equal to Go's nil, but nil may be
+// assigned to a Starlark Value.  Be careful to avoid allowing Go nil
+// values to leak into Starlark data structures.
 //
 // The Compare operation requires two arguments of the same
 // type, but this constraint cannot be expressed in Go's type system.
@@ -53,17 +53,17 @@
 // Use the package's standalone Compare (or Equal) function to compare
 // an arbitrary pair of values.
 //
-// To parse and evaluate a Skylark source file, use ExecFile.  The Eval
+// To parse and evaluate a Starlark source file, use ExecFile.  The Eval
 // function evaluates a single expression.  All evaluator functions
 // require a Thread parameter which defines the "thread-local storage"
-// of a Skylark thread and may be used to plumb application state
+// of a Starlark thread and may be used to plumb application state
 // through Sklyark code and into callbacks.  When evaluation fails it
 // returns an EvalError from which the application may obtain a
-// backtrace of active Skylark calls.
+// backtrace of active Starlark calls.
 //
-package skylark
+package starlark
 
-// This file defines the data types of Skylark and their basic operations.
+// This file defines the data types of Starlark and their basic operations.
 
 import (
 	"bytes"
@@ -75,14 +75,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/google/skylark/internal/compile"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/internal/compile"
+	"github.com/google/starlark/syntax"
 )
 
-// Value is a value in the Skylark interpreter.
+// Value is a value in the Starlark interpreter.
 type Value interface {
 	// String returns the string representation of the value.
-	// Skylark string values are quoted as if by Python's repr.
+	// Starlark string values are quoted as if by Python's repr.
 	String() string
 
 	// Type returns a short string describing the value's type.
@@ -93,7 +93,7 @@ type Value interface {
 	// marked as frozen.  All subsequent mutations to the data
 	// structure through this API will fail dynamically, making the
 	// data structure immutable and safe for publishing to other
-	// Skylark interpreters running concurrently.
+	// Starlark interpreters running concurrently.
 	Freeze()
 
 	// Truth returns the truth value of an object.
@@ -159,7 +159,7 @@ var (
 
 // An Iterable abstracts a sequence of values.
 // An iterable value may be iterated over by a 'for' loop or used where
-// any other Skylark iterable is allowed.  Unlike a Sequence, the length
+// any other Starlark iterable is allowed.  Unlike a Sequence, the length
 // of an Iterable is not necessarily known in advance of iteration.
 type Iterable interface {
 	Value
@@ -317,7 +317,7 @@ func (NoneType) CompareSameType(op syntax.Token, y Value, depth int) (bool, erro
 	return threeway(op, 0), nil
 }
 
-// Bool is the type of a Skylark bool.
+// Bool is the type of a Starlark bool.
 type Bool bool
 
 const (
@@ -341,7 +341,7 @@ func (x Bool) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 	return threeway(op, b2i(bool(x))-b2i(bool(y))), nil
 }
 
-// Float is the type of a Skylark float.
+// Float is the type of a Starlark float.
 type Float float64
 
 func (f Float) String() string { return strconv.FormatFloat(float64(f), 'g', 6, 64) }
@@ -401,7 +401,7 @@ func AsFloat(x Value) (f float64, ok bool) {
 
 func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y))) }
 
-// String is the type of a Skylark string.
+// String is the type of a Starlark string.
 //
 // A String encapsulates an an immutable sequence of bytes,
 // but strings are not directly iterable. Instead, iterate
@@ -409,10 +409,10 @@ func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y)
 // codepoints, codepoint_ords, elems, elem_ords.
 //
 // Warning: the contract of the Value interface's String method is that
-// it returns the value printed in Skylark notation,
+// it returns the value printed in Starlark notation,
 // so s.String() or fmt.Sprintf("%s", s) returns a quoted string.
 // Use string(s) or s.GoString() or fmt.Sprintf("%#v", s) to obtain the raw contents
-// of a Skylark string as a Go string.
+// of a Starlark string as a Go string.
 type String string
 
 func (s String) String() string        { return strconv.Quote(string(s)) }
@@ -515,8 +515,8 @@ func (it *stringIterator) Next(p *Value) bool {
 
 func (*stringIterator) Done() {}
 
-// A Function is a function defined by a Skylark def statement or lambda expression.
-// The initialization behavior of a Skylark module is also represented by a Function.
+// A Function is a function defined by a Starlark def statement or lambda expression.
+// The initialization behavior of a Starlark module is also represented by a Function.
 type Function struct {
 	funcode  *compile.Funcode
 	defaults Tuple
@@ -607,7 +607,7 @@ func (b *Builtin) BindReceiver(recv Value) *Builtin {
 	return &Builtin{name: b.name, fn: b.fn, recv: recv}
 }
 
-// A *Dict represents a Skylark dictionary.
+// A *Dict represents a Starlark dictionary.
 type Dict struct {
 	ht hashtable
 }
@@ -664,7 +664,7 @@ func dictsEqual(x, y *Dict, depth int) (bool, error) {
 	return true, nil
 }
 
-// A *List represents a Skylark list value.
+// A *List represents a Starlark list value.
 type List struct {
 	elems     []Value
 	frozen    bool
@@ -807,7 +807,7 @@ func (l *List) Clear() error {
 	return nil
 }
 
-// A Tuple represents a Skylark tuple value.
+// A Tuple represents a Starlark tuple value.
 type Tuple []Value
 
 func (t Tuple) Len() int          { return len(t) }
@@ -868,7 +868,7 @@ func (it *tupleIterator) Next(p *Value) bool {
 
 func (it *tupleIterator) Done() {}
 
-// A Set represents a Skylark set value.
+// A Set represents a Starlark set value.
 type Set struct {
 	ht hashtable // values are all None
 }
@@ -1041,7 +1041,7 @@ func pathContains(path []Value, x Value) bool {
 
 const maxdepth = 10
 
-// Equal reports whether two Skylark values are equal.
+// Equal reports whether two Starlark values are equal.
 func Equal(x, y Value) (bool, error) {
 	if x, ok := x.(String); ok {
 		return x == y, nil // fast path for an important special case
@@ -1049,7 +1049,7 @@ func Equal(x, y Value) (bool, error) {
 	return EqualDepth(x, y, maxdepth)
 }
 
-// EqualDepth reports whether two Skylark values are equal.
+// EqualDepth reports whether two Starlark values are equal.
 //
 // Recursive comparisons by implementations of Value.CompareSameType
 // should use EqualDepth to prevent infinite recursion.
@@ -1057,7 +1057,7 @@ func EqualDepth(x, y Value, depth int) (bool, error) {
 	return CompareDepth(syntax.EQL, x, y, depth)
 }
 
-// Compare compares two Skylark values.
+// Compare compares two Starlark values.
 // The comparison operation must be one of EQL, NEQ, LT, LE, GT, or GE.
 // Compare returns an error if an ordered comparison was
 // requested for a type that does not support it.
@@ -1068,7 +1068,7 @@ func Compare(op syntax.Token, x, y Value) (bool, error) {
 	return CompareDepth(op, x, y, maxdepth)
 }
 
-// CompareDepth compares two Skylark values.
+// CompareDepth compares two Starlark values.
 // The comparison operation must be one of EQL, NEQ, LT, LE, GT, or GE.
 // CompareDepth returns an error if an ordered comparison was
 // requested for a pair of values that do not support it.

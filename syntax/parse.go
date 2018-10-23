@@ -4,8 +4,8 @@
 
 package syntax
 
-// This file defines a recursive-descent parser for Skylark.
-// The LL(1) grammar of Skylark and the names of many productions follow Python 2.7.
+// This file defines a recursive-descent parser for Starlark.
+// The LL(1) grammar of Starlark and the names of many productions follow Python 2.7.
 //
 // TODO(adonovan): use syntax.Error more systematically throughout the
 // package.  Verify that error positions are correct using the
@@ -47,7 +47,7 @@ func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 	return f, nil
 }
 
-// ParseExpr parses a Skylark expression.
+// ParseExpr parses a Starlark expression.
 // See Parse for explanation of parameters.
 func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
 	in, err := newScanner(filename, src, mode&RetainComments != 0)
@@ -589,7 +589,7 @@ var precedence [maxToken]int8
 // preclevels groups operators of equal precedence.
 // Comparisons are nonassociative; other binary operators associate to the left.
 // Unary MINUS, unary PLUS, and TILDE have higher precedence so are handled in parsePrimary.
-// See https://github.com/google/skylark/blob/master/doc/spec.md#binary-operators
+// See https://github.com/google/starlark/blob/master/doc/spec.md#binary-operators
 var preclevels = [...][]Token{
 	{OR},                                   // or
 	{AND},                                  // and

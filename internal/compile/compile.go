@@ -1,5 +1,5 @@
-// The compile package defines the Skylark bytecode compiler.
-// It is an internal package of the Skylark interpreter and is not directly accessible to clients.
+// The compile package defines the Starlark bytecode compiler.
+// It is an internal package of the Starlark interpreter and is not directly accessible to clients.
 //
 // The compiler generates byte code with optional uint32 operands for a
 // virtual machine with the following components:
@@ -30,8 +30,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/resolve"
+	"github.com/google/starlark/syntax"
 )
 
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
@@ -276,7 +276,7 @@ func (op Opcode) String() string {
 	return fmt.Sprintf("illegal op (%d)", op)
 }
 
-// A Program is a Skylark file in executable form.
+// A Program is a Starlark file in executable form.
 //
 // Programs are serialized by the gobProgram function,
 // which must be updated whenever this declaration is changed.
@@ -289,7 +289,7 @@ type Program struct {
 	Toplevel  *Funcode // module initialization function
 }
 
-// A Funcode is the code of a compiled Skylark function.
+// A Funcode is the code of a compiled Starlark function.
 //
 // Funcodes are serialized by the gobFunc function,
 // which must be updated whenever this declaration is changed.
@@ -804,7 +804,7 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 // On return, the current block is unset.
 func (fcomp *fcomp) jump(b *block) {
 	if b == fcomp.block {
-		panic("self-jump") // unreachable: Skylark has no arbitrary looping constructs
+		panic("self-jump") // unreachable: Starlark has no arbitrary looping constructs
 	}
 	fcomp.block.jmp = b
 	fcomp.block = nil
@@ -1530,16 +1530,16 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 		p++
 	}
 
-	// Python2, Python3, and Skylark-in-Java all permit named arguments
+	// Python2, Python3, and Starlark-in-Java all permit named arguments
 	// to appear both before and after a *args argument:
 	//   f(1, 2, x=3, *[4], y=5, **dict(z=6))
 	//
 	// However all three implement different argument evaluation orders:
 	//  Python2: 1 2 3 5 4 6 (*args and **kwargs evaluated last)
 	//  Python3: 1 2 4 3 5 6 (positional args evaluated before named args)
-	//  Skylark-in-Java: 1 2 3 4 5 6 (lexical order)
+	//  Starlark-in-Java: 1 2 3 4 5 6 (lexical order)
 	//
-	// The Skylark-in-Java semantics are clean but hostile to a
+	// The Starlark-in-Java semantics are clean but hostile to a
 	// compiler-based implementation because they require that the
 	// compiler emit code for positional, named, *args, more named,
 	// and *kwargs arguments and provide the callee with a map of

@@ -1,6 +1,6 @@
-# Tests of Skylark 'string'
+# Tests of Starlark 'string'
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # raw string literals:
 assert.eq(r'a\bc', "a\\bc")

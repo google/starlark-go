@@ -2,7 +2,7 @@
 #
 # The initial environment contains the predeclared names "M"
 # (module-specific) and "U" (universal). This distinction
-# should be unobservable to the Skylark program.
+# should be unobservable to the Starlark program.
 
 # use of declared global
 x = 1
@@ -20,7 +20,7 @@ _ = x ### "undefined: x"
 ---
 # redeclaration of global
 x = 1
-x = 2 ### "cannot reassign global x declared at .*resolve.sky:22:1"
+x = 2 ### "cannot reassign global x declared at .*resolve.star:22:1"
 
 ---
 # Redeclaration of predeclared names is allowed.
@@ -30,11 +30,11 @@ x = 2 ### "cannot reassign global x declared at .*resolve.sky:22:1"
 
 # module-specific predeclared name
 M = 1 # ok
-M = 2 ### "cannot reassign global M declared at .*/resolve.sky"
+M = 2 ### "cannot reassign global M declared at .*/resolve.star"
 
 # universal predeclared name
 U = 1 # ok
-U = 1 ### "cannot reassign global U declared at .*/resolve.sky"
+U = 1 ### "cannot reassign global U declared at .*/resolve.star"
 
 ---
 # A global declaration shadows all references to a predeclared; see issue 116.

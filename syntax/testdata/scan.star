@@ -78,7 +78,7 @@ def go_environment_vars(ctx):
   otherwise.
 
   Args:
-    The skylark Context.
+    The starlark Context.
 
   Returns:
     A dict of environment variables for running Go tool commands that build for
@@ -124,7 +124,7 @@ def _emit_go_asm_action(ctx, source, hdrs, out_obj):
   """Construct the command line for compiling Go Assembly code.
   Constructs a symlink tree to accomodate for workspace name.
   Args:
-    ctx: The skylark Context.
+    ctx: The starlark Context.
     source: a source code artifact
     hdrs: list of .h files that may be included
     out_obj: the artifact (configured target?) that should be produced
@@ -149,7 +149,7 @@ def _go_importpath(ctx):
   """Returns the expected importpath of the go_library being built.
 
   Args:
-    ctx: The skylark Context
+    ctx: The starlark Context
 
   Returns:
     Go importpath of the library
@@ -174,7 +174,7 @@ def _emit_go_compile_action(ctx, sources, deps, libpaths, out_object, gc_goopts)
   """Construct the command line for compiling Go code.
 
   Args:
-    ctx: The skylark Context.
+    ctx: The starlark Context.
     sources: an iterable of source code artifacts (or CTs? or labels?)
     deps: an iterable of dependencies. Each dependency d should have an
       artifact in d.transitive_go_libraries representing all imported libraries.
@@ -215,7 +215,7 @@ def _emit_go_pack_action(ctx, out_lib, objects):
   """Construct the command line for packing objects together.
 
   Args:
-    ctx: The skylark Context.
+    ctx: The starlark Context.
     out_lib: the archive that should be produced
     objects: an iterable of object files to be added to the output archive file.
   """
@@ -232,7 +232,7 @@ def _emit_go_cover_action(ctx, sources):
   """Construct the command line for test coverage instrument.
 
   Args:
-    ctx: The skylark Context.
+    ctx: The starlark Context.
     sources: an iterable of Go source files.
 
   Returns:

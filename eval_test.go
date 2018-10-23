@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark_test
+package starlark_test
 
 import (
 	"bytes"
@@ -12,11 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/skylark"
-	"github.com/google/skylark/internal/chunkedfile"
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/skylarktest"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark"
+	"github.com/google/starlark/internal/chunkedfile"
+	"github.com/google/starlark/resolve"
+	"github.com/google/starlark/starlarktest"
+	"github.com/google/starlark/syntax"
 )
 
 func init() {
@@ -29,10 +29,10 @@ func init() {
 }
 
 func TestEvalExpr(t *testing.T) {
-	// This is mostly redundant with the new *.sky tests.
-	// TODO(adonovan): move checks into *.sky files and
-	// reduce this to a mere unit test of skylark.Eval.
-	thread := new(skylark.Thread)
+	// This is mostly redundant with the new *.star tests.
+	// TODO(adonovan): move checks into *.star files and
+	// reduce this to a mere unit test of starlark.Eval.
+	thread := new(starlark.Thread)
 	for _, test := range []struct{ src, want string }{
 		{`123`, `123`},
 		{`-1`, `-1`},
@@ -81,7 +81,7 @@ func TestEvalExpr(t *testing.T) {
 		{`[x for x in range(3)]`, "[0, 1, 2]"},
 	} {
 		var got string
-		if v, err := skylark.Eval(thread, "<expr>", test.src, nil); err != nil {
+		if v, err := starlark.Eval(thread, "<expr>", test.src, nil); err != nil {
 			got = err.Error()
 		} else {
 			got = v.String()
@@ -93,33 +93,33 @@ func TestEvalExpr(t *testing.T) {
 }
 
 func TestExecFile(t *testing.T) {
-	testdata := skylarktest.DataFile("skylark", ".")
-	thread := &skylark.Thread{Load: load}
-	skylarktest.SetReporter(thread, t)
+	testdata := starlarktest.DataFile("starlark", ".")
+	thread := &starlark.Thread{Load: load}
+	starlarktest.SetReporter(thread, t)
 	for _, file := range []string{
-		"testdata/assign.sky",
-		"testdata/bool.sky",
-		"testdata/builtins.sky",
-		"testdata/control.sky",
-		"testdata/dict.sky",
-		"testdata/float.sky",
-		"testdata/function.sky",
-		"testdata/int.sky",
-		"testdata/list.sky",
-		"testdata/misc.sky",
-		"testdata/set.sky",
-		"testdata/string.sky",
-		"testdata/tuple.sky",
+		"testdata/assign.star",
+		"testdata/bool.star",
+		"testdata/builtins.star",
+		"testdata/control.star",
+		"testdata/dict.star",
+		"testdata/float.star",
+		"testdata/function.star",
+		"testdata/int.star",
+		"testdata/list.star",
+		"testdata/misc.star",
+		"testdata/set.star",
+		"testdata/string.star",
+		"testdata/tuple.star",
 	} {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
-			predeclared := skylark.StringDict{
-				"hasfields": skylark.NewBuiltin("hasfields", newHasFields),
+			predeclared := starlark.StringDict{
+				"hasfields": starlark.NewBuiltin("hasfields", newHasFields),
 				"fibonacci": fib{},
 			}
-			_, err := skylark.ExecFile(thread, filename, chunk.Source, predeclared)
+			_, err := starlark.ExecFile(thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {
-			case *skylark.EvalError:
+			case *starlark.EvalError:
 				found := false
 				for _, fr := range err.Stack() {
 					posn := fr.Position()
@@ -148,32 +148,32 @@ type fib struct{}
 func (t fib) Freeze()                   {}
 func (t fib) String() string            { return "fib" }
 func (t fib) Type() string              { return "fib" }
-func (t fib) Truth() skylark.Bool       { return true }
+func (t fib) Truth() starlark.Bool       { return true }
 func (t fib) Hash() (uint32, error)     { return 0, fmt.Errorf("fib is unhashable") }
-func (t fib) Iterate() skylark.Iterator { return &fibIterator{0, 1} }
+func (t fib) Iterate() starlark.Iterator { return &fibIterator{0, 1} }
 
 type fibIterator struct{ x, y int }
 
-func (it *fibIterator) Next(p *skylark.Value) bool {
-	*p = skylark.MakeInt(it.x)
+func (it *fibIterator) Next(p *starlark.Value) bool {
+	*p = starlark.MakeInt(it.x)
 	it.x, it.y = it.y, it.x+it.y
 	return true
 }
 func (it *fibIterator) Done() {}
 
 // load implements the 'load' operation as used in the evaluator tests.
-func load(thread *skylark.Thread, module string) (skylark.StringDict, error) {
-	if module == "assert.sky" {
-		return skylarktest.LoadAssertModule()
+func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+	if module == "assert.star" {
+		return starlarktest.LoadAssertModule()
 	}
 
 	// TODO(adonovan): test load() using this execution path.
 	filename := filepath.Join(filepath.Dir(thread.Caller().Position().Filename()), module)
-	return skylark.ExecFile(thread, filename, nil, nil)
+	return starlark.ExecFile(thread, filename, nil, nil)
 }
 
-func newHasFields(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	return &hasfields{attrs: make(map[string]skylark.Value)}, nil
+func newHasFields(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return &hasfields{attrs: make(map[string]starlark.Value)}, nil
 }
 
 // hasfields is a test-only implementation of HasAttrs.
@@ -181,18 +181,18 @@ func newHasFields(thread *skylark.Thread, _ *skylark.Builtin, args skylark.Tuple
 // Clients will likely want to provide their own implementation,
 // so we don't have any public implementation.
 type hasfields struct {
-	attrs  skylark.StringDict
+	attrs  starlark.StringDict
 	frozen bool
 }
 
 var (
-	_ skylark.HasAttrs  = (*hasfields)(nil)
-	_ skylark.HasBinary = (*hasfields)(nil)
+	_ starlark.HasAttrs  = (*hasfields)(nil)
+	_ starlark.HasBinary = (*hasfields)(nil)
 )
 
 func (hf *hasfields) String() string        { return "hasfields" }
 func (hf *hasfields) Type() string          { return "hasfields" }
-func (hf *hasfields) Truth() skylark.Bool   { return true }
+func (hf *hasfields) Truth() starlark.Bool   { return true }
 func (hf *hasfields) Hash() (uint32, error) { return 42, nil }
 
 func (hf *hasfields) Freeze() {
@@ -204,9 +204,9 @@ func (hf *hasfields) Freeze() {
 	}
 }
 
-func (hf *hasfields) Attr(name string) (skylark.Value, error) { return hf.attrs[name], nil }
+func (hf *hasfields) Attr(name string) (starlark.Value, error) { return hf.attrs[name], nil }
 
-func (hf *hasfields) SetField(name string, val skylark.Value) error {
+func (hf *hasfields) SetField(name string, val starlark.Value) error {
 	if hf.frozen {
 		return fmt.Errorf("cannot set field on a frozen hasfields")
 	}
@@ -222,12 +222,12 @@ func (hf *hasfields) AttrNames() []string {
 	return names
 }
 
-func (hf *hasfields) Binary(op syntax.Token, y skylark.Value, side skylark.Side) (skylark.Value, error) {
+func (hf *hasfields) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	// This method exists so we can exercise 'list += x'
 	// where x is not Iterable but defines list+x.
 	if op == syntax.PLUS {
-		if _, ok := y.(*skylark.List); ok {
-			return skylark.MakeInt(42), nil // list+hasfields is 42
+		if _, ok := y.(*starlark.List); ok {
+			return starlark.MakeInt(42), nil // list+hasfields is 42
 		}
 	}
 	return nil, nil
@@ -250,8 +250,8 @@ def f(a, b=42, *args, **kwargs):
 	return a, b, args, kwargs
 `
 
-	thread := new(skylark.Thread)
-	globals, err := skylark.ExecFile(thread, filename, src, nil)
+	thread := new(starlark.Thread)
+	globals, err := starlark.ExecFile(thread, filename, src, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,11 +298,11 @@ def f(a, b=42, *args, **kwargs):
 		{`f(0, b=1)`, `(0, 1, (), {})`},
 		{`f(0, a=1)`, `function f got multiple values for keyword argument "a"`},
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
-		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
+		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/starlark/issues/135
 			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
 	} {
 		var got string
-		if v, err := skylark.Eval(thread, "<expr>", test.src, globals); err != nil {
+		if v, err := starlark.Eval(thread, "<expr>", test.src, globals); err != nil {
 			got = err.Error()
 		} else {
 			got = v.String()
@@ -313,7 +313,7 @@ def f(a, b=42, *args, **kwargs):
 	}
 }
 
-// TestPrint ensures that the Skylark print function calls
+// TestPrint ensures that the Starlark print function calls
 // Thread.Print, if provided.
 func TestPrint(t *testing.T) {
 	const src = `
@@ -322,13 +322,13 @@ def f(): print("world")
 f()
 `
 	buf := new(bytes.Buffer)
-	print := func(thread *skylark.Thread, msg string) {
+	print := func(thread *starlark.Thread, msg string) {
 		caller := thread.Caller()
 		fmt.Fprintf(buf, "%s: %s: %s\n",
 			caller.Position(), caller.Callable().Name(), msg)
 	}
-	thread := &skylark.Thread{Print: print}
-	if _, err := skylark.ExecFile(thread, "foo.go", src, nil); err != nil {
+	thread := &starlark.Thread{Print: print}
+	if _, err := starlark.ExecFile(thread, "foo.go", src, nil); err != nil {
 		t.Fatal(err)
 	}
 	want := "foo.go:2: <toplevel>: hello\n" +
@@ -339,26 +339,26 @@ f()
 }
 
 func Benchmark(b *testing.B) {
-	testdata := skylarktest.DataFile("skylark", ".")
-	thread := new(skylark.Thread)
+	testdata := starlarktest.DataFile("starlark", ".")
+	thread := new(starlark.Thread)
 	for _, file := range []string{
-		"testdata/benchmark.sky",
+		"testdata/benchmark.star",
 		// ...
 	} {
 		filename := filepath.Join(testdata, file)
 
 		// Evaluate the file once.
-		globals, err := skylark.ExecFile(thread, filename, nil, nil)
+		globals, err := starlark.ExecFile(thread, filename, nil, nil)
 		if err != nil {
 			reportEvalError(b, err)
 		}
 
 		// Repeatedly call each global function named bench_* as a benchmark.
 		for name, value := range globals {
-			if fn, ok := value.(*skylark.Function); ok && strings.HasPrefix(name, "bench_") {
+			if fn, ok := value.(*starlark.Function); ok && strings.HasPrefix(name, "bench_") {
 				b.Run(name, func(b *testing.B) {
 					for i := 0; i < b.N; i++ {
-						_, err := skylark.Call(thread, fn, nil, nil)
+						_, err := starlark.Call(thread, fn, nil, nil)
 						if err != nil {
 							reportEvalError(b, err)
 						}
@@ -370,7 +370,7 @@ func Benchmark(b *testing.B) {
 }
 
 func reportEvalError(tb testing.TB, err error) {
-	if err, ok := err.(*skylark.EvalError); ok {
+	if err, ok := err.(*starlark.EvalError); ok {
 		tb.Fatal(err.Backtrace())
 	}
 	tb.Fatal(err)
@@ -379,21 +379,21 @@ func reportEvalError(tb testing.TB, err error) {
 // TestInt exercises the Int.Int64 and Int.Uint64 methods.
 // If we can move their logic into math/big, delete this test.
 func TestInt(t *testing.T) {
-	one := skylark.MakeInt(1)
+	one := starlark.MakeInt(1)
 
 	for _, test := range []struct {
-		i          skylark.Int
+		i          starlark.Int
 		wantInt64  string
 		wantUint64 string
 	}{
-		{skylark.MakeInt64(math.MinInt64).Sub(one), "error", "error"},
-		{skylark.MakeInt64(math.MinInt64), "-9223372036854775808", "error"},
-		{skylark.MakeInt64(-1), "-1", "error"},
-		{skylark.MakeInt64(0), "0", "0"},
-		{skylark.MakeInt64(1), "1", "1"},
-		{skylark.MakeInt64(math.MaxInt64), "9223372036854775807", "9223372036854775807"},
-		{skylark.MakeUint64(math.MaxUint64), "error", "18446744073709551615"},
-		{skylark.MakeUint64(math.MaxUint64).Add(one), "error", "error"},
+		{starlark.MakeInt64(math.MinInt64).Sub(one), "error", "error"},
+		{starlark.MakeInt64(math.MinInt64), "-9223372036854775808", "error"},
+		{starlark.MakeInt64(-1), "-1", "error"},
+		{starlark.MakeInt64(0), "0", "0"},
+		{starlark.MakeInt64(1), "1", "1"},
+		{starlark.MakeInt64(math.MaxInt64), "9223372036854775807", "9223372036854775807"},
+		{starlark.MakeUint64(math.MaxUint64), "error", "18446744073709551615"},
+		{starlark.MakeUint64(math.MaxUint64).Add(one), "error", "error"},
 	} {
 		gotInt64, gotUint64 := "error", "error"
 		if i, ok := test.i.Int64(); ok {
@@ -412,7 +412,7 @@ func TestInt(t *testing.T) {
 }
 
 func TestBacktrace(t *testing.T) {
-	// This test ensures continuity of the stack of active Skylark
+	// This test ensures continuity of the stack of active Starlark
 	// functions, including propagation through built-ins such as 'min'
 	// (though min does not itself appear in the stack).
 	const src = `
@@ -422,19 +422,19 @@ def h(): return min([1, 2, 0], key=g)
 def i(): return h()
 i()
 `
-	thread := new(skylark.Thread)
-	_, err := skylark.ExecFile(thread, "crash.sky", src, nil)
+	thread := new(starlark.Thread)
+	_, err := starlark.ExecFile(thread, "crash.star", src, nil)
 	switch err := err.(type) {
-	case *skylark.EvalError:
+	case *starlark.EvalError:
 		got := err.Backtrace()
 		// Compiled code currently has no column information.
 		const want = `Traceback (most recent call last):
-  crash.sky:6: in <toplevel>
-  crash.sky:5: in i
-  crash.sky:4: in h
+  crash.star:6: in <toplevel>
+  crash.star:5: in i
+  crash.star:4: in h
   <builtin>:1: in min
-  crash.sky:3: in g
-  crash.sky:2: in f
+  crash.star:3: in g
+  crash.star:2: in f
 Error: floored division by zero`
 		if got != want {
 			t.Errorf("error was %s, want %s", got, want)
@@ -449,24 +449,24 @@ Error: floored division by zero`
 // TestRepeatedExec parses and resolves a file syntax tree once then
 // executes it repeatedly with different values of its predeclared variables.
 func TestRepeatedExec(t *testing.T) {
-	predeclared := skylark.StringDict{"x": skylark.None}
-	_, prog, err := skylark.SourceProgram("repeat.sky", "y = 2 * x", predeclared.Has)
+	predeclared := starlark.StringDict{"x": starlark.None}
+	_, prog, err := starlark.SourceProgram("repeat.star", "y = 2 * x", predeclared.Has)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, test := range []struct {
-		x, want skylark.Value
+		x, want starlark.Value
 	}{
-		{x: skylark.MakeInt(42), want: skylark.MakeInt(84)},
-		{x: skylark.String("mur"), want: skylark.String("murmur")},
-		{x: skylark.Tuple{skylark.None}, want: skylark.Tuple{skylark.None, skylark.None}},
+		{x: starlark.MakeInt(42), want: starlark.MakeInt(84)},
+		{x: starlark.String("mur"), want: starlark.String("murmur")},
+		{x: starlark.Tuple{starlark.None}, want: starlark.Tuple{starlark.None, starlark.None}},
 	} {
 		predeclared["x"] = test.x // update the values in dictionary
-		thread := new(skylark.Thread)
+		thread := new(starlark.Thread)
 		if globals, err := prog.Init(thread, predeclared); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // exec error
-		} else if eq, err := skylark.Equal(globals["y"], test.want); err != nil {
+		} else if eq, err := starlark.Equal(globals["y"], test.want); err != nil {
 			t.Errorf("x=%v: %v", test.x, err) // comparison error
 		} else if !eq {
 			t.Errorf("x=%v: got y=%v, want %v", test.x, globals["y"], test.want)
@@ -475,12 +475,12 @@ func TestRepeatedExec(t *testing.T) {
 }
 
 // TestUnpackUserDefined tests that user-defined
-// implementations of skylark.Value may be unpacked.
+// implementations of starlark.Value may be unpacked.
 func TestUnpackUserDefined(t *testing.T) {
 	// success
 	want := new(hasfields)
 	var x *hasfields
-	if err := skylark.UnpackArgs("unpack", skylark.Tuple{want}, nil, "x", &x); err != nil {
+	if err := starlark.UnpackArgs("unpack", starlark.Tuple{want}, nil, "x", &x); err != nil {
 		t.Errorf("UnpackArgs failed: %v", err)
 	}
 	if x != want {
@@ -488,7 +488,7 @@ func TestUnpackUserDefined(t *testing.T) {
 	}
 
 	// failure
-	err := skylark.UnpackArgs("unpack", skylark.Tuple{skylark.MakeInt(42)}, nil, "x", &x)
+	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "x", &x)
 	if want := "unpack: for parameter 1: got int, want hasfields"; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)
 	}

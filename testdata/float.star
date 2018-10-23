@@ -1,6 +1,6 @@
-# Tests of Skylark 'float'
+# Tests of Starlark 'float'
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # TODO(adonovan): more tests:
 # - precision

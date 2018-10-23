@@ -14,7 +14,7 @@ import (
 )
 
 func scan(src interface{}) (tokens string, err error) {
-	sc, err := newScanner("foo.sky", src, false)
+	sc, err := newScanner("foo.star", src, false)
 	if err != nil {
 		return "", err
 	}
@@ -161,16 +161,16 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// hex
 		{"0xA", `10 EOF`},
 		{"0xAAG", `170 G EOF`},
-		{"0xG", `foo.sky:1:1: invalid hex literal`},
+		{"0xG", `foo.star:1:1: invalid hex literal`},
 		{"0XA", `10 EOF`},
-		{"0XG", `foo.sky:1:1: invalid hex literal`},
+		{"0XG", `foo.star:1:1: invalid hex literal`},
 		{"0xA.", `10 . EOF`},
 		{"0xA.e1", `10 . e1 EOF`},
 		{"0x12345678deadbeef12345678", `5634002672576678570168178296 EOF`},
 		// binary
 		{"0b1010", `10 EOF`},
 		{"0B111101", `61 EOF`},
-		{"0b3", `foo.sky:1:3: invalid binary literal`},
+		{"0b3", `foo.star:1:3: invalid binary literal`},
 		{"0b1010201", `10 201 EOF`},
 		{"0b1010.01", `10 1.000000e-02 EOF`},
 		{"0b0000", `0 EOF`},
@@ -186,14 +186,14 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// TODO(adonovan): reenable later.
 		// {"0123", `obsolete form of octal literal; use 0o123`},
 		{"0123", `83 EOF`},
-		{"012834", `foo.sky:1:1: invalid int literal`},
-		{"012934", `foo.sky:1:1: invalid int literal`},
-		{"i = 012934", `foo.sky:1:5: invalid int literal`},
+		{"012834", `foo.star:1:1: invalid int literal`},
+		{"012934", `foo.star:1:1: invalid int literal`},
+		{"i = 012934", `foo.star:1:5: invalid int literal`},
 		// octal escapes in string literals
 		{`"\037"`, `"\x1f" EOF`},
 		{`"\377"`, `"\xff" EOF`},
 		{`"\378"`, `"\x1f8" EOF`},                               // = '\37' + '8'
-		{`"\400"`, `foo.sky:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
+		{`"\400"`, `foo.star:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
 		// Backslashes that are not part of escapes are treated literally,
 		// but this behavior will change; see b/34519173.
 		{`"\+"`, `"\\+" EOF`},
@@ -205,7 +205,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"0123.", `1.230000e+02 EOF`},
 		{"0123.1", `1.231000e+02 EOF`},
 		// issue #16
-		{"x ! 0", "foo.sky:1:3: unexpected input character '!'"},
+		{"x ! 0", "foo.star:1:3: unexpected input character '!'"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {
@@ -217,14 +217,14 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 	}
 }
 
-// dataFile is the same as skylarktest.DataFile.
+// dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
 	return filepath.Join(build.Default.GOPATH, "src/github.com/google", pkgdir, filename)
 }
 
 func BenchmarkScan(b *testing.B) {
-	filename := dataFile("skylark/syntax", "testdata/scan.sky")
+	filename := dataFile("starlark/syntax", "testdata/scan.star")
 	b.StopTimer()
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {

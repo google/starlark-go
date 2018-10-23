@@ -1,6 +1,6 @@
-# Tests of Skylark built-in functions
+# Tests of Starlark built-in functions
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # len
 assert.eq(len([1, 2, 3]), 3)

@@ -4,7 +4,7 @@
 
 package syntax
 
-// A lexical scanner for Skylark.
+// A lexical scanner for Starlark.
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 	"unicode/utf8"
 )
 
-// A Token represents a Skylark lexical token.
+// A Token represents a Starlark lexical token.
 type Token int8
 
 const (
@@ -798,7 +798,7 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 }
 
 func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
-	// https://github.com/google/skylark/blob/master/doc/spec.md#lexical-elements
+	// https://github.com/google/starlark/blob/master/doc/spec.md#lexical-elements
 	//
 	// Python features not supported:
 	// - integer literals of >64 bits of precision

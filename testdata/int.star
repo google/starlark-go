@@ -1,6 +1,6 @@
-# Tests of Skylark 'int'
+# Tests of Starlark 'int'
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # basic arithmetic
 assert.eq(0 - 1, -1)
@@ -16,7 +16,7 @@ assert.true(-1)
 assert.true(not 0)
 
 # floored division
-# (For real division, see float.sky.)
+# (For real division, see float.star.)
 assert.eq(100 // 7, 14)
 assert.eq(100 // -7, -15)
 assert.eq(-100 // 7, -15) # NB: different from Go/Java
@@ -67,7 +67,7 @@ def compound():
 compound()
 
 # int conversion
-# See float.sky for float-to-int conversions.
+# See float.star for float-to-int conversions.
 # We follow Python 3 here, but I can't see the method in its madness.
 # int from bool/int/float
 assert.fails(int, 'missing argument')  # int()
@@ -134,7 +134,7 @@ assert.fails(lambda: int("-0123", 0), "invalid literal.*base 0")
 # bitwise union (int|int), intersection (int&int), XOR (int^int), unary not (~int),
 # left shift (int<<int), and right shift (int>>int).
 # use resolve.AllowBitwise to enable the ops.
-# TODO(adonovan): this is not yet in the Skylark spec,
+# TODO(adonovan): this is not yet in the Starlark spec,
 # but there is consensus that it should be.
 assert.eq(1|2, 3)
 assert.eq(3|6, 7)

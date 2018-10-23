@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package resolve defines a name-resolution pass for Skylark abstract
+// Package resolve defines a name-resolution pass for Starlark abstract
 // syntax trees.
 //
 // The resolver sets the Locals and FreeVars arrays of each DefStmt and
@@ -48,9 +48,9 @@ package resolve
 // function. At that point, we can distinguish local from global names
 // (and this is when Python would compute free variables).
 //
-// However, Skylark additionally requires that all references to global
+// However, Starlark additionally requires that all references to global
 // names are satisfied by some declaration in the current module;
-// Skylark permits a function to forward-reference a global that has not
+// Starlark permits a function to forward-reference a global that has not
 // been declared yet so long as it is declared before the end of the
 // module.  So, instead of re-resolving the unresolved references after
 // each top-level function, we defer this until the end of the module
@@ -67,7 +67,7 @@ package resolve
 // We resolve all uses of locals in the module (due to comprehensions)
 // in a similar way and compute the set of its local variables.
 //
-// Skylark enforces that all global names are assigned at most once on
+// Starlark enforces that all global names are assigned at most once on
 // all control flow paths by forbidding if/else statements and loops at
 // top level. A global may be used before it is defined, leading to a
 // dynamic error.
@@ -79,14 +79,14 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/syntax"
 )
 
 const debug = false
-const doesnt = "this Skylark dialect does not "
+const doesnt = "this Starlark dialect does not "
 
 // global options
-// These features are either not standard Skylark (yet), or deprecated
+// These features are either not standard Starlark (yet), or deprecated
 // features of the BUILD language, so we put them behind flags.
 var (
 	AllowNestedDef      = false // allow def statements within function bodies
@@ -103,11 +103,11 @@ var (
 // a pre-declared identifier (visible in the current module) or a
 // universal identifier (visible in every module).
 // Clients should typically pass predeclared.Has for the first and
-// skylark.Universe.Has for the second, where predeclared is the
-// module's StringDict of predeclared names and skylark.Universe is the
+// starlark.Universe.Has for the second, where predeclared is the
+// module's StringDict of predeclared names and starlark.Universe is the
 // standard set of built-ins.
 // The isUniverse predicate is supplied a parameter to avoid a cyclic
-// dependency upon skylark.Universe, not because users should ever need
+// dependency upon starlark.Universe, not because users should ever need
 // to redefine it.
 func File(file *syntax.File, isPredeclared, isUniversal func(name string) bool) error {
 	r := newResolver(isPredeclared, isUniversal)

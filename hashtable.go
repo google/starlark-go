@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark
+package starlark
 
 import (
 	"fmt"
 	_ "unsafe" // for go:linkname hack
 )
 
-// hashtable is used to represent Skylark dict and set values.
+// hashtable is used to represent Starlark dict and set values.
 // It is a hash table whose key/value entries form a doubly-linked list
 // in the order the entries were inserted.
 type hashtable struct {

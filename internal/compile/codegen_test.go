@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/resolve"
+	"github.com/google/starlark/syntax"
 )
 
 // TestPlusFolding ensures that the compiler generates optimized code for
@@ -54,7 +54,7 @@ func TestPlusFolding(t *testing.T) {
 				`return`,
 		},
 	} {
-		expr, err := syntax.ParseExpr("in.sky", test.src, 0)
+		expr, err := syntax.ParseExpr("in.star", test.src, 0)
 		if err != nil {
 			t.Errorf("#%d: %v", i, err)
 			continue

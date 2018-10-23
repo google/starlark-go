@@ -1,5 +1,5 @@
 
-Grammar of Skylark
+Grammar of Starlark
 ==================
 
 File = {Statement | newline} eof .

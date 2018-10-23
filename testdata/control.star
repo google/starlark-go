@@ -1,6 +1,6 @@
-# Tests of Skylark control flow
+# Tests of Starlark control flow
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def controlflow():
   # elif

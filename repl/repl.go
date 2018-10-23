@@ -1,4 +1,4 @@
-// The repl package provides a read/eval/print loop for Skylark.
+// The repl package provides a read/eval/print loop for Starlark.
 //
 // It supports readline-style command editing,
 // and interrupts through Control-C.
@@ -31,20 +31,20 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
-	"github.com/google/skylark"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark"
+	"github.com/google/starlark/syntax"
 )
 
 var interrupted = make(chan os.Signal, 1)
 
 // REPL executes a read, eval, print loop.
 //
-// Before evaluating each expression, it sets the Skylark thread local
+// Before evaluating each expression, it sets the Starlark thread local
 // variable named "context" to a context.Context that is cancelled by a
 // SIGINT (Control-C). Client-supplied global functions may use this
 // context to make long-running operations interruptable.
 //
-func REPL(thread *skylark.Thread, globals skylark.StringDict) {
+func REPL(thread *starlark.Thread, globals starlark.StringDict) {
 	signal.Notify(interrupted, os.Interrupt)
 	defer signal.Stop(interrupted)
 
@@ -69,8 +69,8 @@ func REPL(thread *skylark.Thread, globals skylark.StringDict) {
 // rep reads, evaluates, and prints one item.
 //
 // It returns an error (possibly readline.ErrInterrupt)
-// only if readline failed. Skylark errors are printed.
-func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDict) error {
+// only if readline failed. Starlark errors are printed.
+func rep(rl *readline.Instance, thread *starlark.Thread, globals starlark.StringDict) error {
 	// Each item gets its own context,
 	// which is cancelled by a SIGINT.
 	//
@@ -100,9 +100,9 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 
 	// If the line contains a well-formed expression, evaluate it.
 	if _, err := syntax.ParseExpr("<stdin>", line, 0); err == nil {
-		if v, err := skylark.Eval(thread, "<stdin>", line, globals); err != nil {
+		if v, err := starlark.Eval(thread, "<stdin>", line, globals); err != nil {
 			PrintError(err)
-		} else if v != skylark.None {
+		} else if v != starlark.None {
 			fmt.Println(v)
 		}
 		return nil
@@ -145,9 +145,9 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 	//     2
 	//   )
 	if _, err := syntax.ParseExpr("<stdin>", text, 0); err == nil {
-		if v, err := skylark.Eval(thread, "<stdin>", text, globals); err != nil {
+		if v, err := starlark.Eval(thread, "<stdin>", text, globals); err != nil {
 			PrintError(err)
-		} else if v != skylark.None {
+		} else if v != starlark.None {
 			fmt.Println(v)
 		}
 		return nil
@@ -161,9 +161,9 @@ func rep(rl *readline.Instance, thread *skylark.Thread, globals skylark.StringDi
 	return nil
 }
 
-// execFileNoFreeze is skylark.ExecFile without globals.Freeze().
-func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.StringDict) error {
-	_, prog, err := skylark.SourceProgram("<stdin>", src, globals.Has)
+// execFileNoFreeze is starlark.ExecFile without globals.Freeze().
+func execFileNoFreeze(thread *starlark.Thread, src interface{}, globals starlark.StringDict) error {
+	_, prog, err := starlark.SourceProgram("<stdin>", src, globals.Has)
 	if err != nil {
 		return err
 	}
@@ -183,9 +183,9 @@ func execFileNoFreeze(thread *skylark.Thread, src interface{}, globals skylark.S
 }
 
 // PrintError prints the error to stderr,
-// or its backtrace if it is a Skylark evaluation error.
+// or its backtrace if it is a Starlark evaluation error.
 func PrintError(err error) {
-	if evalErr, ok := err.(*skylark.EvalError); ok {
+	if evalErr, ok := err.(*starlark.EvalError); ok {
 		fmt.Fprintln(os.Stderr, evalErr.Backtrace())
 	} else {
 		fmt.Fprintln(os.Stderr, err)
@@ -195,15 +195,15 @@ func PrintError(err error) {
 // MakeLoad returns a simple sequential implementation of module loading
 // suitable for use in the REPL.
 // Each function returned by MakeLoad accesses a distinct private cache.
-func MakeLoad() func(thread *skylark.Thread, module string) (skylark.StringDict, error) {
+func MakeLoad() func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	type entry struct {
-		globals skylark.StringDict
+		globals starlark.StringDict
 		err     error
 	}
 
 	var cache = make(map[string]*entry)
 
-	return func(thread *skylark.Thread, module string) (skylark.StringDict, error) {
+	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		e, ok := cache[module]
 		if e == nil {
 			if ok {
@@ -215,8 +215,8 @@ func MakeLoad() func(thread *skylark.Thread, module string) (skylark.StringDict,
 			cache[module] = nil
 
 			// Load it.
-			thread := &skylark.Thread{Load: thread.Load}
-			globals, err := skylark.ExecFile(thread, module, nil, nil)
+			thread := &starlark.Thread{Load: thread.Load}
+			globals, err := starlark.ExecFile(thread, module, nil, nil)
 			e = &entry{globals, err}
 
 			// Update the cache.

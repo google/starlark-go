@@ -1,4 +1,4 @@
-# Miscellaneous tests of Skylark evaluation.
+# Miscellaneous tests of Starlark evaluation.
 # This is a "chunked" file: each "---" effectively starts a new file.
 
 # TODO(adonovan): move these tests into more appropriate files.
@@ -36,7 +36,7 @@
 #   tuple slice
 #   interpolate with %c, %%
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # Ordered comparisons require values of the same type.
 assert.fails(lambda: None < False, "not impl")
@@ -53,7 +53,7 @@ assert.lt(2.0, 3)
 
 ---
 # cyclic data structures
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 cyclic = [1, 2, 3] # list cycle
 cyclic[1] = cyclic
@@ -81,7 +81,7 @@ assert.fails(lambda: cyclic5 == cyclic6, "maximum recursion")
 
 ---
 # regression
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # was a parse error:
 assert.eq(("ababab"[2:]).replace("b", "c"), "acac")
@@ -100,22 +100,22 @@ _ = {}.get(1, default=2) ### "get: unexpected keyword arguments"
 
 ---
 # Load exposes explicitly declared globals from other modules.
-load('assert.sky', 'assert', 'freeze')
+load('assert.star', 'assert', 'freeze')
 assert.eq(str(freeze), '<built-in function freeze>')
 
 ---
 # Load does not expose pre-declared globals from other modules.
-# See github.com/google/skylark/issues/75.
-load('assert.sky', 'assert', 'matches') ### "matches not found in module"
+# See github.com/google/starlark/issues/75.
+load('assert.star', 'assert', 'matches') ### "matches not found in module"
 
 ---
 # Load does not expose universals accessible in other modules.
-load('assert.sky', 'len') ### "len not found in module"
+load('assert.star', 'len') ### "len not found in module"
 
 
 ---
 # Test plus folding optimization.
-load('assert.sky', 'assert')
+load('assert.star', 'assert')
 
 s = "s"
 l = [4]

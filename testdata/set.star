@@ -1,6 +1,6 @@
-# Tests of Skylark 'set'
+# Tests of Starlark 'set'
 
-# Sets are not (yet) a standard part of Skylark, so the features
+# Sets are not (yet) a standard part of Starlark, so the features
 # tested in this file must be enabled in the application by setting
 # resolve.AllowSet.  (All sets are created by calls to the 'set'
 # built-in or derived from operations on existing sets.)
@@ -14,15 +14,15 @@
 # - set += iterable, perhaps?
 # Test iterator invalidation.
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # literals
 # Parser does not currently support {1, 2, 3}.
-# TODO(adonovan): add test to syntax/testdata/errors.sky.
+# TODO(adonovan): add test to syntax/testdata/errors.star.
 
 # set comprehensions
 # Parser does not currently support {x for x in y}.
-# See syntax/testdata/errors.sky.
+# See syntax/testdata/errors.star.
 
 # set constructor
 assert.eq(type(set()), "set")

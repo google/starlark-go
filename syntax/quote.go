@@ -4,7 +4,7 @@
 
 package syntax
 
-// Skylark quoted string utilities.
+// Starlark quoted string utilities.
 
 import (
 	"bytes"

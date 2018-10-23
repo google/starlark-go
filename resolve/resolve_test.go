@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/skylark/internal/chunkedfile"
-	"github.com/google/skylark/resolve"
-	"github.com/google/skylark/skylarktest"
-	"github.com/google/skylark/syntax"
+	"github.com/google/starlark/internal/chunkedfile"
+	"github.com/google/starlark/resolve"
+	"github.com/google/starlark/starlarktest"
+	"github.com/google/starlark/syntax"
 )
 
 func TestResolve(t *testing.T) {
-	filename := skylarktest.DataFile("skylark/resolve", "testdata/resolve.sky")
+	filename := starlarktest.DataFile("starlark/resolve", "testdata/resolve.star")
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		f, err := syntax.Parse(filename, chunk.Source, 0)
 		if err != nil {
@@ -45,7 +45,7 @@ func option(chunk, name string) bool {
 
 func TestDefVarargsAndKwargsSet(t *testing.T) {
 	source := "def f(*args, **kwargs): pass\n"
-	file, err := syntax.Parse("foo.sky", source, 0)
+	file, err := syntax.Parse("foo.star", source, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestDefVarargsAndKwargsSet(t *testing.T) {
 func TestLambdaVarargsAndKwargsSet(t *testing.T) {
 	resolve.AllowLambda = true
 	source := "f = lambda *args, **kwargs: 0\n"
-	file, err := syntax.Parse("foo.sky", source, 0)
+	file, err := syntax.Parse("foo.star", source, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

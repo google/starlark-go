@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package skylark_test
+package starlark_test
 
 import (
 	"fmt"
@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/google/skylark"
+	"github.com/google/starlark"
 )
 
 // ExampleExecFile demonstrates a simple embedding
-// of the Skylark interpreter into a Go program.
+// of the Starlark interpreter into a Go program.
 func ExampleExecFile() {
 	const data = `
 print(greeting + ", world")
@@ -25,15 +25,15 @@ print(greeting + ", world")
 squares = [x*x for x in range(10)]
 `
 
-	thread := &skylark.Thread{
-		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
-	predeclared := skylark.StringDict{
-		"greeting": skylark.String("hello"),
+	predeclared := starlark.StringDict{
+		"greeting": starlark.String("hello"),
 	}
-	globals, err := skylark.ExecFile(thread, "apparent/filename.sky", data, predeclared)
+	globals, err := starlark.ExecFile(thread, "apparent/filename.star", data, predeclared)
 	if err != nil {
-		if evalErr, ok := err.(*skylark.EvalError); ok {
+		if evalErr, ok := err.(*starlark.EvalError); ok {
 			log.Fatal(evalErr.Backtrace())
 		}
 		log.Fatal(err)
@@ -62,20 +62,20 @@ squares = [x*x for x in range(10)]
 // implementation of 'load' that works sequentially.
 func ExampleThread_Load_sequential() {
 	fakeFilesystem := map[string]string{
-		"c.sky": `load("b.sky", "b"); c = b + "!"`,
-		"b.sky": `load("a.sky", "a"); b = a + ", world"`,
-		"a.sky": `a = "Hello"`,
+		"c.star": `load("b.star", "b"); c = b + "!"`,
+		"b.star": `load("a.star", "a"); b = a + ", world"`,
+		"a.star": `a = "Hello"`,
 	}
 
 	type entry struct {
-		globals skylark.StringDict
+		globals starlark.StringDict
 		err     error
 	}
 
 	cache := make(map[string]*entry)
 
-	var load func(_ *skylark.Thread, module string) (skylark.StringDict, error)
-	load = func(_ *skylark.Thread, module string) (skylark.StringDict, error) {
+	var load func(_ *starlark.Thread, module string) (starlark.StringDict, error)
+	load = func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 		e, ok := cache[module]
 		if e == nil {
 			if ok {
@@ -88,8 +88,8 @@ func ExampleThread_Load_sequential() {
 
 			// Load and initialize the module in a new thread.
 			data := fakeFilesystem[module]
-			thread := &skylark.Thread{Load: load}
-			globals, err := skylark.ExecFile(thread, module, data, nil)
+			thread := &starlark.Thread{Load: load}
+			globals, err := starlark.ExecFile(thread, module, data, nil)
 			e = &entry{globals, err}
 
 			// Update the cache.
@@ -98,8 +98,8 @@ func ExampleThread_Load_sequential() {
 		return e.globals, e.err
 	}
 
-	thread := &skylark.Thread{Load: load}
-	globals, err := load(thread, "c.sky")
+	thread := &starlark.Thread{Load: load}
+	globals, err := load(thread, "c.star")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -115,9 +115,9 @@ func ExampleThread_Load_parallel() {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
-			"c.sky": `load("a.sky", "a"); c = a * 2`,
-			"b.sky": `load("a.sky", "a"); b = a * 3`,
-			"a.sky": `a = 1; print("loaded a")`,
+			"c.star": `load("a.star", "a"); c = a * 2`,
+			"b.star": `load("a.star", "a"); b = a * 3`,
+			"a.star": `a = 1; print("loaded a")`,
 		},
 	}
 
@@ -129,7 +129,7 @@ func ExampleThread_Load_parallel() {
 	ch := make(chan string)
 	for _, name := range []string{"b", "c"} {
 		go func(name string) {
-			globals, err := cache.Load(name + ".sky")
+			globals, err := cache.Load(name + ".star")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -152,9 +152,9 @@ func ExampleThread_Load_parallelCycle() {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
-			"c.sky": `load("b.sky", "b"); c = b * 2`,
-			"b.sky": `load("a.sky", "a"); b = a * 3`,
-			"a.sky": `load("c.sky", "c"); a = c * 5; print("loaded a")`,
+			"c.star": `load("b.star", "b"); c = b * 2`,
+			"b.star": `load("a.star", "a"); b = a * 3`,
+			"a.star": `load("c.star", "c"); a = c * 5; print("loaded a")`,
 		},
 	}
 
@@ -162,9 +162,9 @@ func ExampleThread_Load_parallelCycle() {
 	for _, name := range "bc" {
 		name := string(name)
 		go func() {
-			_, err := cache.Load(name + ".sky")
+			_, err := cache.Load(name + ".star")
 			if err == nil {
-				log.Fatalf("Load of %s.sky succeeded unexpectedly", name)
+				log.Fatalf("Load of %s.star succeeded unexpectedly", name)
 			}
 			ch <- err.Error()
 		}()
@@ -174,8 +174,8 @@ func ExampleThread_Load_parallelCycle() {
 	fmt.Println(strings.Join(got, "\n"))
 
 	// Output:
-	// cannot load a.sky: cannot load c.sky: cycle in load graph
-	// cannot load b.sky: cannot load a.sky: cannot load c.sky: cycle in load graph
+	// cannot load a.star: cannot load c.star: cycle in load graph
+	// cannot load b.star: cannot load a.star: cannot load c.star: cycle in load graph
 }
 
 // cache is a concurrency-safe, duplicate-suppressing,
@@ -191,17 +191,17 @@ type cache struct {
 
 type entry struct {
 	owner   unsafe.Pointer // a *cycleChecker; see cycleCheck
-	globals skylark.StringDict
+	globals starlark.StringDict
 	err     error
 	ready   chan struct{}
 }
 
-func (c *cache) Load(module string) (skylark.StringDict, error) {
+func (c *cache) Load(module string) (starlark.StringDict, error) {
 	return c.get(new(cycleChecker), module)
 }
 
 // get loads and returns an entry (if not already loaded).
-func (c *cache) get(cc *cycleChecker, module string) (skylark.StringDict, error) {
+func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error) {
 	c.cacheMu.Lock()
 	e := c.cache[module]
 	if e != nil {
@@ -233,16 +233,16 @@ func (c *cache) get(cc *cycleChecker, module string) (skylark.StringDict, error)
 	return e.globals, e.err
 }
 
-func (c *cache) doLoad(cc *cycleChecker, module string) (skylark.StringDict, error) {
-	thread := &skylark.Thread{
-		Print: func(_ *skylark.Thread, msg string) { fmt.Println(msg) },
-		Load: func(_ *skylark.Thread, module string) (skylark.StringDict, error) {
+func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 			// Tunnel the cycle-checker state for this "thread of loading".
 			return c.get(cc, module)
 		},
 	}
 	data := c.fakeFilesystem[module]
-	return skylark.ExecFile(thread, module, data, nil)
+	return starlark.ExecFile(thread, module, data, nil)
 }
 
 // -- concurrent cycle checking --

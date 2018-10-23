@@ -1,30 +1,31 @@
 
-<!-- This file is the project homepage at github.com/google/skylark -->
+<!-- This file is the project homepage at github.com/google/starlark -->
 
-# Skylark in Go
+# Starlark in Go
 
-This is the home of the _Skylark in Go_ project.
-Skylark in Go is an interpreter for Skylark, implemented in Go.
+This is the home of the _Starlark in Go_ project.
+Starlark in Go is an interpreter for Starlark, implemented in Go.
+Starlark was formerly known as Skylark.
 
-Skylark is a dialect of Python intended for use as a configuration language.
+Starlark is a dialect of Python intended for use as a configuration language.
 Like Python, it is an untyped dynamic language with high-level data
 types, first-class functions with lexical scope, and garbage collection.
-Unlike CPython, independent Skylark threads execute in parallel, so
-Skylark workloads scale well on parallel machines.
-Skylark is a small and simple language with a familiar and highly
+Unlike CPython, independent Starlark threads execute in parallel, so
+Starlark workloads scale well on parallel machines.
+Starlark is a small and simple language with a familiar and highly
 readable syntax. You can use it as an expressive notation for
 structured data, defining functions to eliminate repetition, or you
 can use it to add scripting capabilities to an existing application.
 
-A Skylark interpreter is typically embedded within a larger
+A Starlark interpreter is typically embedded within a larger
 application, and the application may define additional domain-specific
 functions and data types beyond those provided by the core language.
-For example, Skylark was originally developed for the
+For example, Starlark was originally developed for the
 [Bazel build tool](https://bazel.build).
-Bazel uses Skylark as the notation both for its BUILD files (like
+Bazel uses Starlark as the notation both for its BUILD files (like
 Makefiles, these declare the executables, libraries, and tests in a
 directory) and for [its macro
-language](https://docs.bazel.build/versions/master/skylark/language.html),
+language](https://docs.bazel.build/versions/master/starlark/language.html),
 through which Bazel is extended with custom logic to support new
 languages and compilers.
 
@@ -35,27 +36,27 @@ languages and compilers.
 
 * About the Go implementation: [doc/impl.md](doc/impl.md)
 
-* API documentation: [godoc.org/github.com/google/skylark](https://godoc.org/github.com/google/skylark)
+* API documentation: [godoc.org/github.com/google/starlark](https://godoc.org/github.com/google/starlark)
 
-* Mailing list: [skylark-go](https://groups.google.com/forum/#!forum/skylark-go)
+* Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
-* Issue tracker: [https://github.com/google/skylark/issues](https://github.com/google/skylark/issues)
+* Issue tracker: [https://github.com/google/starlark/issues](https://github.com/google/starlark/issues)
 
-* Travis CI: ![Travis CI](https://travis-ci.org/google/skylark.svg) [https://travis-ci.org/google/skylark](https://travis-ci.org/google/skylark)
+* Travis CI: ![Travis CI](https://travis-ci.org/google/starlark.svg) [https://travis-ci.org/google/starlark](https://travis-ci.org/google/starlark)
 
 ### Getting started
 
 Build the code:
 
 ```shell
-$ go get github.com/google/skylark/...
-$ go build github.com/google/skylark/cmd/skylark
+$ go get github.com/google/starlark/...
+$ go build github.com/google/starlark/cmd/starlark
 ```
 
 Run the interpreter:
 
 ```
-$ cat coins.sky
+$ cat coins.star
 coins = {
   'dime': 10,
   'nickel': 5,
@@ -65,7 +66,7 @@ coins = {
 print('By name:\t' + ', '.join(sorted(coins.keys())))
 print('By value:\t' + ', '.join(sorted(coins.keys(), key=coins.get)))
 
-$ ./skylark coins.sky
+$ ./starlark coins.star
 By name:	dime, nickel, penny, quarter
 By value:	penny, nickel, dime, quarter
 ```
@@ -73,7 +74,7 @@ By value:	penny, nickel, dime, quarter
 Interact with the read-eval-print loop (REPL):
 
 ```
-$ ./skylark
+$ ./starlark
 >>> def fibonacci(n):
 ...    res = list(range(n))
 ...    for i in res[2:]:
@@ -90,16 +91,16 @@ When you have finished, type `Ctrl-D` to close the REPL's input stream.
 ### Contributing
 
 We welcome submissions but please let us know what you're working on
-if you want to change or add to the Skylark repository.
+if you want to change or add to the Starlark repository.
 
-Before undertaking to write something new for the Skylark project,
+Before undertaking to write something new for the Starlark project,
 please file an issue or claim an existing issue.
 All significant changes to the language or to the interpreter's Go
 API must be discussed before they can be accepted.
 This gives all participants a chance to validate the design and to
 avoid duplication of effort.
 
-Despite some differences, the Go implementation of Skylark strives to
+Despite some differences, the Go implementation of Starlark strives to
 match the behavior of the Java implementation used by Bazel.
 For that reason, proposals to change the language itself should
 generally be directed to the Bazel team, not to the maintainers of
@@ -127,13 +128,13 @@ stage in the project, although we will endeavor to keep them to a minimum.
 Now that the project's long-term name ("Starlark") has been decided,
 we plan to copy this repository to github.com/google/starlark and
 change the canonical import path for all packages to starlark.net/starlark.
-The current github.com/google/skylark repository will be frozen.
+The current github.com/google/starlark repository will be frozen.
 Once the Bazel team has finalized the version 1 language specification,
 we will be more rigorous with interface stability.
 
 ### Credits
 
-Skylark was designed and implemented in Java by
+Starlark was designed and implemented in Java by
 Ulf Adams,
 Lukács Berki,
 Jon Brandvein,
@@ -149,14 +150,14 @@ its scanner was derived from one written by Russ Cox.
 
 ### Legal
 
-Skylark in Go is Copyright (c) 2017 The Bazel Authors.
+Starlark in Go is Copyright (c) 2017 The Bazel Authors.
 All rights reserved.
 
 It is provided under a 3-clause BSD license:
-[LICENSE](https://github.com/google/skylark/blob/master/LICENSE).
+[LICENSE](https://github.com/google/starlark/blob/master/LICENSE).
 
-The name "Skylark" is a code name of the Bazel project.
+The name "Starlark" is a code name of the Bazel project.
 The Bazel team plans to rename the language to "Starlark" to reflect its
 applicability to projects unrelated to Bazel.
 
-Skylark in Go is not an official Google product.
+Starlark in Go is not an official Google product.

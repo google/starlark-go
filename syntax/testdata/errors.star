@@ -70,13 +70,13 @@ def f():
 	pass
 ---
 # This is a well known parsing ambiguity in Python.
-# Python 2.7 accepts it but Python3 and Skylark reject it.
+# Python 2.7 accepts it but Python3 and Starlark reject it.
 _ = [x for x in lambda: True, lambda: False if x()] ### "got lambda, want primary"
 
 _ = [x for x in (lambda: True, lambda: False) if x()] # ok in all dialects
 
 ---
-# Skylark, following Python 3, allows an unparenthesized
+# Starlark, following Python 3, allows an unparenthesized
 # tuple after 'in' only in a for statement but not in a comprehension.
 # (Python 2.7 allows both.)
 for x in 1, 2, 3:

@@ -1,6 +1,6 @@
-# Tests of Skylark 'list'
+# Tests of Starlark 'list'
 
-load("assert.sky", "assert", "freeze")
+load("assert.star", "assert", "freeze")
 
 # literals
 assert.eq([], [])

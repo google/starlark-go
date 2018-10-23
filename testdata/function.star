@@ -1,11 +1,11 @@
-# Tests of Skylark 'function'
+# Tests of Starlark 'function'
 
 # TODO(adonovan):
 # - add some introspection functions for looking at function values
 #   and test that functions have correct position, free vars, names of locals, etc.
 # - move the hard-coded tests of parameter passing from eval_test.go to here.
 
-load("assert.sky", "assert", "freeze")
+load("assert.star", "assert", "freeze")
 
 # Test lexical scope and closures:
 def outer(x):
@@ -104,7 +104,7 @@ assert.eq(len(hashes), 1)
 
 ---
 # Default values of function parameters are mutable.
-load("assert.sky", "assert", "freeze")
+load("assert.star", "assert", "freeze")
 
 def f(x=[0]):
   return x
@@ -120,7 +120,7 @@ assert.fails(lambda: f().append(2), "cannot append to frozen list")
 
 ---
 # This is a well known corner case of parsing in Python.
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 f = lambda x: 1 if x else 0
 assert.eq(f(True), 1)
@@ -140,7 +140,7 @@ assert.true(not tf[1]())
 # (This tests a corner case of the implementation:
 # we avoid a map allocation for <64 parameters)
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def f(a, b, c, d, e, f, g, h,
       i, j, k, l, m, n, o, p,
@@ -178,7 +178,7 @@ assert.fails(lambda: f(
 ---
 # Regression test for a bug in CALL_VAR_KW.
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 def f(a, b, x, y):
   return a+b+x+y
@@ -186,8 +186,8 @@ def f(a, b, x, y):
 assert.eq(f(*("a", "b"), **dict(y="y", x="x")) + ".", 'abxy.')
 ---
 # Order of evaluation of function arguments.
-# Regression test for github.com/google/skylark/issues/135.
-load("assert.sky", "assert")
+# Regression test for github.com/google/starlark/issues/135.
+load("assert.star", "assert")
 
 r = []
 
@@ -201,7 +201,7 @@ def f(*args, **kwargs):
 y = f(id(1), id(2), x=id(3), *[id(4)], y=id(5), **dict(z=id(6)))
 assert.eq(y, ((1, 2, 4), dict(x=3, y=5, z=6)))
 
-# This matches Python2, but not Skylark-in-Java:
+# This matches Python2, but not Starlark-in-Java:
 # *args and *kwargs are evaluated last.
 # See github.com/bazelbuild/starlark#13 for pending spec change.
 assert.eq(r, [1, 2, 3, 5, 4, 6])

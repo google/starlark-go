@@ -1,4 +1,4 @@
-# Benchmarks of Skylark execution
+# Benchmarks of Starlark execution
 
 def bench_range():
   return range(200)

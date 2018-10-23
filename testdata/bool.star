@@ -1,6 +1,6 @@
-# Tests of Skylark 'bool'
+# Tests of Starlark 'bool'
 
-load("assert.sky", "assert")
+load("assert.star", "assert")
 
 # truth
 assert.true(True)
