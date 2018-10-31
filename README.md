@@ -1,16 +1,12 @@
 
-<!-- This file is the project homepage at go.starlark.net/starlark -->
+<!-- This file is the project homepage for go.starlark.net -->
 
 # Starlark in Go
 
 This is the home of the _Starlark in Go_ project.
 Starlark in Go is an interpreter for Starlark, implemented in Go.
-
-*Starlark was formerly known as Skylark and is currently in transition
-to the new name. We will use this as an opportunity to make some
-breaking API changes. The import path for the Go packages will
-eventually be `go.starlark.net/starlark`, but it does not work yet.
-Please continue to import the old Skylark names for now.*
+Starlark was formerly known as Skylark.
+The new import path for Go packages is `"go.starlark.net/starlark"`.
 
 Starlark is a dialect of Python intended for use as a configuration language.
 Like Python, it is an untyped dynamic language with high-level data
@@ -54,8 +50,9 @@ languages and compilers.
 Build the code:
 
 ```shell
-$ go get go.starlark.net/starlark
-$ go install go.starlark.net/cmd/starlark
+
+$ go get     go.starlark.net/cmd/starlark  # check out the code
+$ go install go.starlark.net/cmd/starlark  # install interpreter in $GOPATH/bin
 ```
 
 Run the interpreter:
@@ -79,7 +76,7 @@ By value:	penny, nickel, dime, quarter
 Interact with the read-eval-print loop (REPL):
 
 ```
-$ ./starlark
+$ starlark
 >>> def fibonacci(n):
 ...    res = list(range(n))
 ...    for i in res[2:]:
@@ -130,10 +127,6 @@ it does not need to be completed again.
 
 We reserve the right to make breaking language and API changes at this
 stage in the project, although we will endeavor to keep them to a minimum.
-Now that the project's long-term name ("Starlark") has been decided,
-we plan to copy this repository to go.starlark.net/starlark and
-change the canonical import path for all packages to starlark.net/starlark.
-The current go.starlark.net/starlark repository will be frozen.
 Once the Bazel team has finalized the version 1 language specification,
 we will be more rigorous with interface stability.
 
@@ -155,14 +148,10 @@ its scanner was derived from one written by Russ Cox.
 
 ### Legal
 
-Starlark in Go is Copyright (c) 2017 The Bazel Authors.
+Starlark in Go is Copyright (c) 2018 The Bazel Authors.
 All rights reserved.
 
 It is provided under a 3-clause BSD license:
 [LICENSE](https://go.starlark.net/starlark/blob/master/LICENSE).
-
-The name "Starlark" is a code name of the Bazel project.
-The Bazel team plans to rename the language to "Starlark" to reflect its
-applicability to projects unrelated to Bazel.
 
 Starlark in Go is not an official Google product.
