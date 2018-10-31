@@ -9,7 +9,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/syntax"
 )
 
 // Int is the type of a Starlark int.

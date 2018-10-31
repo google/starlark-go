@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/starlark/internal/compile"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/internal/compile"
+	"go.starlark.net/syntax"
 )
 
 const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of error.

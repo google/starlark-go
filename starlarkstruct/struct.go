@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/google/starlark"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 // Make is the implementation of a built-in function that instantiates

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/starlark"
-	"github.com/google/starlark/resolve"
-	"github.com/google/starlark/starlarkstruct"
-	"github.com/google/starlark/starlarktest"
+	"go.starlark.net/starlark"
+	"go.starlark.net/resolve"
+	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/starlarktest"
 )
 
 func init() {
@@ -24,7 +24,7 @@ func init() {
 }
 
 func Test(t *testing.T) {
-	testdata := starlarktest.DataFile("starlark/starlarkstruct", ".")
+	testdata := starlarktest.DataFile("starlarkstruct", ".")
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
 	filename := filepath.Join(testdata, "testdata/struct.star")

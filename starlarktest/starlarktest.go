@@ -20,8 +20,8 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/google/starlark"
-	"github.com/google/starlark/starlarkstruct"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 const localKey = "Reporter"
@@ -66,7 +66,7 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"struct":  starlark.NewBuiltin("struct", starlarkstruct.Make),
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
-		filename := DataFile("starlark/starlarktest", "assert.star")
+		filename := DataFile("starlarktest", "assert.star")
 		thread := new(starlark.Thread)
 		assert, assertErr = starlark.ExecFile(thread, filename, nil, predeclared)
 	})
@@ -133,5 +133,5 @@ func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 // 'go build', under which a test runs in its package directory,
 // and Blaze, under which a test runs in the root of the tree.
 var DataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/github.com/google", pkgdir, filename)
+	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
 }

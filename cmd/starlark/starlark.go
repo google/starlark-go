@@ -15,9 +15,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/starlark"
-	"github.com/google/starlark/repl"
-	"github.com/google/starlark/resolve"
+	"go.starlark.net/starlark"
+	"go.starlark.net/repl"
+	"go.starlark.net/resolve"
 )
 
 // flags
@@ -56,7 +56,7 @@ func main() {
 
 	switch len(flag.Args()) {
 	case 0:
-		fmt.Println("Welcome to Starlark (github.com/google/starlark)")
+		fmt.Println("Welcome to Starlark (go.starlark.net/starlark)")
 		repl.REPL(thread, globals)
 	case 1:
 		// Execute specified file.

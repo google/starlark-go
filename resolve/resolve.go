@@ -79,7 +79,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/syntax"
 )
 
 const debug = false

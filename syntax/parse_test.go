@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/starlark/internal/chunkedfile"
-	"github.com/google/starlark/starlarktest"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/internal/chunkedfile"
+	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 func TestExprParseTrees(t *testing.T) {
@@ -105,7 +105,7 @@ func TestExprParseTrees(t *testing.T) {
 		{`a and not b`,
 			`(BinaryExpr X=a Op=and Y=(UnaryExpr Op=not X=b))`},
 		{`[e for x in y if cond1 if cond2]`,
-			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // github.com/google/starlark issue 53
+			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // go.starlark.net/starlark issue 53
 	} {
 		e, err := syntax.ParseExpr("foo.star", test.input, 0)
 		if err != nil {
@@ -332,7 +332,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 }
 
 func TestParseErrors(t *testing.T) {
-	filename := starlarktest.DataFile("starlark/syntax", "testdata/errors.star")
+	filename := starlarktest.DataFile("syntax", "testdata/errors.star")
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		_, err := syntax.Parse(filename, chunk.Source, 0)
 		switch err := err.(type) {

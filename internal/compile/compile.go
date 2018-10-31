@@ -30,8 +30,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/google/starlark/resolve"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/resolve"
+	"go.starlark.net/syntax"
 )
 
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files

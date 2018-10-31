@@ -31,8 +31,8 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
-	"github.com/google/starlark"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 var interrupted = make(chan os.Signal, 1)

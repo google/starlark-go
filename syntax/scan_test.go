@@ -220,11 +220,11 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/github.com/google", pkgdir, filename)
+	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
 }
 
 func BenchmarkScan(b *testing.B) {
-	filename := dataFile("starlark/syntax", "testdata/scan.star")
+	filename := dataFile("syntax", "testdata/scan.star")
 	b.StopTimer()
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {

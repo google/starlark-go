@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/starlark"
+	"go.starlark.net/starlark"
 )
 
 func TestStringMethod(t *testing.T) {

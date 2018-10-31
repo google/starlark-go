@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/google/starlark"
+	"go.starlark.net/starlark"
 )
 
 // ExampleExecFile demonstrates a simple embedding

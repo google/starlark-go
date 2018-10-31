@@ -16,9 +16,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/starlark/internal/compile"
-	"github.com/google/starlark/resolve"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/internal/compile"
+	"go.starlark.net/resolve"
+	"go.starlark.net/syntax"
 )
 
 const debug = false
@@ -1138,7 +1138,7 @@ func (is *intset) len() int {
 	return len(is.large)
 }
 
-// https://github.com/google/starlark/blob/master/doc/spec.md#string-interpolation
+// https://go.starlark.net/starlark/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)

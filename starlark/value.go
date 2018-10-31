@@ -61,7 +61,7 @@
 // returns an EvalError from which the application may obtain a
 // backtrace of active Starlark calls.
 //
-package starlark
+package starlark // import "go.starlark.net/starlark"
 
 // This file defines the data types of Starlark and their basic operations.
 
@@ -75,8 +75,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/google/starlark/internal/compile"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/internal/compile"
+	"go.starlark.net/syntax"
 )
 
 // Value is a value in the Starlark interpreter.

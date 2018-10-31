@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/starlark/internal/chunkedfile"
-	"github.com/google/starlark/resolve"
-	"github.com/google/starlark/starlarktest"
-	"github.com/google/starlark/syntax"
+	"go.starlark.net/internal/chunkedfile"
+	"go.starlark.net/resolve"
+	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 func TestResolve(t *testing.T) {
-	filename := starlarktest.DataFile("starlark/resolve", "testdata/resolve.star")
+	filename := starlarktest.DataFile("resolve", "testdata/resolve.star")
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		f, err := syntax.Parse(filename, chunk.Source, 0)
 		if err != nil {

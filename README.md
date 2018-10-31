@@ -1,5 +1,5 @@
 
-<!-- This file is the project homepage at github.com/google/starlark -->
+<!-- This file is the project homepage at go.starlark.net/starlark -->
 
 # Starlark in Go
 
@@ -41,11 +41,11 @@ languages and compilers.
 
 * About the Go implementation: [doc/impl.md](doc/impl.md)
 
-* API documentation: [godoc.org/github.com/google/starlark](https://godoc.org/github.com/google/starlark)
+* API documentation: [godoc.org/go.starlark.net/starlark](https://godoc.org/go.starlark.net/starlark)
 
 * Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
-* Issue tracker: [https://github.com/google/starlark/issues](https://github.com/google/starlark/issues)
+* Issue tracker: [https://go.starlark.net/starlark/issues](https://go.starlark.net/starlark/issues)
 
 * Travis CI: ![Travis CI](https://travis-ci.org/google/starlark.svg) [https://travis-ci.org/google/starlark](https://travis-ci.org/google/starlark)
 
@@ -54,8 +54,8 @@ languages and compilers.
 Build the code:
 
 ```shell
-$ go get github.com/google/starlark/...
-$ go build github.com/google/starlark/cmd/starlark
+$ go get go.starlark.net/starlark
+$ go install go.starlark.net/cmd/starlark
 ```
 
 Run the interpreter:
@@ -131,9 +131,9 @@ it does not need to be completed again.
 We reserve the right to make breaking language and API changes at this
 stage in the project, although we will endeavor to keep them to a minimum.
 Now that the project's long-term name ("Starlark") has been decided,
-we plan to copy this repository to github.com/google/starlark and
+we plan to copy this repository to go.starlark.net/starlark and
 change the canonical import path for all packages to starlark.net/starlark.
-The current github.com/google/starlark repository will be frozen.
+The current go.starlark.net/starlark repository will be frozen.
 Once the Bazel team has finalized the version 1 language specification,
 we will be more rigorous with interface stability.
 
@@ -159,7 +159,7 @@ Starlark in Go is Copyright (c) 2017 The Bazel Authors.
 All rights reserved.
 
 It is provided under a 3-clause BSD license:
-[LICENSE](https://github.com/google/starlark/blob/master/LICENSE).
+[LICENSE](https://go.starlark.net/starlark/blob/master/LICENSE).
 
 The name "Starlark" is a code name of the Bazel project.
 The Bazel team plans to rename the language to "Starlark" to reflect its
