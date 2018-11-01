@@ -4,7 +4,7 @@
 
 // The starlark command interprets a Starlark file.
 // With no arguments, it starts a read-eval-print loop (REPL).
-package main
+package main // import "go.starlark.net/cmd/starlark"
 
 import (
 	"flag"
@@ -15,9 +15,9 @@ import (
 	"sort"
 	"strings"
 
-	"go.starlark.net/starlark"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
+	"go.starlark.net/starlark"
 )
 
 // flags

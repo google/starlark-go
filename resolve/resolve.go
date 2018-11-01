@@ -10,7 +10,7 @@
 // free variable.  It also sets the Locals array of a File for locals
 // bound by comprehensions outside any function.  Identifiers for global
 // variables do not get an index.
-package resolve
+package resolve // import "go.starlark.net/resolve"
 
 // All references to names are statically resolved.  Names may be
 // predeclared, global, or local to a function or module-level comprehension.

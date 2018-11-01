@@ -10,7 +10,7 @@
 //
 // The assert.error function, which reports errors to the current Go
 // testing.T, requires that clients call SetTest(thread, t) before use.
-package starlarktest
+package starlarktest // import "go.starlark.net/starlarktest"
 
 import (
 	"bytes"

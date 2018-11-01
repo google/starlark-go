@@ -4,7 +4,7 @@
 
 // Package starlarkstruct defines the Starlark 'struct' type,
 // an optional language extension.
-package starlarkstruct
+package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 // It is tempting to introduce a variant of Struct that is a wrapper
 // around a Go struct value, for stronger typing guarantees and more
@@ -155,7 +155,7 @@ func (s *Struct) String() string {
 // Constructor returns the constructor used to create this struct.
 func (s *Struct) Constructor() starlark.Value { return s.constructor }
 
-func (s *Struct) Type() string        { return "struct" }
+func (s *Struct) Type() string         { return "struct" }
 func (s *Struct) Truth() starlark.Bool { return true } // even when empty
 func (s *Struct) Hash() (uint32, error) {
 	// Same algorithm as Tuple.hash, but with different primes.

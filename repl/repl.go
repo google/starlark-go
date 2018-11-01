@@ -10,7 +10,7 @@
 // expression. If the input still cannot be parsed as an expression,
 // the REPL parses and executes it as a file (a list of statements),
 // for side effects.
-package repl
+package repl // import "go.starlark.net/repl"
 
 // TODO(adonovan):
 //
