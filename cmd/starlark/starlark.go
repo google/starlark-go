@@ -56,7 +56,7 @@ func main() {
 
 	switch len(flag.Args()) {
 	case 0:
-		fmt.Println("Welcome to Starlark (go.starlark.net/starlark)")
+		fmt.Println("Welcome to Starlark (go.starlark.net)")
 		repl.REPL(thread, globals)
 	case 1:
 		// Execute specified file.
