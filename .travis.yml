@@ -2,7 +2,7 @@ sudo: false
 
 language: go
 
-go_import_path: github.com/google/skylark
+go_import_path: github.com/google/skylark-go
 
 go:
     - 1.9.x
