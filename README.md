@@ -43,7 +43,7 @@ languages and compilers.
 
 * Issue tracker: [https://go.starlark.net/starlark/issues](https://go.starlark.net/starlark/issues)
 
-* Travis CI: ![Travis CI](https://travis-ci.org/google/starlark.svg) [https://travis-ci.org/google/starlark](https://travis-ci.org/google/starlark)
+* Travis CI: ![Travis CI](https://travis-ci.org/google/starlark-go.svg) [https://travis-ci.org/google/starlark-go](https://travis-ci.org/google/starlark-go)
 
 ### Getting started
 
