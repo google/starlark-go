@@ -1444,7 +1444,7 @@ func string_capitalize(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 	res.Grow(len(s))
 	for i, r := range s {
 		if i == 0 {
-			r = unicode.ToUpper(r)
+			r = unicode.ToTitle(r)
 		} else {
 			r = unicode.ToLower(r)
 		}
@@ -1542,14 +1542,20 @@ func string_islower(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Val
 	return Bool(isCasedString(recv) && recv == strings.ToLower(recv)), nil
 }
 
-// isCasedString reports whether its argument contains any cased characters.
+// isCasedString reports whether its argument contains any cased code points.
 func isCasedString(s string) bool {
 	for _, r := range s {
-		if 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || unicode.SimpleFold(r) != r {
+		if isCasedRune(r) {
 			return true
 		}
 	}
 	return false
+}
+
+func isCasedRune(r rune) bool {
+	// It's unclear what the correct behavior is for a rune such as 'ﬃ',
+	// a lowercase letter with no upper or title case and no SimpleFold.
+	return 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || unicode.SimpleFold(r) != r
 }
 
 // https://go.starlark.net/starlark/blob/master/doc/spec.md#string·isspace
@@ -1578,18 +1584,20 @@ func string_istitle(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Val
 	// lowercase characters only cased ones."
 	var cased, prevCased bool
 	for _, r := range recv {
-		if unicode.IsUpper(r) {
+		if 'A' <= r && r <= 'Z' || unicode.IsTitle(r) { // e.g. "ǅ"
 			if prevCased {
 				return False, nil
 			}
-			cased = true
 			prevCased = true
+			cased = true
 		} else if unicode.IsLower(r) {
 			if !prevCased {
 				return False, nil
 			}
 			prevCased = true
 			cased = true
+		} else if unicode.IsUpper(r) {
+			return False, nil
 		} else {
 			prevCased = false
 		}
@@ -1952,7 +1960,7 @@ func string_title(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value,
 		} else {
 			r = unicode.ToTitle(r)
 		}
-		prevCased = unicode.IsUpper(r) || unicode.IsLower(r)
+		prevCased = isCasedRune(r)
 		buf.WriteRune(r)
 	}
 	return String(buf.String()), nil
