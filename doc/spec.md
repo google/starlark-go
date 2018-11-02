@@ -3505,11 +3505,15 @@ See also: `string·elems`.
 <a id='string·capitalize'></a>
 ### string·capitalize
 
-`S.capitalize()` returns a copy of string S with all Unicode letters
-that begin words changed to their title case.
+`S.capitalize()` returns a copy of string S with its first code point
+changes to its title case and all subsequent letters changed to their
+lower case.
 
 ```python
 "hello, world!".capitalize()		# "Hello, World!"
+"hElLo, wOrLd!".capitalize()		# "Hello, World!"
+"¿Por qué?".capitalize()		# "¿por qué?"
+
 ```
 
 <a id='string·codepoint_ords'></a>

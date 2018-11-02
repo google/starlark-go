@@ -1439,7 +1439,18 @@ func string_capitalize(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	return String(strings.Title(string(recv.(String)))), nil
+	s := string(recv.(String))
+	var res bytes.Buffer
+	res.Grow(len(s))
+	for i, r := range s {
+		if i == 0 {
+			r = unicode.ToUpper(r)
+		} else {
+			r = unicode.ToLower(r)
+		}
+		res.WriteRune(r)
+	}
+	return String(res.String()), nil
 }
 
 // string_iterable returns an unspecified iterable value whose iterator yields:
@@ -1926,7 +1937,25 @@ func string_title(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	return String(strings.Title(strings.ToLower(string(recv.(String))))), nil
+
+	s := string(recv.(String))
+
+	// Python semantics differ from x==strings.{To,}Title(x) in Go:
+	// "uppercase characters may only follow uncased characters and
+	// lowercase characters only cased ones."
+	var buf bytes.Buffer
+	buf.Grow(len(s))
+	var prevCased bool
+	for _, r := range s {
+		if prevCased {
+			r = unicode.ToLower(r)
+		} else {
+			r = unicode.ToTitle(r)
+		}
+		prevCased = unicode.IsUpper(r) || unicode.IsLower(r)
+		buf.WriteRune(r)
+	}
+	return String(buf.String()), nil
 }
 
 // https://go.starlark.net/starlark/blob/master/doc/spec.md#string·upper
