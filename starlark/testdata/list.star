@@ -215,7 +215,7 @@ def iterator1():
   for x in list:
     list[x] = 2 * x
   return list
-assert.eq(iterator1(), [0, 2, 4]) # element updates are allowed
+assert.fails(iterator1, "assign to element.* during iteration")
 
 def iterator2():
   list = [0, 1, 2]
