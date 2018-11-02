@@ -931,8 +931,16 @@ func (x rangeValue) CompareSameType(op syntax.Token, y_ Value, depth int) (bool,
 
 func rangeEqual(x, y rangeValue) bool {
 	// Two ranges compare equal if they denote the same sequence.
-	return x.len == y.len &&
-		(x.len == 0 || x.start == y.start && x.step == y.step)
+	if x.len != y.len {
+		return false // sequences differ in length
+	}
+	if x.len == 0 {
+		return true // both sequences are empty
+	}
+	if x.start != y.start {
+		return false // first element differs
+	}
+	return x.len == 1 || x.step == y.step
 }
 
 func (r rangeValue) contains(x Int) bool {
