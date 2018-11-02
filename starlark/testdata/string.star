@@ -360,4 +360,24 @@ assert.fails(lambda: any("abc"), "got string, want iterable") # any
 assert.fails(lambda: reversed("abc"), "got string, want iterable") # reversed
 assert.fails(lambda: zip("ab", "cd"), "not iterable: string") # zip
 
-# TODO(adonovan): tests for: {,r}index join {capitalize,lower,title,upper}
+# TODO(adonovan): tests for: {,r}index join
+
+# str.capitalize
+assert.eq("hElLo, WoRlD!".capitalize(), "Hello, world!")
+assert.eq("por qué".capitalize(), "Por qué")
+assert.eq("¿Por qué?".capitalize(), "¿por qué?")
+
+# str.lower
+assert.eq("hElLo, WoRlD!".lower(), "hello, world!")
+assert.eq("por qué".lower(), "por qué")
+assert.eq("¿Por qué?".lower(), "¿por qué?")
+
+# str.upper
+assert.eq("hElLo, WoRlD!".upper(), "HELLO, WORLD!")
+assert.eq("por qué".upper(), "POR QUÉ")
+assert.eq("¿Por qué?".upper(), "¿POR QUÉ?")
+
+# str.title
+assert.eq("hElLo, WoRlD!".title(), "Hello, World!")
+assert.eq("por qué".title(), "Por Qué")
+assert.eq("¿Por qué?".title(), "¿Por Qué?")
