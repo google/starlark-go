@@ -152,6 +152,7 @@ var opcodeNames = [...]string{
 	DUP2:        "dup2",
 	DUP:         "dup",
 	EQL:         "eql",
+	EXCH:        "exch",
 	FALSE:       "false",
 	FREE:        "free",
 	GE:          "ge",
@@ -271,7 +272,9 @@ var stackEffect = [...]int8{
 
 func (op Opcode) String() string {
 	if op < OpcodeMax {
-		return opcodeNames[op]
+		if name := opcodeNames[op]; name != "" {
+			return name
+		}
 	}
 	return fmt.Sprintf("illegal op (%d)", op)
 }

@@ -547,6 +547,9 @@ func (fn *Function) Globals() StringDict {
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
+
+// Param returns the name and position of the ith parameter,
+// where 0 <= i < NumParams().
 func (fn *Function) Param(i int) (string, syntax.Position) {
 	id := fn.funcode.Locals[i]
 	return id.Name, id.Pos
