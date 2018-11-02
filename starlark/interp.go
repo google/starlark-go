@@ -175,7 +175,7 @@ loop:
 			var z Value
 			if xlist, ok := x.(*List); ok {
 				if yiter, ok := y.(Iterable); ok {
-					if err = xlist.checkMutable("apply += to", true); err != nil {
+					if err = xlist.checkMutable("apply += to"); err != nil {
 						break loop
 					}
 					listExtend(xlist, yiter)

@@ -686,12 +686,11 @@ func (l *List) Freeze() {
 
 // checkMutable reports an error if the list should not be mutated.
 // verb+" list" should describe the operation.
-// Structural mutations are not permitted during iteration.
-func (l *List) checkMutable(verb string, structural bool) error {
+func (l *List) checkMutable(verb string) error {
 	if l.frozen {
 		return fmt.Errorf("cannot %s frozen list", verb)
 	}
-	if structural && l.itercount > 0 {
+	if l.itercount > 0 {
 		return fmt.Errorf("cannot %s list during iteration", verb)
 	}
 	return nil
@@ -781,7 +780,7 @@ func (it *listIterator) Done() {
 }
 
 func (l *List) SetIndex(i int, v Value) error {
-	if err := l.checkMutable("assign to element of", false); err != nil {
+	if err := l.checkMutable("assign to element of"); err != nil {
 		return err
 	}
 	l.elems[i] = v
@@ -789,7 +788,7 @@ func (l *List) SetIndex(i int, v Value) error {
 }
 
 func (l *List) Append(v Value) error {
-	if err := l.checkMutable("append to", true); err != nil {
+	if err := l.checkMutable("append to"); err != nil {
 		return err
 	}
 	l.elems = append(l.elems, v)
@@ -797,7 +796,7 @@ func (l *List) Append(v Value) error {
 }
 
 func (l *List) Clear() error {
-	if err := l.checkMutable("clear", true); err != nil {
+	if err := l.checkMutable("clear"); err != nil {
 		return err
 	}
 	for i := range l.elems {

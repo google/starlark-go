@@ -1313,7 +1313,7 @@ func list_append(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &object); err != nil {
 		return nil, err
 	}
-	if err := recv.checkMutable("append to", true); err != nil {
+	if err := recv.checkMutable("append to"); err != nil {
 		return nil, err
 	}
 	recv.elems = append(recv.elems, object)
@@ -1335,7 +1335,7 @@ func list_extend(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &iterable); err != nil {
 		return nil, err
 	}
-	if err := recv.checkMutable("extend", true); err != nil {
+	if err := recv.checkMutable("extend"); err != nil {
 		return nil, err
 	}
 	listExtend(recv, iterable)
@@ -1373,7 +1373,7 @@ func list_insert(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 2, &index, &object); err != nil {
 		return nil, err
 	}
-	if err := recv.checkMutable("insert into", true); err != nil {
+	if err := recv.checkMutable("insert into"); err != nil {
 		return nil, err
 	}
 
@@ -1402,7 +1402,7 @@ func list_remove(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 1, &value); err != nil {
 		return nil, err
 	}
-	if err := recv.checkMutable("remove from", true); err != nil {
+	if err := recv.checkMutable("remove from"); err != nil {
 		return nil, err
 	}
 	for i, elem := range recv.elems {
@@ -1426,7 +1426,7 @@ func list_pop(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, err
 	if index < 0 || index >= list.Len() {
 		return nil, fmt.Errorf("pop: index %d is out of range [0:%d]", index, list.Len())
 	}
-	if err := list.checkMutable("pop from", true); err != nil {
+	if err := list.checkMutable("pop from"); err != nil {
 		return nil, err
 	}
 	res := list.elems[index]
