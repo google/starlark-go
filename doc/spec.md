@@ -3505,11 +3505,14 @@ See also: `string·elems`.
 <a id='string·capitalize'></a>
 ### string·capitalize
 
-`S.capitalize()` returns a copy of string S with all Unicode letters
-that begin words changed to their title case.
+`S.capitalize()` returns a copy of string S with its first code point
+changed to its title case and all subsequent letters changed to their
+lower case.
 
 ```python
-"hello, world!".capitalize()		# "Hello, World!"
+"hello, world!".capitalize()		# "Hello, world!"
+"hElLo, wOrLd!".capitalize()		# "Hello, world!"
+"¿Por qué?".capitalize()		# "¿por qué?"
 ```
 
 <a id='string·codepoint_ords'></a>
@@ -3711,6 +3714,8 @@ letter, and all such letters that begin a word are in title case.
 "Hello, World!".istitle()       # True
 "Catch-22".istitle()            # True
 "HAL-9000".istitle()            # False
+"ǅenan".istitle()		# True
+"Ǆenan".istitle()		# False ("Ǆ" is a single Unicode letter)
 "123".istitle()                 # False
 ```
 
@@ -3960,12 +3965,13 @@ function reports whether any one of them is a prefix.
 <a id='string·title'></a>
 ### string·title
 
-`S.title()` returns a copy of the string S with letters converted to titlecase.
+`S.title()` returns a copy of the string S with letters converted to title case.
 
-Letters are converted to uppercase at the start of words, lowercase elsewhere.
+Letters are converted to upper case at the start of words, lower case elsewhere.
 
 ```python
 "hElLo, WoRlD!".title()                 # "Hello, World!"
+"ǆenan".title()                        # "ǅenan" ("ǅ" is a single Unicode letter)
 ```
 
 <a id='string·upper'></a>
