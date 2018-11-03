@@ -26,7 +26,7 @@ For example, Starlark was originally developed for the
 Bazel uses Starlark as the notation both for its BUILD files (like
 Makefiles, these declare the executables, libraries, and tests in a
 directory) and for [its macro
-language](https://docs.bazel.build/versions/master/starlark/language.html),
+language](https://docs.bazel.build/versions/master/skylark/language.html),
 through which Bazel is extended with custom logic to support new
 languages and compilers.
 
