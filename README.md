@@ -50,9 +50,7 @@ languages and compilers.
 Build the code:
 
 ```shell
-
-$ go get     go.starlark.net/cmd/starlark  # check out the code
-$ go install go.starlark.net/cmd/starlark  # install interpreter in $GOPATH/bin
+$ go get go.starlark.net/cmd/starlark  # check out the code and install interpreter in $GOPATH/bin
 ```
 
 Run the interpreter:
