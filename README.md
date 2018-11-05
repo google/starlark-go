@@ -41,7 +41,7 @@ languages and compilers.
 
 * Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
-* Issue tracker: [https://github.com/starlark-go/issues](https://github.com/starlark-go/issues)
+* Issue tracker: [https://github.com/google/starlark-go/issues](https://github.com/google/starlark-go/issues)
 
 * Travis CI: [![Travis CI](https://travis-ci.org/google/starlark-go.svg) https://travis-ci.org/google/starlark-go](https://travis-ci.org/google/starlark-go)
 
