@@ -1,4 +1,4 @@
-// The compile package defines the Starlark bytecode compiler.
+// Package compile defines the Starlark bytecode compiler.
 // It is an internal package of the Starlark interpreter and is not directly accessible to clients.
 //
 // The compiler generates byte code with optional uint32 operands for a

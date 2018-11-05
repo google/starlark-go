@@ -55,7 +55,7 @@ func MakeUint64(x uint64) Int {
 		// See comment in MakeInt64 for an explanation of this optimization.
 		return Int{new(big.Int).SetBits([]big.Word{big.Word(x)})}
 	}
-	return Int{new(big.Int).SetUint64(uint64(x))}
+	return Int{new(big.Int).SetUint64(x)}
 }
 
 var (
