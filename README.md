@@ -51,7 +51,7 @@ Build the code:
 
 ```shell
 
-$ go get     go.starlark.net/cmd/starlark  # check out the code
+$ go get -u  go.starlark.net/cmd/starlark  # check out the code and dependencies
 $ go install go.starlark.net/cmd/starlark  # install interpreter in $GOPATH/bin
 ```
 
