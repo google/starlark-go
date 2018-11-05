@@ -41,16 +41,16 @@ languages and compilers.
 
 * Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
-* Issue tracker: [https://go.starlark.net/starlark/issues](https://go.starlark.net/starlark/issues)
+* Issue tracker: [https://github.com/google/starlark-go/issues](https://github.com/google/starlark-go/issues)
 
-* Travis CI: ![Travis CI](https://travis-ci.org/google/starlark-go.svg) [https://travis-ci.org/google/starlark-go](https://travis-ci.org/google/starlark-go)
+* Travis CI: [![Travis CI](https://travis-ci.org/google/starlark-go.svg) https://travis-ci.org/google/starlark-go](https://travis-ci.org/google/starlark-go)
 
 ### Getting started
 
 Build the code:
 
 ```shell
-$ go get go.starlark.net/cmd/starlark  # check out the code and install interpreter in $GOPATH/bin
+$ go get -u go.starlark.net/cmd/starlark  # check out the code and dependencies, then install interpreter in $GOPATH/bin
 ```
 
 Run the interpreter:
