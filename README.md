@@ -68,7 +68,7 @@ coins = {
 print('By name:\t' + ', '.join(sorted(coins.keys())))
 print('By value:\t' + ', '.join(sorted(coins.keys(), key=coins.get)))
 
-$ ./starlark coins.star
+$ starlark coins.star
 By name:	dime, nickel, penny, quarter
 By value:	penny, nickel, dime, quarter
 ```
