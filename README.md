@@ -152,6 +152,6 @@ Starlark in Go is Copyright (c) 2018 The Bazel Authors.
 All rights reserved.
 
 It is provided under a 3-clause BSD license:
-[LICENSE](https://go.starlark.net/starlark/blob/master/LICENSE).
+[LICENSE](https://github.com/google/starlark-go/blob/master/LICENSE).
 
 Starlark in Go is not an official Google product.
