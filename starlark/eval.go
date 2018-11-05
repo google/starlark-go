@@ -1138,7 +1138,7 @@ func (is *intset) len() int {
 	return len(is.large)
 }
 
-// https://go.starlark.net/starlark/blob/master/doc/spec.md#string-interpolation
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)
