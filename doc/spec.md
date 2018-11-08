@@ -30,10 +30,6 @@ the shoulders of the Python community.
 The Go implementation was written by Alan Donovan and Jay Conrod;
 its scanner was derived from one written by Russ Cox.
 
-The name "Starlark" is a code name of the Bazel project.
-We plan to rename the language before the end of 2017 to reflect its
-applicability to projects unrelated to Bazel.
-
 ## Overview
 
 Starlark is an untyped dynamic language with high-level data types,
