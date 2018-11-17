@@ -7,10 +7,12 @@ package starlark_test
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"unsafe"
 
 	"go.starlark.net/starlark"
@@ -146,9 +148,9 @@ func ExampleThread_Load_parallel() {
 	// c = 2
 }
 
-// ExampleThread_Load_parallelCycle demonstrates detection
+// TestThread_Load_parallelCycle demonstrates detection
 // of cycles during parallel loading.
-func ExampleThread_Load_parallelCycle() {
+func TestThreadLoad_ParallelCycle(t *testing.T) {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
@@ -171,11 +173,24 @@ func ExampleThread_Load_parallelCycle() {
 	}
 	got := []string{<-ch, <-ch}
 	sort.Strings(got)
-	fmt.Println(strings.Join(got, "\n"))
 
-	// Output:
-	// cannot load a.star: cannot load c.star: cycle in load graph
-	// cannot load b.star: cannot load a.star: cannot load c.star: cycle in load graph
+	// Typically, the c goroutine quickly blocks behind b;
+	// b loads a, and a then fails to load c because it forms a cycle.
+	// The errors observed by the two goroutines are:
+	want1 := []string{
+		"cannot load a.star: cannot load c.star: cycle in load graph",                     // from b
+		"cannot load b.star: cannot load a.star: cannot load c.star: cycle in load graph", // from c
+	}
+	// But if the c goroutine is slow to start, b loads a,
+	// and a loads c; then c fails to load b because it forms a cycle.
+	// The errors this time are:
+	want2 := []string{
+		"cannot load a.star: cannot load c.star: cannot load b.star: cycle in load graph", // from b
+		"cannot load b.star: cycle in load graph",                                         // from c
+	}
+	if !reflect.DeepEqual(got, want1) && !reflect.DeepEqual(got, want2) {
+		t.Error(got)
+	}
 }
 
 // cache is a concurrency-safe, duplicate-suppressing,
