@@ -199,7 +199,7 @@ assert.eq(type(list), "list")
 
 # ...but then all uses refer to the global,
 # even if they occur before the binding use.
-# See go.starlark.net/starlark/issues/116.
+# See github.com/google/skylark/issues/116.
 assert.fails(lambda: tuple, "global variable tuple referenced before assignment")
 tuple = ()
 

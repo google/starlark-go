@@ -192,7 +192,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// octal escapes in string literals
 		{`"\037"`, `"\x1f" EOF`},
 		{`"\377"`, `"\xff" EOF`},
-		{`"\378"`, `"\x1f8" EOF`},                               // = '\37' + '8'
+		{`"\378"`, `"\x1f8" EOF`},                                // = '\37' + '8'
 		{`"\400"`, `foo.star:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
 		// Backslashes that are not part of escapes are treated literally,
 		// but this behavior will change; see b/34519173.
@@ -204,7 +204,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"012934e1", `1.293400e+05 EOF`},
 		{"0123.", `1.230000e+02 EOF`},
 		{"0123.1", `1.231000e+02 EOF`},
-		// issue #16
+		// github.com/google/skylark/issues/16
 		{"x ! 0", "foo.star:1:3: unexpected input character '!'"},
 	} {
 		got, err := scan(test.input)

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/starlark"
 	"go.starlark.net/internal/chunkedfile"
 	"go.starlark.net/resolve"
+	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
@@ -145,11 +145,11 @@ func TestExecFile(t *testing.T) {
 // A fib is an iterable value representing the infinite Fibonacci sequence.
 type fib struct{}
 
-func (t fib) Freeze()                   {}
-func (t fib) String() string            { return "fib" }
-func (t fib) Type() string              { return "fib" }
+func (t fib) Freeze()                    {}
+func (t fib) String() string             { return "fib" }
+func (t fib) Type() string               { return "fib" }
 func (t fib) Truth() starlark.Bool       { return true }
-func (t fib) Hash() (uint32, error)     { return 0, fmt.Errorf("fib is unhashable") }
+func (t fib) Hash() (uint32, error)      { return 0, fmt.Errorf("fib is unhashable") }
 func (t fib) Iterate() starlark.Iterator { return &fibIterator{0, 1} }
 
 type fibIterator struct{ x, y int }
@@ -192,7 +192,7 @@ var (
 
 func (hf *hasfields) String() string        { return "hasfields" }
 func (hf *hasfields) Type() string          { return "hasfields" }
-func (hf *hasfields) Truth() starlark.Bool   { return true }
+func (hf *hasfields) Truth() starlark.Bool  { return true }
 func (hf *hasfields) Hash() (uint32, error) { return 42, nil }
 
 func (hf *hasfields) Freeze() {
@@ -298,7 +298,7 @@ def f(a, b=42, *args, **kwargs):
 		{`f(0, b=1)`, `(0, 1, (), {})`},
 		{`f(0, a=1)`, `function f got multiple values for keyword argument "a"`},
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
-		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // go.starlark.net/starlark/issues/135
+		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
 			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
 	} {
 		var got string
