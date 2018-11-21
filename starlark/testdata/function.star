@@ -174,6 +174,23 @@ assert.fails(lambda: f(
     57, 58, 59, 60, 61, 62, 63, 64, 65,
     mm = 100), 'multiple values for keyword argument "mm"')
 
+---
+# Regression test for github.com/google/starlark-go/issues/21.
+
+load("assert.star", "assert")
+
+def f(*args, **kwargs):
+  return args, kwargs
+
+assert.eq(f(x=1, y=2), ((), {"x": 1, "y": 2}))
+assert.fails(lambda: f(x=1, x=2), 'multiple values for keyword argument "x"')
+assert.fails(lambda: f(x=1, **dict(x=2)), 'multiple values for keyword argument "x"')
+
+def g(x, y):
+  return x, y
+
+assert.eq(g(1, y=2), (1, 2))
+assert.fails(lambda: g(1, y=2, y=3), 'multiple values for keyword argument "y"')
 
 ---
 # Regression test for a bug in CALL_VAR_KW.
