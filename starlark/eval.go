@@ -1053,7 +1053,11 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 			if kwdict == nil {
 				return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
 			}
+			n := kwdict.Len()
 			kwdict.SetKey(k, v)
+			if kwdict.Len() == n {
+				return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+			}
 		}
 
 		// default values
