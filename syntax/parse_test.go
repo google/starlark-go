@@ -105,7 +105,7 @@ func TestExprParseTrees(t *testing.T) {
 		{`a and not b`,
 			`(BinaryExpr X=a Op=and Y=(UnaryExpr Op=not X=b))`},
 		{`[e for x in y if cond1 if cond2]`,
-			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // go.starlark.net/starlark issue 53
+			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // github.com/google/skylark/issues/53
 	} {
 		e, err := syntax.ParseExpr("foo.star", test.input, 0)
 		if err != nil {

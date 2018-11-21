@@ -105,7 +105,7 @@ assert.eq(str(freeze), '<built-in function freeze>')
 
 ---
 # Load does not expose pre-declared globals from other modules.
-# See go.starlark.net/starlark/issues/75.
+# See github.com/google/skylark/issues/75.
 load('assert.star', 'assert', 'matches') ### "matches not found in module"
 
 ---

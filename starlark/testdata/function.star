@@ -186,7 +186,7 @@ def f(a, b, x, y):
 assert.eq(f(*("a", "b"), **dict(y="y", x="x")) + ".", 'abxy.')
 ---
 # Order of evaluation of function arguments.
-# Regression test for go.starlark.net/starlark/issues/135.
+# Regression test for github.com/google/skylark/issues/135.
 load("assert.star", "assert")
 
 r = []

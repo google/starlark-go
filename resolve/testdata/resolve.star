@@ -9,7 +9,8 @@ x = 1
 _ = x
 
 ---
-# premature use of global is not a static error; see issue 116.
+# premature use of global is not a static error;
+# see github.com/google/skylark/issues/116.
 _ = x
 x = 1
 
@@ -20,7 +21,7 @@ _ = x ### "undefined: x"
 ---
 # redeclaration of global
 x = 1
-x = 2 ### "cannot reassign global x declared at .*resolve.star:22:1"
+x = 2 ### "cannot reassign global x declared at .*resolve.star:23:1"
 
 ---
 # Redeclaration of predeclared names is allowed.
@@ -37,7 +38,8 @@ U = 1 # ok
 U = 1 ### "cannot reassign global U declared at .*/resolve.star"
 
 ---
-# A global declaration shadows all references to a predeclared; see issue 116.
+# A global declaration shadows all references to a predeclared;
+# see github.com/google/skylark/issues/116.
 
 a = U # ok: U is a reference to the global defined on the next line.
 U = 1
