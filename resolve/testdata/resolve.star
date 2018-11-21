@@ -243,3 +243,28 @@ c = 3.141          ### `dialect does not support floating point`
 a = float("3.141")
 b = 1 / 2
 c = 3.141
+
+---
+# option:global_reassign
+# Legacy Bazel (and Python) semantics: def must precede use even for globals.
+
+_ = x ### `undefined: x`
+x = 1
+
+---
+# option:global_reassign
+# Legacy Bazel (and Python) semantics: reassignment of globals is allowed.
+x = 1
+x = 2 # ok
+
+---
+# option:global_reassign
+# Redeclaration of predeclared names is allowed.
+
+# module-specific predeclared name
+M = 1 # ok
+M = 2 # ok (legacy)
+
+# universal predeclared name
+U = 1 # ok
+U = 1 # ok (legacy)
