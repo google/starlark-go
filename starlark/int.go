@@ -20,13 +20,24 @@ func MakeInt(x int) Int { return MakeInt64(int64(x)) }
 
 // MakeInt64 returns a Starlark int for the specified int64.
 func MakeInt64(x int64) Int {
-	if 0 <= x && x < int64(len(smallint)) {
-		if !smallintok {
-			panic("MakeInt64 used before initialization")
+	if 0 <= x {
+		if x < int64(len(smallint)) {
+			if !smallintok {
+				panic("MakeInt64 used before initialization")
+			}
+			return Int{&smallint[x]}
 		}
-		return Int{&smallint[x]}
+		if int64(big.Word(x)) == x {
+			// x is guaranteed to fit into a single big.Word.
+			// Most starlark ints are small,
+			// but math/big assumes that since you've chosen to use math/big,
+			// your bit.Ints will probably grow, so it over-allocates.
+			// Avoid that over-allocation by manually constructing a single-word slice.
+			// See https://golang.org/cl/150999, which will hopefully land in Go 1.13.
+			return Int{new(big.Int).SetBits([]big.Word{big.Word(x)})}
+		}
 	}
-	return Int{new(big.Int).SetInt64(x)}
+	return Int{big.NewInt(x)}
 }
 
 // MakeUint returns a Starlark int for the specified unsigned integer.
@@ -39,6 +50,10 @@ func MakeUint64(x uint64) Int {
 			panic("MakeUint64 used before initialization")
 		}
 		return Int{&smallint[x]}
+	}
+	if uint64(big.Word(x)) == x {
+		// See comment in MakeInt64 for an explanation of this optimization.
+		return Int{new(big.Int).SetBits([]big.Word{big.Word(x)})}
 	}
 	return Int{new(big.Int).SetUint64(uint64(x))}
 }
