@@ -31,7 +31,7 @@ func MakeInt64(x int64) Int {
 			// x is guaranteed to fit into a single big.Word.
 			// Most starlark ints are small,
 			// but math/big assumes that since you've chosen to use math/big,
-			// your bit.Ints will probably grow, so it over-allocates.
+			// your big.Ints will probably grow, so it over-allocates.
 			// Avoid that over-allocation by manually constructing a single-word slice.
 			// See https://golang.org/cl/150999, which will hopefully land in Go 1.13.
 			return Int{new(big.Int).SetBits([]big.Word{big.Word(x)})}

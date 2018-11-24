@@ -7,10 +7,12 @@ package starlark
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 )
 
 func TestHashtable(t *testing.T) {
+	makeTestIntsOnce.Do(makeTestInts)
 	testHashtable(t, make(map[int]bool))
 }
 
@@ -34,64 +36,64 @@ func BenchmarkStringHash(b *testing.B) {
 }
 
 func BenchmarkHashtable(b *testing.B) {
+	makeTestIntsOnce.Do(makeTestInts)
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		testHashtable(b, nil)
 	}
 }
 
-func mustInt(i Int) int {
-	v, ok := i.Int64()
-	if !ok {
-		panic("bad int")
+const testIters = 10000
+
+var (
+	// testInts is a zipf-distributed array of Ints and corresponding ints.
+	// This removes the cost of generating them on the fly during benchmarking.
+	// Without this, Zipf and MakeInt dominate CPU and memory costs, respectively.
+	makeTestIntsOnce sync.Once
+	testInts         [3 * testIters]struct {
+		Int   Int
+		goInt int
 	}
-	return int(v)
+)
+
+func makeTestInts() {
+	zipf := rand.NewZipf(rand.New(rand.NewSource(0)), 1.1, 1.0, 1000.0)
+	for i := range &testInts {
+		r := int(zipf.Uint64())
+		testInts[i].goInt = r
+		testInts[i].Int = MakeInt(r)
+	}
 }
 
 // testHashtable is both a test and a benchmark of hashtable.
 // When sane != nil, it acts as a test against the semantics of Go's map.
 func testHashtable(tb testing.TB, sane map[int]bool) {
-	// Set up a stream of Ints to use.
-	// Do this in advance so that we can remove the cost during benchmarking.
-	// Without this, Zipf and MakeInt dominate CPU and memory costs, respectively.
-	const iters = 10000
-	if b, ok := tb.(*testing.B); ok {
-		b.StopTimer()
-	}
-	zipf := rand.NewZipf(rand.New(rand.NewSource(0)), 1.1, 1.0, 1000.0)
-	ints := make([]Int, iters*3)
-	for i := range ints {
-		ints[i] = MakeInt(int(zipf.Uint64()))
-	}
-	if b, ok := tb.(*testing.B); ok {
-		b.StartTimer()
-	}
-
-	var i int // index into random ints
+	var i int // index into testInts
 
 	var ht hashtable
 
 	// Insert 10000 random ints into the map.
-	for j := 0; j < iters; j++ {
-		k := ints[i]
+	for j := 0; j < testIters; j++ {
+		k := testInts[i]
 		i++
-		if err := ht.insert(k, None); err != nil {
+		if err := ht.insert(k.Int, None); err != nil {
 			tb.Fatal(err)
 		}
 		if sane != nil {
-			sane[mustInt(k)] = true
+			sane[k.goInt] = true
 		}
 	}
 
 	// Do 10000 random lookups in the map.
-	for j := 0; j < iters; j++ {
-		k := ints[i]
+	for j := 0; j < testIters; j++ {
+		k := testInts[i]
 		i++
-		_, found, err := ht.lookup(k)
+		_, found, err := ht.lookup(k.Int)
 		if err != nil {
 			tb.Fatal(err)
 		}
 		if sane != nil {
-			_, found2 := sane[mustInt(k)]
+			_, found2 := sane[k.goInt]
 			if found != found2 {
 				tb.Fatal("sanity check failed")
 			}
@@ -99,19 +101,19 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 	}
 
 	// Do 10000 random deletes from the map.
-	for j := 0; j < iters; j++ {
-		k := ints[i]
+	for j := 0; j < testIters; j++ {
+		k := testInts[i]
 		i++
-		_, found, err := ht.delete(k)
+		_, found, err := ht.delete(k.Int)
 		if err != nil {
 			tb.Fatal(err)
 		}
 		if sane != nil {
-			_, found2 := sane[mustInt(k)]
+			_, found2 := sane[k.goInt]
 			if found != found2 {
 				tb.Fatal("sanity check failed")
 			}
-			delete(sane, mustInt(k))
+			delete(sane, k.goInt)
 		}
 	}
 
