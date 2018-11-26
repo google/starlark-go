@@ -105,7 +105,8 @@ avoid duplication of effort.
 Despite some differences, the Go implementation of Starlark strives to
 match the behavior of the Java implementation used by Bazel.
 For that reason, proposals to change the language itself should
-generally be directed to [the Bazel team](https://github.com/bazelbuild/bazel/issues),
+generally be directed to [the Starlark repository](
+https://github.com/bazelbuild/starlark/),
 not to the maintainers of this project.
 Only once there is consensus that a language change is desirable may
 its Go implementation proceed.
