@@ -336,6 +336,41 @@ func (r *resolver) bind(id *syntax.Ident, allowRebind bool) bool {
 }
 
 func (r *resolver) use(id *syntax.Ident) {
+	// The spec says that if there is a global binding of a name
+	// then all references to that name in that block refer to the
+	// global, even if the use precedes the def---just as for locals.
+	// For example, in this code,
+	//
+	//   print(len); len=1; print(len)
+	//
+	// both occurrences of len refer to the len=1 binding, which
+	// completely shadows the predeclared len function.
+	//
+	// The rationale for these semantics, which differ from Python,
+	// is that the static meaning of len (a reference to a global)
+	// does not change depending on where it appears in the file.
+	// Of course, its dynamic meaning does change, from an error
+	// into a valid reference, so it's not clear these semantics
+	// have any practical advantage.
+	//
+	// In any case, the Bazel implementation lags behind the spec
+	// and follows Python behavior, so the first use of len refers
+	// to the predeclared function.  This typically used in a BUILD
+	// file that redefines a predeclared name half way through,
+	// for example:
+	//
+	//	proto_library(...) 			# built-in rule
+	//      load("myproto.bzl", "proto_library")
+	//	proto_library(...) 			# user-defined rule
+	//
+	// We will piggyback support for the legacy semantics on the
+	// AllowGlobalReassign flag, which is loosely related and also
+	// required for Bazel.
+	if AllowGlobalReassign && r.env.isModule() {
+		r.useGlobal(id)
+		return
+	}
+
 	b := r.container()
 	b.uses = append(b.uses, use{id, r.env})
 }
