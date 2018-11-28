@@ -544,20 +544,15 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			case Float:
 				return x.Float() * y, nil
 			case String:
-				if i, err := AsInt32(x); err == nil {
-					if i < 1 {
-						return String(""), nil
-					}
-					return String(strings.Repeat(string(y), i)), nil
-				}
+				return stringRepeat(y, x)
 			case *List:
-				if i, err := AsInt32(x); err == nil {
-					return NewList(repeat(y.elems, i)), nil
+				elems, err := tupleRepeat(Tuple(y.elems), x)
+				if err != nil {
+					return nil, err
 				}
+				return NewList(elems), nil
 			case Tuple:
-				if i, err := AsInt32(x); err == nil {
-					return Tuple(repeat([]Value(y), i)), nil
-				}
+				return tupleRepeat(y, x)
 			}
 		case Float:
 			switch y := y.(type) {
@@ -568,24 +563,19 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case String:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					if i < 1 {
-						return String(""), nil
-					}
-					return String(strings.Repeat(string(x), i)), nil
-				}
+				return stringRepeat(x, y)
 			}
 		case *List:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					return NewList(repeat(x.elems, i)), nil
+				elems, err := tupleRepeat(Tuple(x.elems), y)
+				if err != nil {
+					return nil, err
 				}
+				return NewList(elems), nil
 			}
 		case Tuple:
 			if y, ok := y.(Int); ok {
-				if i, err := AsInt32(y); err == nil {
-					return Tuple(repeat([]Value(x), i)), nil
-				}
+				return tupleRepeat(x, y)
 			}
 
 		}
@@ -836,14 +826,50 @@ unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
 }
 
-func repeat(elems []Value, n int) (res []Value) {
-	if n > 0 {
-		res = make([]Value, 0, len(elems)*n)
-		for i := 0; i < n; i++ {
-			res = append(res, elems...)
-		}
+// It's always possible to overeat in small bites but we'll
+// try to stop someone swallowing the world in one gulp.
+const maxAlloc = 1 << 30
+
+func tupleRepeat(elems Tuple, n Int) (Tuple, error) {
+	if len(elems) == 0 {
+		return nil, nil
 	}
-	return res
+	i, err := AsInt32(n)
+	if err != nil {
+		return nil, fmt.Errorf("repeat count %s too large", n)
+	}
+	if i < 1 {
+		return nil, nil
+	}
+	// Inv: i > 0, len > 0
+	sz := len(elems) * i
+	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+		return nil, fmt.Errorf("excessive repeat (%d elements)", sz)
+	}
+	res := make([]Value, 0, sz)
+	for j := 0; j < i; j++ {
+		res = append(res, elems...)
+	}
+	return res, nil
+}
+
+func stringRepeat(s String, n Int) (String, error) {
+	if s == "" {
+		return "", nil
+	}
+	i, err := AsInt32(n)
+	if err != nil {
+		return "", fmt.Errorf("repeat count %s too large", n)
+	}
+	if i < 1 {
+		return "", nil
+	}
+	// Inv: i > 0, len > 0
+	sz := len(s) * i
+	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+		return "", fmt.Errorf("excessive repeat (%d elements)", sz)
+	}
+	return String(strings.Repeat(string(s), i)), nil
 }
 
 // Call calls the function fn with the specified positional and keyword arguments.
