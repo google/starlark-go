@@ -461,3 +461,15 @@ func TestUnpackUserDefined(t *testing.T) {
 		t.Errorf("unpack args error = %q, want %q", err, want)
 	}
 }
+
+func TestDocstring(t *testing.T) {
+	globals, _ := starlark.ExecFile(&starlark.Thread{}, "doc.star", `
+def somefunc():
+	"somefunc doc"
+	return 0
+`, nil)
+
+	if globals["somefunc"].(*starlark.Function).Doc() != "somefunc doc" {
+		t.Fatal("docstring not found")
+	}
+}

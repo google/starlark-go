@@ -300,6 +300,7 @@ type Funcode struct {
 	Prog                  *Program
 	Pos                   syntax.Position // position of def or lambda token
 	Name                  string          // name of this function
+	Doc                   string          // docstring of this function
 	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
 	Locals                []Ident         // for error messages and tracing
@@ -439,6 +440,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			Prog:     pcomp.prog,
 			Pos:      pos,
 			Name:     name,
+			Doc:      docStringFromBody(stmts),
 			Locals:   idents(locals),
 			Freevars: idents(freevars),
 		},
@@ -594,6 +596,24 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 	}
 
 	return fn
+}
+
+func docStringFromBody(body []syntax.Stmt) string {
+	if len(body) == 0 {
+		return ""
+	}
+	expr, ok := body[0].(*syntax.ExprStmt)
+	if !ok {
+		return ""
+	}
+	lit, ok := expr.X.(*syntax.Literal)
+	if !ok {
+		return ""
+	}
+	if lit.Token != syntax.STRING {
+		return ""
+	}
+	return lit.Value.(string)
 }
 
 func (insn *insn) stackeffect() int {

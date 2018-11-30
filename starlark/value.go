@@ -527,6 +527,7 @@ type Function struct {
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
+func (fn *Function) Doc() string           { return fn.funcode.Doc }
 func (fn *Function) Hash() (uint32, error) { return hashString(fn.funcode.Name), nil }
 func (fn *Function) Freeze()               { fn.defaults.Freeze(); fn.freevars.Freeze() }
 func (fn *Function) String() string        { return toString(fn) }
