@@ -243,6 +243,10 @@ assert.eq(type(z), "tuple")
 assert.eq(len(z), 1)
 assert.eq(z[0], 1)
 
+# assign value to parenthesized variable
+(a) = 1
+assert.eq(a, 1)
+
 ---
 # assignment to/from fields.
 load("assert.star", "assert", "freeze")
@@ -278,3 +282,16 @@ def g():
     pass
   return a
 assert.eq(g(), {"one": 1, "two": 2})
+
+---
+# parenthesized LHS in augmented assignment (success)
+load("assert.star", "assert")
+
+a = 5
+(a) += 3
+assert.eq(a, 8)
+
+---
+# parenthesized LHS in augmented assignment (error)
+
+(a) += 5 ### "global variable a referenced before assignment"

@@ -980,7 +980,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 			var set func()
 
 			// Evaluate "address" of x exactly once to avoid duplicate side-effects.
-			switch lhs := stmt.LHS.(type) {
+			switch lhs := unparen(stmt.LHS).(type) {
 			case *syntax.Ident:
 				// x = ...
 				fcomp.lookup(lhs)
