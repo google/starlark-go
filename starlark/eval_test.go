@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 
 	"go.starlark.net/internal/chunkedfile"
@@ -336,43 +334,6 @@ f()
 		"foo.go:3: f: world\n"
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
-	}
-}
-
-func Benchmark(b *testing.B) {
-	testdata := starlarktest.DataFile("starlark", ".")
-	thread := new(starlark.Thread)
-	for _, file := range []string{
-		"testdata/benchmark.star",
-		// ...
-	} {
-		filename := filepath.Join(testdata, file)
-
-		// Evaluate the file once.
-		globals, err := starlark.ExecFile(thread, filename, nil, nil)
-		if err != nil {
-			reportEvalError(b, err)
-		}
-
-		// Repeatedly call each global function named bench_* as a benchmark.
-		var names []string
-		for name := range globals {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			value := globals[name]
-			if fn, ok := value.(*starlark.Function); ok && strings.HasPrefix(name, "bench_") {
-				b.Run(name, func(b *testing.B) {
-					for i := 0; i < b.N; i++ {
-						_, err := starlark.Call(thread, fn, nil, nil)
-						if err != nil {
-							reportEvalError(b, err)
-						}
-					}
-				})
-			}
-		}
 	}
 }
 

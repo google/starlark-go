@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/big"
@@ -209,7 +210,11 @@ func (prog *Program) Load(i int) (string, syntax.Position) {
 }
 
 // WriteTo writes the compiled module to the specified output stream.
-func (prog *Program) Write(out io.Writer) error { return prog.compiled.Write(out) }
+func (prog *Program) Write(out io.Writer) error {
+	data := prog.compiled.Encode()
+	_, err := out.Write(data)
+	return err
+}
 
 // ExecFile parses, resolves, and executes a Starlark file in the
 // specified global environment, which may be modified during execution.
@@ -267,7 +272,11 @@ func SourceProgram(filename string, src interface{}, isPredeclared func(string) 
 // CompiledProgram produces a new program from the representation
 // of a compiled program previously saved by Program.Write.
 func CompiledProgram(in io.Reader) (*Program, error) {
-	prog, err := compile.ReadProgram(in)
+	data, err := ioutil.ReadAll(in)
+	if err != nil {
+		return nil, err
+	}
+	prog, err := compile.DecodeProgram(data)
 	if err != nil {
 		return nil, err
 	}
