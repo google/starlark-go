@@ -1,164 +1,366 @@
 package compile
 
-// This files defines functions to read and write a compile.Program to a file.
-// Currently we use gob encoding because it is convenient.
+// This file defines functions to read and write a compile.Program to a file.
 //
-// It is the client's responsibility to manage version skew between the
+// It is the client's responsibility to avoid version skew between the
 // compiler used to produce a file and the interpreter that consumes it.
-// The version number is provided as a constant. Incompatible protocol
-// changes should also increment the version number.
+// The version number is provided as a constant.
+// Incompatible protocol changes should also increment the version number.
+//
+// Encoding
+//
+// Program:
+//	"sky!"		[4]byte		# magic number
+//	str		uint32le	# offset of <strings> section
+//	version		varint		# must match Version
+//	filename	string
+//	numloads	varint
+//	loads		[]Ident
+//	numnames	varint
+//	names		[]string
+//	numconsts	varint
+//	consts		[]Constant
+//	numglobals	varint
+//	globals		[]Ident
+//	toplevel	Funcode
+//	numfuncs	varint
+//	funcs		[]Funcode
+//	<strings>	[]byte		# concatenation of all referenced strings
+//	EOF
+//
+// Funcode:
+//	id		Ident
+//	code		[]byte
+//	pclinetablen	varint
+//	pclinetab	[]varint
+//	numlocals	varint
+//	locals		[]Ident
+//	numfreevars	varint
+//	freevar		[]Ident
+//	maxstack	varint
+//	numparams	varint
+//	hasvarargs	varint (0 or 1)
+//	haskwargs	varint (0 or 1)
+//
+// Ident:
+//	filename	string
+//	line, col	varint
+//
+// Constant:                            # type      data
+//      type            varint          # 0=string  string
+//      data            ...             # 1=int     varint
+//                                      # 2=float   varint (bits as uint64)
+//                                      # 3=bigint  string (decimal ASCII text)
+//
+// The encoding starts with a four-byte magic number.
+// The next four bytes are a little-endian uint32
+// that provides the offset of the string section
+// at the end of the file, which contains the ordered
+// concatenation of all strings referenced by the
+// program. This design permits the decoder to read
+// the first and second parts of the file into different
+// memory allocations: the first (the encoded program)
+// is transient, but the second (the strings) persists
+// for the life of the Program.
+//
+// Within the encoded program, all strings are referred
+// to by their length. As the encoder and decoder process
+// the entire file sequentially, they are in lock step,
+// so the start offset of each string is implicit.
+//
+// Program.Code is represented as a []byte slice to permit
+// modification when breakpoints are set. All other strings
+// are represented as strings. They all (unsafely) share the
+// same backing byte slice.
+//
+// Aside from the str field, all integers are encoded as varints.
 
 import (
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
-	"io"
+	"math"
+	"math/big"
+	debugpkg "runtime/debug"
+	"unsafe"
 
 	"go.starlark.net/syntax"
 )
 
 const magic = "!sky"
 
-type gobProgram struct {
-	Version   int
-	Filename  string
-	Loads     []gobIdent
-	Names     []string
-	Constants []interface{}
-	Functions []gobFunction
-	Globals   []gobIdent
-	Toplevel  gobFunction
-}
-
-type gobFunction struct {
-	Id                    gobIdent // hack: name and pos
-	Code                  []byte
-	Pclinetab             []uint16
-	Locals                []gobIdent
-	Freevars              []gobIdent
-	MaxStack              int
-	NumParams             int
-	HasVarargs, HasKwargs bool
-}
-
-type gobIdent struct {
-	Name      string
-	Line, Col int32 // the filename is gobProgram.Filename
-}
-
-// Write writes a compiled Starlark program to out.
-func (prog *Program) Write(out io.Writer) error {
-	out.Write([]byte(magic))
-
-	gobIdents := func(idents []Ident) []gobIdent {
-		res := make([]gobIdent, len(idents))
-		for i, id := range idents {
-			res[i].Name = id.Name
-			res[i].Line = id.Pos.Line
-			res[i].Col = id.Pos.Col
-		}
-		return res
+// Encode encodes a compiled Starlark program.
+func (prog *Program) Encode() []byte {
+	var e encoder
+	e.p = append(e.p, magic...)
+	e.p = append(e.p, "????"...) // string data offset; filled in later
+	e.int(Version)
+	e.string(prog.Toplevel.Pos.Filename())
+	e.idents(prog.Loads)
+	e.int(len(prog.Names))
+	for _, name := range prog.Names {
+		e.string(name)
 	}
-
-	gobFunc := func(fn *Funcode) gobFunction {
-		return gobFunction{
-			Id: gobIdent{
-				Name: fn.Name,
-				Line: fn.Pos.Line,
-				Col:  fn.Pos.Col,
-			},
-			Code:       fn.Code,
-			Pclinetab:  fn.pclinetab,
-			Locals:     gobIdents(fn.Locals),
-			Freevars:   gobIdents(fn.Freevars),
-			MaxStack:   fn.MaxStack,
-			NumParams:  fn.NumParams,
-			HasVarargs: fn.HasVarargs,
-			HasKwargs:  fn.HasKwargs,
+	e.int(len(prog.Constants))
+	for _, c := range prog.Constants {
+		switch c := c.(type) {
+		case string:
+			e.int(0)
+			e.string(c)
+		case int64:
+			e.int(1)
+			e.int64(c)
+		case float64:
+			e.int(2)
+			e.uint64(math.Float64bits(c))
+		case *big.Int:
+			e.int(3)
+			e.string(c.Text(10))
 		}
 	}
-
-	gp := &gobProgram{
-		Version:   Version,
-		Filename:  prog.Toplevel.Pos.Filename(),
-		Loads:     gobIdents(prog.Loads),
-		Names:     prog.Names,
-		Constants: prog.Constants,
-		Functions: make([]gobFunction, len(prog.Functions)),
-		Globals:   gobIdents(prog.Globals),
-		Toplevel:  gobFunc(prog.Toplevel),
-	}
-	for i, f := range prog.Functions {
-		gp.Functions[i] = gobFunc(f)
+	e.idents(prog.Globals)
+	e.function(prog.Toplevel)
+	e.int(len(prog.Functions))
+	for _, fn := range prog.Functions {
+		e.function(fn)
 	}
 
-	return gob.NewEncoder(out).Encode(gp)
+	// Patch in the offset of the string data section.
+	binary.LittleEndian.PutUint32(e.p[4:8], uint32(len(e.p)))
+
+	return append(e.p, e.s...)
 }
 
-// ReadProgram reads a compiled Starlark program from in.
-func ReadProgram(in io.Reader) (*Program, error) {
-	magicBuf := []byte(magic)
-	n, err := in.Read(magicBuf)
-	if err != nil {
-		return nil, err
+type encoder struct {
+	p   []byte // encoded program
+	s   []byte // strings
+	tmp [binary.MaxVarintLen64]byte
+}
+
+func (e *encoder) int(x int) {
+	e.int64(int64(x))
+}
+
+func (e *encoder) int64(x int64) {
+	n := binary.PutVarint(e.tmp[:], x)
+	e.p = append(e.p, e.tmp[:n]...)
+}
+
+func (e *encoder) uint64(x uint64) {
+	n := binary.PutUvarint(e.tmp[:], x)
+	e.p = append(e.p, e.tmp[:n]...)
+}
+
+func (e *encoder) string(s string) {
+	e.int(len(s))
+	e.s = append(e.s, s...)
+}
+
+func (e *encoder) bytes(b []byte) {
+	e.int(len(b))
+	e.s = append(e.s, b...)
+}
+
+func (e *encoder) ident(id Ident) {
+	e.string(id.Name)
+	e.int(int(id.Pos.Line))
+	e.int(int(id.Pos.Col))
+}
+
+func (e *encoder) idents(ids []Ident) {
+	e.int(len(ids))
+	for _, id := range ids {
+		e.ident(id)
 	}
-	if n != len(magic) {
+}
+
+func (e *encoder) function(fn *Funcode) {
+	e.ident(Ident{fn.Name, fn.Pos})
+	e.bytes(fn.Code)
+	e.int(len(fn.pclinetab))
+	for _, x := range fn.pclinetab {
+		e.int64(int64(x))
+	}
+	e.idents(fn.Locals)
+	e.idents(fn.Freevars)
+	e.int(fn.MaxStack)
+	e.int(fn.NumParams)
+	e.int(b2i(fn.HasVarargs))
+	e.int(b2i(fn.HasKwargs))
+}
+
+func b2i(b bool) int {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+// DecodeProgram decodes a compiled Starlark program from data.
+func DecodeProgram(data []byte) (_ *Program, err error) {
+	if len(data) < len(magic) {
 		return nil, fmt.Errorf("not a compiled module: no magic number")
 	}
-	if string(magicBuf) != magic {
+	if got := string(data[:4]); got != magic {
 		return nil, fmt.Errorf("not a compiled module: got magic number %q, want %q",
-			magicBuf, magic)
+			got, magic)
 	}
-
-	dec := gob.NewDecoder(in)
-	var gp gobProgram
-	if err := dec.Decode(&gp); err != nil {
-		return nil, fmt.Errorf("decoding program: %v", err)
-	}
-
-	if gp.Version != Version {
-		return nil, fmt.Errorf("version mismatch: read %d, want %d",
-			gp.Version, Version)
-	}
-
-	file := gp.Filename // copy, to avoid keeping gp live
-
-	ungobIdents := func(idents []gobIdent) []Ident {
-		res := make([]Ident, len(idents))
-		for i, id := range idents {
-			res[i].Name = id.Name
-			res[i].Pos = syntax.MakePosition(&file, id.Line, id.Col)
+	defer func() {
+		if x := recover(); x != nil {
+			debugpkg.PrintStack()
+			err = fmt.Errorf("internal error while decoding program: %v", x)
 		}
-		return res
+	}()
+
+	offset := binary.LittleEndian.Uint32(data[4:8])
+	d := decoder{
+		p: data[8:offset],
+		s: append([]byte(nil), data[offset:]...), // allocate a copy, which will persist
+	}
+
+	if v := d.int(); v != Version {
+		return nil, fmt.Errorf("version mismatch: read %d, want %d", v, Version)
+	}
+
+	filename := d.string()
+	d.filename = &filename
+
+	loads := d.idents()
+
+	names := make([]string, d.int())
+	for i := range names {
+		names[i] = d.string()
+	}
+
+	// constants
+	constants := make([]interface{}, d.int())
+	for i := range constants {
+		var c interface{}
+		switch d.int() {
+		case 0:
+			c = d.string()
+		case 1:
+			c = d.int64()
+		case 2:
+			c = math.Float64frombits(d.uint64())
+		case 3:
+			c, _ = new(big.Int).SetString(d.string(), 10)
+		}
+		constants[i] = c
+	}
+
+	globals := d.idents()
+	toplevel := d.function()
+	funcs := make([]*Funcode, d.int())
+	for i := range funcs {
+		funcs[i] = d.function()
 	}
 
 	prog := &Program{
-		Loads:     ungobIdents(gp.Loads),
-		Names:     gp.Names,
-		Constants: gp.Constants,
-		Globals:   ungobIdents(gp.Globals),
-		Functions: make([]*Funcode, len(gp.Functions)),
+		Loads:     loads,
+		Names:     names,
+		Constants: constants,
+		Globals:   globals,
+		Functions: funcs,
+		Toplevel:  toplevel,
+	}
+	toplevel.Prog = prog
+	for _, f := range funcs {
+		f.Prog = prog
 	}
 
-	ungobFunc := func(gf *gobFunction) *Funcode {
-		pos := syntax.MakePosition(&file, gf.Id.Line, gf.Id.Col)
-		return &Funcode{
-			Prog:       prog,
-			Pos:        pos,
-			Name:       gf.Id.Name,
-			Code:       gf.Code,
-			pclinetab:  gf.Pclinetab,
-			Locals:     ungobIdents(gf.Locals),
-			Freevars:   ungobIdents(gf.Freevars),
-			MaxStack:   gf.MaxStack,
-			NumParams:  gf.NumParams,
-			HasVarargs: gf.HasVarargs,
-			HasKwargs:  gf.HasKwargs,
-		}
+	if len(d.p)+len(d.s) > 0 {
+		return nil, fmt.Errorf("internal error: unconsumed data during decoding")
 	}
 
-	for i := range gp.Functions {
-		prog.Functions[i] = ungobFunc(&gp.Functions[i])
-	}
-	prog.Toplevel = ungobFunc(&gp.Toplevel)
 	return prog, nil
+}
+
+type decoder struct {
+	p        []byte  // encoded program
+	s        []byte  // strings
+	filename *string // (indirect to avoid keeping decoder live)
+}
+
+func (d *decoder) int() int {
+	return int(d.int64())
+}
+
+func (d *decoder) int64() int64 {
+	x, len := binary.Varint(d.p[:])
+	d.p = d.p[len:]
+	return x
+}
+
+func (d *decoder) uint64() uint64 {
+	x, len := binary.Uvarint(d.p[:])
+	d.p = d.p[len:]
+	return x
+}
+
+func (d *decoder) string() (s string) {
+	if slice := d.bytes(); len(slice) > 0 {
+		// Avoid a memory allocation for each string
+		// by unsafely aliasing slice.
+		type string struct {
+			data *byte
+			len  int
+		}
+		ptr := (*string)(unsafe.Pointer(&s))
+		ptr.data = &slice[0]
+		ptr.len = len(slice)
+	}
+	return s
+}
+
+func (d *decoder) bytes() []byte {
+	len := d.int()
+	r := d.s[:len:len]
+	d.s = d.s[len:]
+	return r
+}
+
+func (d *decoder) ident() Ident {
+	name := d.string()
+	line := int32(d.int())
+	col := int32(d.int())
+	return Ident{Name: name, Pos: syntax.MakePosition(d.filename, line, col)}
+}
+
+func (d *decoder) idents() []Ident {
+	idents := make([]Ident, d.int())
+	for i := range idents {
+		idents[i] = d.ident()
+	}
+	return idents
+}
+
+func (d *decoder) bool() bool { return d.int() != 0 }
+
+func (d *decoder) function() *Funcode {
+	id := d.ident()
+	code := d.bytes()
+	pclinetab := make([]uint16, d.int())
+	for i := range pclinetab {
+		pclinetab[i] = uint16(d.int())
+	}
+	locals := d.idents()
+	freevars := d.idents()
+	maxStack := d.int()
+	numParams := d.int()
+	hasVarargs := d.int() != 0
+	hasKwargs := d.int() != 0
+	return &Funcode{
+		// Prog is filled in later.
+		Pos:        id.Pos,
+		Name:       id.Name,
+		Code:       code,
+		pclinetab:  pclinetab,
+		Locals:     locals,
+		Freevars:   freevars,
+		MaxStack:   maxStack,
+		NumParams:  numParams,
+		HasVarargs: hasVarargs,
+		HasKwargs:  hasKwargs,
+	}
 }
