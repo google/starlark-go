@@ -111,6 +111,8 @@ func (p *parser) parseStmt(stmts []Stmt) []Stmt {
 		return append(stmts, p.parseIfStmt())
 	} else if p.tok == FOR {
 		return append(stmts, p.parseForStmt())
+	} else if p.tok == WHILE {
+		return append(stmts, p.parseWhileStmt())
 	}
 	return p.parseSimpleStmt(stmts)
 }
@@ -179,6 +181,18 @@ func (p *parser) parseForStmt() Stmt {
 		Vars: vars,
 		X:    x,
 		Body: body,
+	}
+}
+
+func (p *parser) parseWhileStmt() Stmt {
+	whilepos := p.nextToken() // consume WHILE
+	cond := p.parseTest()
+	p.consume(COLON)
+	body := p.parseSuite()
+	return &WhileStmt{
+		While: whilepos,
+		Cond:  cond,
+		Body:  body,
 	}
 }
 

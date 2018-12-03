@@ -1076,6 +1076,21 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		fcomp.block = tail
 		fcomp.emit(ITERPOP)
 
+	case *syntax.WhileStmt:
+		head := fcomp.newBlock()
+		body := fcomp.newBlock()
+		done := fcomp.newBlock()
+
+		fcomp.jump(head)
+		fcomp.block = head
+		fcomp.ifelse(stmt.Cond, body, done)
+
+		fcomp.block = body
+		fcomp.stmts(stmt.Body)
+		fcomp.jump(head)
+
+		fcomp.block = done
+
 	case *syntax.ReturnStmt:
 		if stmt.Result != nil {
 			fcomp.expr(stmt.Result)

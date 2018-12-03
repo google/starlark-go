@@ -1010,9 +1010,14 @@ f(0)            # returns None without printing
 f(-1)           # returns 1 without printing
 ```
 
+<b>Implementation note:</b>
+The Go implementation of the Starlark REPL requires the `-recursion`
+flag to allow recursive functions.
 
-It is a dynamic error for a function to call itself or another
-function value with the same declaration.
+
+If the `-recursion` flag is not specified it is a dynamic error for a
+function to call itself or another function value with the same
+declaration.
 
 ```python
 def fib(x):
@@ -1024,7 +1029,8 @@ fib(5)
 ```
 
 This rule, combined with the invariant that all loops are iterations
-over finite sequences, implies that Starlark programs are not Turing-complete.
+over finite sequences, implies that Starlark programs can not be
+Turing complete unless the `-recursion` flag is specified.
 
 <!-- This rule is supposed to deter people from abusing Starlark for
      inappropriate uses, especially in the build system.
@@ -1063,7 +1069,7 @@ The parameter names serve merely as documentation.
 After a Starlark file is parsed, but before its execution begins, the
 Starlark interpreter checks statically that the program is well formed.
 For example, `break` and `continue` statements may appear only within
-a loop; `if`, `for`, and `return` statements may appear only within a
+a loop; `if`, `for`, `while`, and `return` statements may appear only within a
 function; and `load` statements may appear only outside any function.
 
 _Name resolution_ is the static checking process that
@@ -2626,6 +2632,31 @@ else:
 
 An `if` statement is permitted only within a function definition.
 An `if` statement at top level results in a static error.
+
+### While loops
+
+A `while` loop evaluates an expression (the _condition_) and if the truth
+value of the condition is `True`, it executes a list of statement and repeats
+the process until the truth value of the condition becomes `False`.
+
+```grammar {.good}
+WhileStmt = 'while' Test ':' Suite .
+```
+
+Example:
+
+```python
+while n > 0:
+    r = r + n
+    n = n - 1
+```
+
+A `while` statement is permitted only within a function definition.
+A `while` statement at top level results in a static error.
+
+<b>Implementation note:</b> `while` loops are only allowed when the `-recursion`
+flag is specified.
+
 
 ### For loops
 

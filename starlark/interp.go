@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
 
@@ -23,13 +24,15 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 		fmt.Printf("call of %s %v %v\n", fn.Name(), args, kwargs)
 	}
 
-	// detect recursion
-	for fr := thread.frame.parent; fr != nil; fr = fr.parent {
-		// We look for the same function code,
-		// not function value, otherwise the user could
-		// defeat the check by writing the Y combinator.
-		if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == fn.funcode {
-			return nil, fmt.Errorf("function %s called recursively", fn.Name())
+	if !resolve.AllowRecursion {
+		// detect recursion
+		for fr := thread.frame.parent; fr != nil; fr = fr.parent {
+			// We look for the same function code,
+			// not function value, otherwise the user could
+			// defeat the check by writing the Y combinator.
+			if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == fn.funcode {
+				return nil, fmt.Errorf("function %s called recursively", fn.Name())
+			}
 		}
 	}
 

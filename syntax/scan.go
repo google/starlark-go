@@ -95,6 +95,7 @@ const (
 	OR
 	PASS
 	RETURN
+	WHILE
 
 	maxToken
 )
@@ -996,6 +997,7 @@ var keywordToken = map[string]Token{
 	"or":       OR,
 	"pass":     PASS,
 	"return":   RETURN,
+	"while":    WHILE,
 
 	// reserved words:
 	"as": ILLEGAL,
@@ -1011,7 +1013,6 @@ var keywordToken = map[string]Token{
 	"nonlocal": ILLEGAL,
 	"raise":    ILLEGAL,
 	"try":      ILLEGAL,
-	"while":    ILLEGAL,
 	"with":     ILLEGAL,
 	"yield":    ILLEGAL,
 }
