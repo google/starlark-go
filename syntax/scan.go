@@ -377,7 +377,6 @@ type tokenValue struct {
 	float  float64  // decoded float
 	string string   // decoded string
 	pos    Position // start position of token
-	triple bool     // was string triple quoted?
 }
 
 // startToken marks the beginning of the next input token.

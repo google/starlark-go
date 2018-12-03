@@ -58,7 +58,6 @@ func Read(filename string, report Reporter) (chunks []Chunk) {
 	}
 	linenum := 1
 	for i, chunk := range strings.Split(string(data), "\n---\n") {
-		chunk := string(chunk)
 		if debug {
 			fmt.Printf("chunk %d at line %d: %s\n", i, linenum, chunk)
 		}

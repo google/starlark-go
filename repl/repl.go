@@ -1,4 +1,4 @@
-// The repl package provides a read/eval/print loop for Starlark.
+// Package repl provides a read/eval/print loop for Starlark.
 //
 // It supports readline-style command editing,
 // and interrupts through Control-C.

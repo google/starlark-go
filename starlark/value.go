@@ -424,7 +424,7 @@ func (s String) Index(i int) Value     { return s[i : i+1] }
 
 func (s String) Slice(start, end, step int) Value {
 	if step == 1 {
-		return String(s[start:end])
+		return s[start:end]
 	}
 
 	sign := signum(step)

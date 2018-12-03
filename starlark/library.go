@@ -137,20 +137,6 @@ var (
 	}
 )
 
-func builtinMethodOf(recv Value, name string) builtinMethod {
-	switch recv.(type) {
-	case String:
-		return stringMethods[name]
-	case *List:
-		return listMethods[name]
-	case *Dict:
-		return dictMethods[name]
-	case *Set:
-		return setMethods[name]
-	}
-	return nil
-}
-
 func builtinAttr(recv Value, name string, methods map[string]builtinMethod) (Value, error) {
 	method := methods[name]
 	if method == nil {
@@ -283,7 +269,7 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 }
 
 func unpackOneArg(v Value, ptr interface{}) error {
-	ok := true
+	var ok bool
 	switch ptr := ptr.(type) {
 	case *Value:
 		*ptr = v
@@ -1805,14 +1791,6 @@ func string_lower(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value,
 	return String(strings.ToLower(string(recv.(String)))), nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#string·lstrip
-func string_lstrip(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
-		return nil, err
-	}
-	return String(strings.TrimLeftFunc(string(recv.(String)), unicode.IsSpace)), nil
-}
-
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·partition
 func string_partition(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := string(recv_.(String))
@@ -1861,14 +1839,6 @@ func string_rfind(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value,
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·rindex
 func string_rindex(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
 	return string_find_impl(fnname, string(recv.(String)), args, kwargs, false, true)
-}
-
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#string·rstrip
-func string_rstrip(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 0); err != nil {
-		return nil, err
-	}
-	return String(strings.TrimRightFunc(string(recv.(String)), unicode.IsSpace)), nil
 }
 
 // https://github.com/google/starlark-go/starlark/blob/master/doc/spec.md#string·startswith
