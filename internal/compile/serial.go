@@ -175,6 +175,7 @@ func (e *encoder) idents(ids []Ident) {
 
 func (e *encoder) function(fn *Funcode) {
 	e.ident(Ident{fn.Name, fn.Pos})
+	e.string(fn.Doc)
 	e.bytes(fn.Code)
 	e.int(len(fn.pclinetab))
 	for _, x := range fn.pclinetab {
@@ -339,6 +340,7 @@ func (d *decoder) bool() bool { return d.int() != 0 }
 
 func (d *decoder) function() *Funcode {
 	id := d.ident()
+	doc := d.string()
 	code := d.bytes()
 	pclinetab := make([]uint16, d.int())
 	for i := range pclinetab {
@@ -354,6 +356,7 @@ func (d *decoder) function() *Funcode {
 		// Prog is filled in later.
 		Pos:        id.Pos,
 		Name:       id.Name,
+		Doc:        doc,
 		Code:       code,
 		pclinetab:  pclinetab,
 		Locals:     locals,
