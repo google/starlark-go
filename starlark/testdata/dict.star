@@ -74,20 +74,20 @@ assert.eq(x9a.keys()[0], (1, 2))
 
 # dict.get
 x10 = {"a": 1}
-assert.eq(x9.get("a"), 1)
-assert.eq(x9.get("b"), None)
-assert.eq(x9.get("a", 2), 1)
-assert.eq(x9.get("b", 2), 2)
+assert.eq(x10.get("a"), 1)
+assert.eq(x10.get("b"), None)
+assert.eq(x10.get("a", 2), 1)
+assert.eq(x10.get("b", 2), 2)
 
 # dict.clear
 x11 = {"a": 1}
-assert.contains(x10, "a")
-assert.eq(x10["a"], 1)
-x10.clear()
-assert.fails(lambda: x10["a"], 'key "a" not in dict')
-assert.true("a" not in x10)
-freeze(x10)
-assert.fails(x10.clear, "cannot clear frozen hash table")
+assert.contains(x11, "a")
+assert.eq(x11["a"], 1)
+x11.clear()
+assert.fails(lambda: x11["a"], 'key "a" not in dict')
+assert.true("a" not in x11)
+freeze(x11)
+assert.fails(x11.clear, "cannot clear frozen hash table")
 
 # dict.setdefault
 x12 = {"a": 1}
