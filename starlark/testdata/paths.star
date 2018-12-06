@@ -19,6 +19,9 @@ path separators (forward slash, "/"); they do not handle Windows-style paths
 with backslash separators or drive letters.
 """
 
+# This file is in the Bazel build language dialect of Starlark,
+# so declarations of 'fail' and 'struct' are required to make
+# it compile in the core language.
 def fail(msg):
     print(msg)
 

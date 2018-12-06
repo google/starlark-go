@@ -57,7 +57,7 @@ func Benchmark(b *testing.B) {
 // TODO(adonovan): use a bigger testdata program.
 func BenchmarkProgram(b *testing.B) {
 	// Measure time to read a source file (approx 600us but depends on hardware and file system).
-	filename := starlarktest.DataFile("starlark", "testdata/paths.bzl")
+	filename := starlarktest.DataFile("starlark", "testdata/paths.star")
 	var src []byte
 	b.Run("read", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
