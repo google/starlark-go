@@ -24,6 +24,7 @@ import (
 var (
 	cpuprofile = flag.String("cpuprofile", "", "gather CPU profile in this file")
 	showenv    = flag.Bool("showenv", false, "on success, print final global environment")
+	execprog   = flag.String("c", "", "execute program `prog`")
 )
 
 // non-standard dialect flags
@@ -55,19 +56,29 @@ func main() {
 	thread := &starlark.Thread{Load: repl.MakeLoad()}
 	globals := make(starlark.StringDict)
 
-	switch len(flag.Args()) {
-	case 0:
-		fmt.Println("Welcome to Starlark (go.starlark.net)")
-		repl.REPL(thread, globals)
-	case 1:
-		// Execute specified file.
-		filename := flag.Args()[0]
-		var err error
-		globals, err = starlark.ExecFile(thread, filename, nil, nil)
+	switch {
+	case flag.NArg() == 1 || *execprog != "":
+		var (
+			filename string
+			src      interface{}
+			err      error
+		)
+		if *execprog != "" {
+			// Execute provided program.
+			filename = "cmdline"
+			src = *execprog
+		} else {
+			// Execute specified file.
+			filename = flag.Arg(0)
+		}
+		globals, err = starlark.ExecFile(thread, filename, src, nil)
 		if err != nil {
 			repl.PrintError(err)
 			os.Exit(1)
 		}
+	case flag.NArg() == 0:
+		fmt.Println("Welcome to Starlark (go.starlark.net)")
+		repl.REPL(thread, globals)
 	default:
 		log.Fatal("want at most one Starlark file name")
 	}
