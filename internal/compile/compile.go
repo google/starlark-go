@@ -1599,7 +1599,8 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 
 	// TODO(adonovan): avoid this with a more flexible encoding.
 	if p >= 256 || n >= 256 {
-		log.Fatalf("%s: compiler error: too many arguments in call", call.Lparen)
+		// resolve already checked this; should be unreachable
+		panic("too many arguments in call")
 	}
 
 	return CALL + Opcode(callmode), uint32(p<<8 | n)
