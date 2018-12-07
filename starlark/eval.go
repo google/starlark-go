@@ -130,8 +130,14 @@ func (fr *Frame) Position() syntax.Position {
 	if fr.posn.IsValid() {
 		return fr.posn // leaf frame only (the error)
 	}
-	if fn, ok := fr.callable.(*Function); ok {
-		return fn.funcode.Position(fr.callpc) // position of active call
+	switch c := fr.callable.(type) {
+	case *Function:
+		// Starlark function
+		return c.funcode.Position(fr.callpc) // position of active call
+	case interface{ Position() syntax.Position }:
+		// If a built-in Callable defines
+		// a Position method, use it.
+		return c.Position()
 	}
 	return syntax.MakePosition(&builtinFilename, 1, 0)
 }
