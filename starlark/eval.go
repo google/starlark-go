@@ -846,9 +846,12 @@ func tupleRepeat(elems Tuple, n Int) (Tuple, error) {
 	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
 		return nil, fmt.Errorf("excessive repeat (%d elements)", sz)
 	}
-	res := make([]Value, 0, sz)
-	for j := 0; j < i; j++ {
-		res = append(res, elems...)
+	res := make([]Value, sz)
+	// copy elems into res, doubling each time
+	x := copy(res, elems)
+	for x < len(res) {
+		copy(res[x:], res[:x])
+		x *= 2
 	}
 	return res, nil
 }
