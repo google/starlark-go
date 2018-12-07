@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -257,23 +258,23 @@ func newScanner(filename string, src interface{}, keepComments bool) (*scanner, 
 	}, nil
 }
 
-func readSource(filename string, src interface{}) (data []byte, err error) {
+func readSource(filename string, src interface{}) ([]byte, error) {
 	switch src := src.(type) {
 	case string:
-		data = []byte(src)
+		return []byte(src), nil
 	case []byte:
-		data = src
+		return src, nil
 	case io.Reader:
-		data, err = ioutil.ReadAll(src)
+		data, err := ioutil.ReadAll(src)
+		if err != nil {
+			err = &os.PathError{Op: "read", Path: filename, Err: err}
+		}
+		return data, nil
 	case nil:
-		data, err = ioutil.ReadFile(filename)
+		return ioutil.ReadFile(filename)
 	default:
 		return nil, fmt.Errorf("invalid source: %T", src)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %s", filename, err)
-	}
-	return data, nil
 }
 
 // An Error describes the nature and position of a scanner or parser error.
