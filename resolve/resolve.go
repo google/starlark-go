@@ -95,6 +95,7 @@ var (
 	AllowSet            = false // allow the 'set' built-in
 	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
 	AllowBitwise        = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
+	AllowRecursion      = false // allow while statements and recursive functions
 )
 
 // File resolves the specified file.
@@ -468,6 +469,18 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		r.expr(stmt.X)
 		const allowRebind = false
 		r.assign(stmt.Vars, allowRebind)
+		r.loops++
+		r.stmts(stmt.Body)
+		r.loops--
+
+	case *syntax.WhileStmt:
+		if !AllowRecursion {
+			r.errorf(stmt.While, "while loop not allowed")
+		}
+		if r.container().function == nil {
+			r.errorf(stmt.While, "while loop not within a function")
+		}
+		r.expr(stmt.Cond)
 		r.loops++
 		r.stmts(stmt.Body)
 		r.loops--

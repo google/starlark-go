@@ -4,7 +4,7 @@ Grammar of Starlark
 
 File = {Statement | newline} eof .
 
-Statement = DefStmt | IfStmt | ForStmt | SimpleStmt .
+Statement = DefStmt | IfStmt | ForStmt | WhileStmt | SimpleStmt .
 
 DefStmt = 'def' identifier '(' [Parameters [',']] ')' ':' Suite .
 
@@ -15,6 +15,8 @@ Parameter = identifier | identifier '=' Test | '*' identifier | '**' identifier 
 IfStmt = 'if' Test ':' Suite {'elif' Test ':' Suite} ['else' ':' Suite] .
 
 ForStmt = 'for' LoopVariables 'in' Expression ':' Suite .
+
+WhileStmt = 'while' Test ':' Suite .
 
 Suite = [newline indent {Statement} outdent] | SimpleStmt .
 

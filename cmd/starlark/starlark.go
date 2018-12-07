@@ -33,6 +33,7 @@ func init() {
 	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
 	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")
 	flag.BoolVar(&resolve.AllowBitwise, "bitwise", resolve.AllowBitwise, "allow bitwise operations (&, |, ^, ~, <<, and >>)")
+	flag.BoolVar(&resolve.AllowRecursion, "recursion", resolve.AllowRecursion, "allow while statements and recursive functions")
 }
 
 func main() {

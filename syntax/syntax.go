@@ -95,6 +95,7 @@ func (*BranchStmt) stmt() {}
 func (*DefStmt) stmt()    {}
 func (*ExprStmt) stmt()   {}
 func (*ForStmt) stmt()    {}
+func (*WhileStmt) stmt()  {}
 func (*IfStmt) stmt()     {}
 func (*LoadStmt) stmt()   {}
 func (*ReturnStmt) stmt() {}
@@ -349,6 +350,19 @@ type ForStmt struct {
 func (x *ForStmt) Span() (start, end Position) {
 	_, end = x.Body[len(x.Body)-1].Span()
 	return x.For, end
+}
+
+// A WhileStmt represents a while loop: while X: Body.
+type WhileStmt struct {
+	commentsRef
+	While Position
+	Cond  Expr
+	Body  []Stmt
+}
+
+func (x *WhileStmt) Span() (start, end Position) {
+	_, end = x.Body[len(x.Body)-1].Span()
+	return x.While, end
 }
 
 // A ForClause represents a for clause in a list comprehension: for Vars in X.
