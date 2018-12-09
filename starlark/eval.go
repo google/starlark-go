@@ -1284,7 +1284,7 @@ func interpolate(format string, x Value) (Value, error) {
 				buf.WriteRune(rune(r))
 			case String:
 				r, size := utf8.DecodeRuneInString(string(arg))
-				if size != len(arg) {
+				if size != len(arg) || len(arg) == 0 {
 					return nil, fmt.Errorf("%%c format requires a single-character string")
 				}
 				buf.WriteRune(r)
