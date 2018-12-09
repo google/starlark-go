@@ -294,7 +294,7 @@ func (p *parser) parseLoadStmt() *LoadStmt {
 		switch p.tok {
 		case STRING:
 			// load("module", "id")
-			// To name is same as original.
+			// The name is same as original.
 			lit := p.parsePrimary().(*Literal)
 			id := &Ident{
 				NamePos: lit.TokenPos.add(`"`),
@@ -452,7 +452,7 @@ func (p *parser) parseParams() []Expr {
 	return params
 }
 
-// parseExpr parses an expression, possible consisting of a
+// parseExpr parses an expression, possibly consisting of a
 // comma-separated list of 'test' expressions.
 //
 // In many cases we must use parseTest to avoid ambiguity such as
