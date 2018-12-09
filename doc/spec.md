@@ -3237,9 +3237,6 @@ x.clear()                               # None
 print(x)                                # {}
 ```
 
-<b>Implementation note:</b>
-`dict·clear` is not provided by the Java implementation.
-
 <a id='dict·get'></a>
 ### dict·get
 
@@ -4000,6 +3997,7 @@ known to differ from the Java implementation of Starlark used by Bazel.
 Some of these features may be controlled by global options to allow
 applications to mimic the Bazel dialect more closely. Our goal is
 eventually to eliminate all such differences on a case-by-case basis.
+See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 
 * Integers are represented with infinite precision.
 * Integer arithmetic is exact.
@@ -4022,5 +4020,4 @@ eventually to eliminate all such differences on a case-by-case basis.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
 * `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `key` and `reverse`.
-* The `dict` type has a `clear` method.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
