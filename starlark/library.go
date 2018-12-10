@@ -2173,9 +2173,22 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	}
 
 	// Then add the kwargs.
+	before := dict.Len()
 	for _, pair := range kwargs {
 		if err := dict.SetKey(pair[0], pair[1]); err != nil {
 			return err // dict is frozen
+		}
+	}
+	// In the common case, each kwarg will add another dict entry.
+	// If that's not so, check whether it is because there was a duplicate kwarg.
+	if dict.Len() < before+len(kwargs) {
+		keys := make(map[String]bool, len(kwargs))
+		for _, kv := range kwargs {
+			k := kv[0].(String)
+			if keys[k] {
+				return fmt.Errorf("duplicate keyword arg: %v", k)
+			}
+			keys[k] = true
 		}
 	}
 
