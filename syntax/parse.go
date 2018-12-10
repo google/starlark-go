@@ -703,27 +703,14 @@ func (p *parser) parseArgs() []Expr {
 			break
 		}
 
-		// *args
-		if p.tok == STAR {
+		// *args or **kwargs
+		if p.tok == STAR || p.tok == STARSTAR {
 			stars = true
 			pos := p.nextToken()
 			x := p.parseTest()
 			args = append(args, &UnaryExpr{
 				OpPos: pos,
-				Op:    STAR,
-				X:     x,
-			})
-			continue
-		}
-
-		// **kwargs
-		if p.tok == STARSTAR {
-			stars = true
-			pos := p.nextToken()
-			x := p.parseTest()
-			args = append(args, &UnaryExpr{
-				OpPos: pos,
-				Op:    STARSTAR,
+				Op:    p.tok,
 				X:     x,
 			})
 			continue
