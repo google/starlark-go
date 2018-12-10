@@ -122,14 +122,15 @@ func (x *AssignStmt) Span() (start, end Position) {
 type Function struct {
 	commentsRef
 	StartPos Position // position of DEF or LAMBDA token
-	Params   []Expr   // param = ident | ident=expr | *ident | **ident
+	Params   []Expr   // param = ident | ident=expr | * | *ident | **ident
 	Body     []Stmt
 
 	// set by resolver:
-	HasVarargs bool     // whether params includes *args (convenience)
-	HasKwargs  bool     // whether params includes **kwargs (convenience)
-	Locals     []*Ident // this function's local variables, parameters first
-	FreeVars   []*Ident // enclosing local variables to capture in closure
+	HasVarargs      bool     // whether params includes *args (convenience)
+	HasKwargs       bool     // whether params includes **kwargs (convenience)
+	NumKwonlyParams int      // number of keyword-only optional parameters
+	Locals          []*Ident // this function's local variables, parameters first
+	FreeVars        []*Ident // enclosing local variables to capture in closure
 }
 
 func (x *Function) Span() (start, end Position) {

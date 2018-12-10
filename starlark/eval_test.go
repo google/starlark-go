@@ -247,6 +247,10 @@ def e(**kwargs):
 	return kwargs
 def f(a, b=42, *args, **kwargs):
 	return a, b, args, kwargs
+def g(a, b=42, *args, c=123, **kwargs):
+	return a, b, args, c, kwargs
+def h(a, b=42, *, c=123, **kwargs):
+	return a, b, c, kwargs
 `
 
 	thread := new(starlark.Thread)
@@ -258,11 +262,11 @@ def f(a, b=42, *args, **kwargs):
 	for _, test := range []struct{ src, want string }{
 		{`a()`, `None`},
 		{`a(1)`, `function a takes no arguments (1 given)`},
-		{`b()`, `function b takes exactly 2 arguments (0 given)`},
-		{`b(1)`, `function b takes exactly 2 arguments (1 given)`},
+		{`b()`, `function b takes exactly 2 positional arguments (0 given)`},
+		{`b(1)`, `function b takes exactly 2 positional arguments (1 given)`},
 		{`b(1, 2)`, `(1, 2)`},
 		{`b`, `<function b>`}, // asserts that b's parameter b was treated as a local variable
-		{`b(1, 2, 3)`, `function b takes exactly 2 arguments (3 given)`},
+		{`b(1, 2, 3)`, `function b takes exactly 2 positional arguments (3 given)`},
 		{`b(1, b=2)`, `(1, 2)`},
 		{`b(1, a=2)`, `function b got multiple values for keyword argument "a"`},
 		{`b(1, x=2)`, `function b got an unexpected keyword argument "x"`},
@@ -270,10 +274,10 @@ def f(a, b=42, *args, **kwargs):
 		{`b(b=1, a=2)`, `(2, 1)`},
 		{`b(b=1, a=2, x=1)`, `function b got an unexpected keyword argument "x"`},
 		{`b(x=1, b=1, a=2)`, `function b got an unexpected keyword argument "x"`},
-		{`c()`, `function c takes at least 1 argument (0 given)`},
+		{`c()`, `function c takes at least 1 positional argument (0 given)`},
 		{`c(1)`, `(1, 42)`},
 		{`c(1, 2)`, `(1, 2)`},
-		{`c(1, 2, 3)`, `function c takes at most 2 arguments (3 given)`},
+		{`c(1, 2, 3)`, `function c takes at most 2 positional arguments (3 given)`},
 		{`c(1, b=2)`, `(1, 2)`},
 		{`c(1, a=2)`, `function c got multiple values for keyword argument "a"`},
 		{`c(a=1, b=2)`, `(1, 2)`},
@@ -284,10 +288,10 @@ def f(a, b=42, *args, **kwargs):
 		{`d(1, 2, k=3)`, `function d got an unexpected keyword argument "k"`},
 		{`d(args=[])`, `function d got an unexpected keyword argument "args"`},
 		{`e()`, `{}`},
-		{`e(1)`, `function e takes exactly 0 arguments (1 given)`},
+		{`e(1)`, `function e takes exactly 0 positional arguments (1 given)`},
 		{`e(k=1)`, `{"k": 1}`},
 		{`e(kwargs={})`, `{"kwargs": {}}`},
-		{`f()`, `function f takes at least 1 argument (0 given)`},
+		{`f()`, `function f takes at least 1 positional argument (0 given)`},
 		{`f(0)`, `(0, 42, (), {})`},
 		{`f(0)`, `(0, 42, (), {})`},
 		{`f(0, 1)`, `(0, 1, (), {})`},
@@ -299,6 +303,30 @@ def f(a, b=42, *args, **kwargs):
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
 		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
 			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
+
+		{`g()`, `function g takes at least 1 positional argument (0 given)`},
+		{`g(0)`, `(0, 42, (), 123, {})`},
+		{`g(0, 1)`, `(0, 1, (), 123, {})`},
+		{`g(0, 1, 2)`, `(0, 1, (2,), 123, {})`},
+		{`g(0, 1, 2, 3)`, `(0, 1, (2, 3), 123, {})`},
+		{`g(a=0)`, `(0, 42, (), 123, {})`},
+		{`g(0, b=1)`, `(0, 1, (), 123, {})`},
+		{`g(0, a=1)`, `function g got multiple values for keyword argument "a"`},
+		{`g(0, b=1, c=2, d=3)`, `(0, 1, (), 2, {"d": 3})`},
+		{`g(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`,
+			`(0, 1, (3, 4), 123, {"x": 2, "y": 5, "z": 6})`},
+
+		{`h()`, `function h takes at least 1 positional argument (0 given)`},
+		{`h(0)`, `(0, 42, 123, {})`},
+		{`h(0)`, `(0, 42, 123, {})`},
+		{`h(0, 1)`, `(0, 1, 123, {})`},
+		{`h(0, 1, 2)`, `function h takes at most 2 positional arguments (3 given)`},
+		{`h(a=0)`, `(0, 42, 123, {})`},
+		{`h(0, b=1)`, `(0, 1, 123, {})`},
+		{`h(0, a=1)`, `function h got multiple values for keyword argument "a"`},
+		{`h(0, b=1, c=2)`, `(0, 1, 2, {})`},
+		{`h(0, b=1, d=2)`, `(0, 1, 123, {"d": 2})`},
+		{`h(0, b=1, c=2, d=3)`, `(0, 1, 2, {"d": 3})`},
 	} {
 		var got string
 		if v, err := starlark.Eval(thread, "<expr>", test.src, globals); err != nil {

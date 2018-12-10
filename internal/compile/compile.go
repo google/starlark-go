@@ -37,7 +37,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 5
+const Version = 6
 
 type Opcode uint8
 
@@ -303,10 +303,11 @@ type Funcode struct {
 	Doc                   string          // docstring of this function
 	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
-	Locals                []Ident         // for error messages and tracing
+	Locals                []Ident         // locals, parameters first
 	Freevars              []Ident         // for tracing
 	MaxStack              int
 	NumParams             int
+	NumKwonlyParams       int
 	HasVarargs, HasKwargs bool
 }
 
@@ -1709,7 +1710,14 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 		fmt.Fprintf(os.Stderr, "resuming %s @ %s\n", fcomp.fn.Name, fcomp.pos)
 	}
 
-	funcode.NumParams = len(f.Params)
+	// def f(a, *, b=1) has only 2 parameters.
+	numParams := len(f.Params)
+	if f.NumKwonlyParams > 0 && !f.HasVarargs {
+		numParams--
+	}
+
+	funcode.NumParams = numParams
+	funcode.NumKwonlyParams = f.NumKwonlyParams
 	funcode.HasVarargs = f.HasVarargs
 	funcode.HasKwargs = f.HasKwargs
 	fcomp.emit1(MAKEFUNC, fcomp.pcomp.functionIndex(funcode))

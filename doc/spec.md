@@ -2321,6 +2321,7 @@ LambdaExpr = 'lambda' [Parameters] ':' Test .
 Parameters = Parameter {',' Parameter} .
 Parameter  = identifier
            | identifier '=' Test
+           | '*'
            | '*' identifier
            | '**' identifier
            .
@@ -2508,7 +2509,7 @@ the parameter list (which is enclosed in parentheses), a colon, and
 then an indented block of statements which form the body of the function.
 
 The parameter list is a comma-separated list whose elements are of
-four kinds.  First come zero or more required parameters, which are
+several kinds.  First come zero or more required parameters, which are
 simple identifiers; all calls must provide an argument value for these parameters.
 
 The required parameters are followed by zero or more optional
@@ -2519,11 +2520,24 @@ provide an argument value for it.
 The required parameters are optionally followed by a single parameter
 name preceded by a `*`.  This is the called the _varargs_ parameter,
 and it accumulates surplus positional arguments specified by a call.
+It is conventionally named `*args`.
+
+The varargs parameter may be followed by zero or more optional
+parameters, again of the form `name=expression`, but these optional parameters
+differ from earlier ones in that they are "keyword-only":
+a call must provide their values as keyword arguments,
+not positional ones.
+
+A non-variadic function may also declare keyword-only parameters,
+by using a bare `*` in place of the `*args` parameter.
+This form does not declare a parameter but marks the boundary
+between the earlier parameters and the keyword-only parameters.
+This form must be followed by at least one optional parameter.
 
 Finally, there may be an optional parameter name preceded by `**`.
 This is called the _keyword arguments_ parameter, and accumulates in a
 dictionary any surplus `name=value` arguments that do not match a
-prior parameter.
+prior parameter. It is conventionally named `**kwargs`.
 
 Here are some example parameter lists:
 
@@ -2534,6 +2548,7 @@ def f(a, b, c=1): pass
 def f(a, b, c=1, *args): pass
 def f(a, b, c=1, *args, **kwargs): pass
 def f(**kwargs): pass
+def f(a, b, c=1, *, d=1): pass
 ```
 
 Execution of a `def` statement creates a new function object.  The

@@ -100,6 +100,10 @@ func TestExprParseTrees(t *testing.T) {
 			`(CallExpr Fn=f Args=(1 (BinaryExpr X=x Op== Y=y)))`},
 		{`f(*args, **kwargs)`,
 			`(CallExpr Fn=f Args=((UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)))`},
+		{`lambda *args, *, x=1, **kwargs: 0`,
+			`(LambdaExpr Function=(Function Params=((UnaryExpr Op=* X=args) (UnaryExpr Op=*) (BinaryExpr X=x Op== Y=1) (UnaryExpr Op=** X=kwargs)) Body=((ReturnStmt Result=0))))`},
+		{`lambda *, a, *b: 0`,
+			`(LambdaExpr Function=(Function Params=((UnaryExpr Op=*) a (UnaryExpr Op=* X=b)) Body=((ReturnStmt Result=0))))`},
 		{`a if b else c`,
 			`(CondExpr Cond=b True=a False=c)`},
 		{`a and not b`,
@@ -316,6 +320,11 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 				if f.IsNil() {
 					continue
 				}
+			case reflect.Int:
+				if f.Int() != 0 {
+					fmt.Fprintf(out, " %s=%d", name, f.Int())
+				}
+				continue
 			case reflect.Bool:
 				if f.Bool() {
 					fmt.Fprintf(out, " %s", name)

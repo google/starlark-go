@@ -548,9 +548,12 @@ func (fn *Function) Globals() StringDict {
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
+func (fn *Function) NumKwonlyParams() int      { return fn.funcode.NumKwonlyParams }
 
 // Param returns the name and position of the ith parameter,
 // where 0 <= i < NumParams().
+// The *args and **kwargs parameters are at the end
+// even if there were optional parameters after *args.
 func (fn *Function) Param(i int) (string, syntax.Position) {
 	id := fn.funcode.Locals[i]
 	return id.Name, id.Pos
