@@ -11,7 +11,7 @@ package syntax
 // package.  Verify that error positions are correct using the
 // chunkedfile mechanism.
 
-import log "log"
+import "log"
 
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false

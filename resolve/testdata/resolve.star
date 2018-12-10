@@ -184,31 +184,31 @@ M(x=1, 2) ### `positional argument may not follow named`
 
 def f(x=1, y): pass ### `required parameter may not follow optional`
 ---
-# No parameters may follow **kwargs
+# No parameters may follow **kwargs in a declaration.
 
 def f(**kwargs, x): ### `parameter may not follow \*\*kwargs`
   pass
 
-def g(**kwargs, *args): ### `\*args may not follow \*\*kwargs`
+def g(**kwargs, *args): ### `\*args parameter may not follow \*\*kwargs`
   pass
 
-def h(**kwargs1, **kwargs2): ### `multiple \*\*kwargs not allowed`
-  pass
-
----
-# Only **kwargs may follow *args
-
-def f(*args, x): ### `parameter may not follow \*args`
-  pass
-
-def g(*args1, *args2): ### `multiple \*args not allowed`
-  pass
-
-def h(*args, **kwargs): # ok
+def h(**kwargs1, **kwargs2): ### `multiple \*\* parameters not allowed`
   pass
 
 ---
-# No arguments may follow **kwargs
+# Only keyword-only params and **kwargs may follow *args in a declaration.
+
+def f(*args, x): ### `required parameter may not follow \* parameter`
+  pass
+
+def g(*args1, *args2): ### `multiple \* parameters not allowed`
+  pass
+
+def h(*args, a=1, **kwargs): ### `optional parameter may not follow \*args`
+  pass
+
+---
+# No arguments may follow **kwargs in a call.
 def f(*args, **kwargs):
   pass
 
@@ -218,7 +218,7 @@ f(**{}, *[]) ### `\*args may not follow \*\*kwargs`
 f(**{}, **{}) ### `multiple \*\*kwargs not allowed`
 
 ---
-# Only keyword arguments may follow *args
+# Only keyword arguments may follow *args in a call.
 def f(*args, **kwargs):
   pass
 
