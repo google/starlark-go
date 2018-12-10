@@ -170,23 +170,24 @@ func (e *EvalError) Backtrace() string {
 // WriteBacktrace writes a user-friendly description of the stack to buf.
 func (fr *Frame) WriteBacktrace(out *bytes.Buffer) {
 	fmt.Fprintf(out, "Traceback (most recent call last):\n")
-	var print func(fr *Frame)
-	print = func(fr *Frame) {
-		if fr != nil {
-			print(fr.parent)
-			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.Callable().Name())
-		}
+	stack := fr.stack()
+	for i := len(stack) - 1; i >= 0; i-- {
+		fmt.Fprintf(out, "  %s: in %s\n", stack[i].Position(), stack[i].Callable().Name())
 	}
-	print(fr)
+}
+
+// stack returns the stack of frames, fr first.
+func (fr *Frame) stack() []*Frame {
+	var stack []*Frame
+	for frame := fr; frame != nil; frame = frame.parent {
+		stack = append(stack, frame)
+	}
+	return stack
 }
 
 // Stack returns the stack of frames, innermost first.
 func (e *EvalError) Stack() []*Frame {
-	var stack []*Frame
-	for fr := e.Frame; fr != nil; fr = fr.parent {
-		stack = append(stack, fr)
-	}
-	return stack
+	return e.Frame.stack()
 }
 
 // A Program is a compiled Starlark program.
