@@ -348,7 +348,7 @@ func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#any
 func any(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var iterable Iterable
-	if err := UnpackPositionalArgs("all", args, kwargs, 1, &iterable); err != nil {
+	if err := UnpackPositionalArgs("any", args, kwargs, 1, &iterable); err != nil {
 		return nil, err
 	}
 	iter := iterable.Iterate()
