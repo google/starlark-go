@@ -735,56 +735,60 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 	r.push(b)
 
 	const allowRebind = false
-	var seenVarargs, seenKwargs, seenOptional bool
+	var seenOptional bool
+	var star, starStar *syntax.Ident // *args, **kwargs
 	for _, param := range function.Params {
 		switch param := param.(type) {
 		case *syntax.Ident:
 			// e.g. x
-			if seenKwargs {
-				r.errorf(pos, "parameter may not follow **kwargs")
-			} else if seenVarargs {
-				r.errorf(pos, "parameter may not follow *args")
+			if starStar != nil {
+				r.errorf(param.NamePos, "required parameter may not follow **%s", starStar.Name)
+			} else if star != nil {
+				r.errorf(param.NamePos, "required parameter may not follow * parameter")
 			} else if seenOptional {
-				r.errorf(pos, "required parameter may not follow optional")
+				r.errorf(param.NamePos, "required parameter may not follow optional")
 			}
 			if r.bind(param, allowRebind) {
-				r.errorf(pos, "duplicate parameter: %s", param.Name)
+				r.errorf(param.NamePos, "duplicate parameter: %s", param.Name)
 			}
 
 		case *syntax.BinaryExpr:
 			// e.g. y=dflt
-			if seenKwargs {
-				r.errorf(pos, "parameter may not follow **kwargs")
-			} else if seenVarargs {
-				r.errorf(pos, "parameter may not follow *args")
+			if starStar != nil {
+				r.errorf(param.OpPos, "optional parameter may not follow **%s", starStar.Name)
+			} else if star != nil {
+				r.errorf(param.OpPos, "optional parameter may not follow *%s", star.Name)
 			}
 			if id := param.X.(*syntax.Ident); r.bind(id, allowRebind) {
-				r.errorf(pos, "duplicate parameter: %s", id.Name)
+				r.errorf(param.OpPos, "duplicate parameter: %s", id.Name)
 			}
 			seenOptional = true
 
 		case *syntax.UnaryExpr:
 			// *args or **kwargs
+			id := param.X.(*syntax.Ident)
 			if param.Op == syntax.STAR {
-				if seenKwargs {
-					r.errorf(pos, "*args may not follow **kwargs")
-				} else if seenVarargs {
-					r.errorf(pos, "multiple *args not allowed")
+				if starStar != nil {
+					r.errorf(param.OpPos, "*%s parameter may not follow **%s", id.Name, starStar.Name)
+				} else if star != nil {
+					r.errorf(param.OpPos, "multiple * parameters not allowed")
+				} else {
+					star = id
 				}
-				seenVarargs = true
 			} else {
-				if seenKwargs {
-					r.errorf(pos, "multiple **kwargs not allowed")
+				if starStar != nil {
+					r.errorf(param.OpPos, "multiple ** parameters not allowed")
+				} else {
+					starStar = id
 				}
-				seenKwargs = true
 			}
-			if id := param.X.(*syntax.Ident); r.bind(id, allowRebind) {
-				r.errorf(pos, "duplicate parameter: %s", id.Name)
+			if r.bind(id, allowRebind) {
+				r.errorf(id.NamePos, "duplicate parameter: %s", id.Name)
 			}
 		}
 	}
-	function.HasVarargs = seenVarargs
-	function.HasKwargs = seenKwargs
+	function.HasVarargs = star != nil
+	function.HasKwargs = starStar != nil
 	r.stmts(function.Body)
 
 	// Resolve all uses of this function's local vars,

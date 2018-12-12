@@ -27,6 +27,12 @@ def f(**kwargs, ): ### `got '\)', want parameter`
 
 ---
 
+# Parameters are validated later.
+def f(**kwargs, *args, b=1, a, **kwargs, *args, b=1, a):
+  pass
+
+---
+
 def pass(): ### "not an identifier"
   pass
 
@@ -45,6 +51,10 @@ f(*args, ) ### `got '\)', want argument`
 ---
 
 f(**kwargs, ) ### `got '\)', want argument`
+
+---
+
+f(a=1, *, b=2) ### `got ',', want primary`
 
 ---
 
@@ -109,7 +119,7 @@ _ = 0 == 1 == 2 ### "== does not associate with =="
 ---
 
 _ = (0 <= i) < n   # ok
-_ = 0 <= (i < n) # ok 
+_ = 0 <= (i < n) # ok
 _ = 0 <= i < n ### "<= does not associate with <"
 
 ---
@@ -152,14 +162,14 @@ load("a", x2="x", "y") # => positional-before-named arg check happens later (!)
 # 'load' is not an identifier
 load = 1 ### `got '=', want '\('`
 ---
-# 'load' is not an identifier   
+# 'load' is not an identifier
 f(load()) ### `got load, want primary`
 ---
-# 'load' is not an identifier   
+# 'load' is not an identifier
 def load(): ### `not an identifier`
   pass
 ---
-# 'load' is not an identifier   
+# 'load' is not an identifier
 def f(load): ### `not an identifier`
   pass
 ---

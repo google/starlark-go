@@ -1011,6 +1011,16 @@ func asIndex(v Value, len int, result *int) error {
 // setArgs sets the values of the formal parameters of function fn in
 // based on the actual parameter values in args and kwargs.
 func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
+	// This is adapted from the algorithm from PyEval_EvalCodeEx.
+
+	// Nullary function?
+	if fn.NumParams() == 0 {
+		if nactual := len(args) + len(kwargs); nactual > 0 {
+			return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
+		}
+		return nil
+	}
+
 	cond := func(x bool, y, z interface{}) interface{} {
 		if x {
 			return y
@@ -1020,101 +1030,94 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 
 	// nparams is the number of ordinary parameters (sans * or **).
 	nparams := fn.NumParams()
+	var kwdict *Dict
+	if fn.HasKwargs() {
+		nparams--
+		kwdict = new(Dict)
+		locals[nparams] = kwdict
+	}
 	if fn.HasVarargs() {
 		nparams--
 	}
-	if fn.HasKwargs() {
-		nparams--
+
+	// Too many positional args?
+	n := len(args)
+	maxpos := nparams
+	if len(args) > maxpos {
+		if !fn.HasVarargs() {
+			return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
+				fn.Name(),
+				cond(len(fn.defaults) > 0, "at most", "exactly"),
+				maxpos,
+				cond(nparams == 1, "", "s"),
+				len(args)+len(kwargs))
+		}
+		n = maxpos
 	}
 
-	// This is the algorithm from PyEval_EvalCodeEx.
-	var kwdict *Dict
-	n := len(args)
-	if nparams > 0 || fn.HasVarargs() || fn.HasKwargs() {
-		if fn.HasKwargs() {
-			kwdict = new(Dict)
-			locals[fn.NumParams()-1] = kwdict
+	// set of defined (regular) parameters
+	var defined intset
+	defined.init(nparams)
+
+	// ordinary parameters
+	for i := 0; i < n; i++ {
+		locals[i] = args[i]
+		defined.set(i)
+	}
+
+	// variadic arguments
+	if fn.HasVarargs() {
+		tuple := make(Tuple, len(args)-n)
+		for i := n; i < len(args); i++ {
+			tuple[i-n] = args[i]
 		}
+		locals[nparams] = tuple
+	}
 
-		// too many args?
-		if len(args) > nparams {
-			if !fn.HasVarargs() {
-				return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
-					fn.Name(),
-					cond(len(fn.defaults) > 0, "at most", "exactly"),
-					nparams,
-					cond(nparams == 1, "", "s"),
-					len(args)+len(kwargs))
-			}
-			n = nparams
-		}
-
-		// set of defined (regular) parameters
-		var defined intset
-		defined.init(nparams)
-
-		// ordinary parameters
-		for i := 0; i < n; i++ {
-			locals[i] = args[i]
-			defined.set(i)
-		}
-
-		// variadic arguments
-		if fn.HasVarargs() {
-			tuple := make(Tuple, len(args)-n)
-			for i := n; i < len(args); i++ {
-				tuple[i-n] = args[i]
-			}
-			locals[nparams] = tuple
-		}
-
-		// keyword arguments
-		paramIdents := fn.funcode.Locals[:nparams]
-		for _, pair := range kwargs {
-			k, v := pair[0].(String), pair[1]
-			if i := findParam(paramIdents, string(k)); i >= 0 {
-				if defined.set(i) {
-					return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
-				}
-				locals[i] = v
-				continue
-			}
-			if kwdict == nil {
-				return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
-			}
-			n := kwdict.Len()
-			kwdict.SetKey(k, v)
-			if kwdict.Len() == n {
+	// keyword arguments
+	paramIdents := fn.funcode.Locals[:nparams]
+	for _, pair := range kwargs {
+		k, v := pair[0].(String), pair[1]
+		if i := findParam(paramIdents, string(k)); i >= 0 {
+			if defined.set(i) {
 				return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
 			}
+			locals[i] = v
+			continue
+		}
+		if kwdict == nil {
+			return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
+		}
+		n := kwdict.Len()
+		kwdict.SetKey(k, v)
+		if kwdict.Len() == n {
+			return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+		}
+	}
+
+	// default values
+	if n < nparams {
+		m := nparams - len(fn.defaults) // first default
+
+		// report errors for missing non-optional arguments
+		i := n
+		for ; i < m; i++ {
+			if !defined.get(i) {
+				return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
+					fn.Name(),
+					cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
+					m,
+					cond(m == 1, "", "s"),
+					defined.len())
+			}
 		}
 
-		// default values
-		if len(args) < nparams {
-			m := nparams - len(fn.defaults) // first default
-
-			// report errors for missing non-optional arguments
-			i := len(args)
-			for ; i < m; i++ {
-				if !defined.get(i) {
-					return fmt.Errorf("function %s takes %s %d argument%s (%d given)",
-						fn.Name(),
-						cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
-						m,
-						cond(m == 1, "", "s"),
-						defined.len())
-				}
-			}
-
-			// set default values
-			for ; i < nparams; i++ {
-				if !defined.get(i) {
-					locals[i] = fn.defaults[i-m]
-				}
+		// set default values
+		for ; i < nparams; i++ {
+			if !defined.get(i) {
+				locals[i] = fn.defaults[i-m]
 			}
 		}
-	} else if nactual := len(args) + len(kwargs); nactual > 0 {
-		return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
 	}
 	return nil
 }
