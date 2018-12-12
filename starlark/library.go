@@ -783,6 +783,9 @@ func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#print
 func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("print does not accept keyword arguments")
+	}
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)
 	sep := ""
