@@ -54,6 +54,14 @@ assert.eq(small.keys(), ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"])
 
 # duplicate keys are not permitted in dictionary expressions (see b/35698444).
 assert.fails(lambda: {"aa": 1, "bb": 2, "cc": 3, "bb": 4}, 'duplicate key: "bb"')
+# nor in keyword args to dict built-in
+assert.fails(lambda: dict(a=1, a=1), 'dict: duplicate keyword arg: "a"')
+# check that even with many positional args, keyword collisions are detected
+assert.fails(lambda: dict({'b': 3}, a=4, a=5), 'dict: duplicate keyword arg: "a"')
+assert.fails(lambda: dict({'a': 2, 'b': 3}, a=4, a=5), 'dict: duplicate keyword arg: "a"')
+# positional/keyword arg key collisions are ok
+assert.eq(dict((['a', 2], ), a=4), {'a': 4})
+assert.eq(dict((['a', 2], ['a', 3]), a=4), {'a': 4})
 
 # index
 def setIndex(d, k, v):
