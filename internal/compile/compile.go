@@ -950,10 +950,18 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		case syntax.PASS:
 			// no-op
 		case syntax.BREAK:
+			if len(fcomp.loops) == 0 {
+				start, _ := stmt.Span()
+				log.Fatalf("%s: exec: break statement outside of a loop", start)
+			}
 			b := fcomp.loops[len(fcomp.loops)-1].break_
 			fcomp.jump(b)
 			fcomp.block = fcomp.newBlock() // dead code
 		case syntax.CONTINUE:
+			if len(fcomp.loops) == 0 {
+				start, _ := stmt.Span()
+				log.Fatalf("%s: exec: continue statement outside of a loop", start)
+			}
 			b := fcomp.loops[len(fcomp.loops)-1].continue_
 			fcomp.jump(b)
 			fcomp.block = fcomp.newBlock() // dead code
