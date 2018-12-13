@@ -497,10 +497,48 @@ sum5 = sum(5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := globals["fib5"].(starlark.Int).Int64(); int(got) != 8 {
-		t.Fatalf("wrong value for fib5, got %d expected 8\n", got)
+	if got, _ := globals["fib5"].(starlark.Int).Int64(); got != 8 {
+		t.Fatalf("wrong value for fib5, got %d expected 8", got)
 	}
-	if got, _ := globals["sum5"].(starlark.Int).Int64(); int(got) != 5+4+3+2+1 {
-		t.Fatalf("wrong value for sum5, got %d expected %d\n", got, 5+4+3+2+1)
+	if got, _ := globals["sum5"].(starlark.Int).Int64(); got != 5+4+3+2+1 {
+		t.Fatalf("wrong value for sum5, got %d expected %d", got, 5+4+3+2+1)
+	}
+}
+
+func TestWhileBreakContinue(t *testing.T) {
+	resolve.AllowRecursion = true
+	defer func() { resolve.AllowRecursion = false }()
+
+	globals, err := starlark.ExecFile(&starlark.Thread{}, "while-break-continue.star", `
+def while_break(n):
+	r = 0
+	while n > 0:
+		if n == 5:
+			break
+		r += n
+		n -= 1
+	return r
+
+def while_continue(n):
+	r = 0
+	while n > 0:
+		if n % 2 == 0:
+			n -= 1
+			continue
+		r += n
+		n -= 1
+	return r
+	
+wb = while_break(10)
+wc = while_continue(10)
+`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := globals["wb"].(starlark.Int).Int64(); got != 40 {
+		t.Fatalf("wrong value for wb, got %d expected 40", got)
+	}
+	if got, _ := globals["wc"].(starlark.Int).Int64(); got != 25 {
+		t.Fatalf("wrong value for wc, got %d expected 25", got)
 	}
 }

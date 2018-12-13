@@ -1086,7 +1086,9 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		fcomp.ifelse(stmt.Cond, body, done)
 
 		fcomp.block = body
+		fcomp.loops = append(fcomp.loops, loop{break_: done, continue_: head})
 		fcomp.stmts(stmt.Body)
+		fcomp.loops = fcomp.loops[:len(fcomp.loops)-1]
 		fcomp.jump(head)
 
 		fcomp.block = done
