@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.starlark.net/internal/chunkedfile"
@@ -109,6 +110,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/set.star",
 		"testdata/string.star",
 		"testdata/tuple.star",
+		"testdata/recursion.star",
 	} {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
@@ -116,6 +118,9 @@ func TestExecFile(t *testing.T) {
 				"hasfields": starlark.NewBuiltin("hasfields", newHasFields),
 				"fibonacci": fib{},
 			}
+
+			resolve.AllowRecursion = option(chunk.Source, "recursion")
+
 			_, err := starlark.ExecFile(thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {
 			case *starlark.EvalError:
@@ -136,9 +141,14 @@ func TestExecFile(t *testing.T) {
 			default:
 				t.Error(err)
 			}
+			resolve.AllowRecursion = false
 			chunk.Done()
 		}
 	}
+}
+
+func option(chunk, name string) bool {
+	return strings.Contains(chunk, "option:"+name)
 }
 
 // A fib is an iterable value representing the infinite Fibonacci sequence.
@@ -471,36 +481,5 @@ def somefunc():
 
 	if globals["somefunc"].(*starlark.Function).Doc() != "somefunc doc" {
 		t.Fatal("docstring not found")
-	}
-}
-
-func TestRecursion(t *testing.T) {
-	resolve.AllowRecursion = true
-	defer func() { resolve.AllowRecursion = false }()
-
-	globals, err := starlark.ExecFile(&starlark.Thread{}, "rec.star", `
-def sum(n):
-	r = 0
-	while n > 0:
-		r += n
-		n -= 1
-	return r
-
-def fib(n):
-	if n <= 1:
-		return 1
-	return fib(n-1) + fib(n-2)
-
-fib5 = fib(5)
-sum5 = sum(5)
-`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := globals["fib5"].(starlark.Int).Int64(); int(got) != 8 {
-		t.Fatalf("wrong value for fib5, got %d expected 8\n", got)
-	}
-	if got, _ := globals["sum5"].(starlark.Int).Int64(); int(got) != 5+4+3+2+1 {
-		t.Fatalf("wrong value for sum5, got %d expected %d\n", got, 5+4+3+2+1)
 	}
 }
