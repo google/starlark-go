@@ -270,3 +270,8 @@ M = 2 # ok (legacy)
 # universal predeclared name
 U = 1 # ok
 U = 1 # ok (legacy)
+
+---
+# https://github.com/bazelbuild/starlark/starlark/issues/21
+def f(**kwargs): pass
+f(a=1, a=1) ### `keyword argument a repeated`
