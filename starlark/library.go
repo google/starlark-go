@@ -783,28 +783,21 @@ func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#print
 func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var buf bytes.Buffer
+	sep := " "
+	if err := UnpackArgs("print", nil, kwargs, "sep?", &sep); err != nil {
+		return nil, err
+	}
 	path := make([]Value, 0, 4)
-	sep := ""
-	for _, v := range args {
-		buf.WriteString(sep)
+	var buf bytes.Buffer
+	for i, v := range args {
+		if i > 0 {
+			buf.WriteString(sep)
+		}
 		if s, ok := AsString(v); ok {
 			buf.WriteString(s)
 		} else {
 			writeValue(&buf, v, path)
 		}
-		sep = " "
-	}
-	for _, pair := range kwargs {
-		buf.WriteString(sep)
-		buf.WriteString(string(pair[0].(String)))
-		buf.WriteString("=")
-		if s, ok := AsString(pair[1]); ok {
-			buf.WriteString(s)
-		} else {
-			writeValue(&buf, pair[1], path)
-		}
-		sep = " "
 	}
 
 	if thread.Print != nil {
