@@ -991,6 +991,11 @@ Once the parameters have been successfully bound to the arguments
 supplied by the call, the sequence of statements that comprise the
 function body is executed.
 
+It is a static error if a function call has two named arguments of the
+same name, such as `f(x=1, x=2)`. A call that provides a `**kwargs`
+argument may yet have two values for the same name, such as
+`f(x=1, **dict(x=2))`. This results in a dynamic error.
+
 A function call completes normally after the execution of either a
 `return` statement, or of the last statement in the function body.
 The result of the function call is the value of the return statement's

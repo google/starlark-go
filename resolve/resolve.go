@@ -668,7 +668,8 @@ func (r *resolver) expr(e syntax.Expr) {
 
 	case *syntax.CallExpr:
 		r.expr(e.Fn)
-		var seenVarargs, seenKwargs, seenNamed bool
+		var seenVarargs, seenKwargs bool
+		var seenName map[string]bool
 		for _, arg := range e.Args {
 			pos, _ := arg.Span()
 			if unop, ok := arg.(*syntax.UnaryExpr); ok && unop.Op == syntax.STARSTAR {
@@ -692,16 +693,23 @@ func (r *resolver) expr(e syntax.Expr) {
 				if seenKwargs {
 					r.errorf(pos, "argument may not follow **kwargs")
 				}
-				// ignore binop.X
+				x := binop.X.(*syntax.Ident)
+				if seenName[x.Name] {
+					r.errorf(x.NamePos, "keyword argument %s repeated", x.Name)
+				} else {
+					if seenName == nil {
+						seenName = make(map[string]bool)
+					}
+					seenName[x.Name] = true
+				}
 				r.expr(binop.Y)
-				seenNamed = true
 			} else {
 				// positional argument
 				if seenVarargs {
 					r.errorf(pos, "argument may not follow *args")
 				} else if seenKwargs {
 					r.errorf(pos, "argument may not follow **kwargs")
-				} else if seenNamed {
+				} else if len(seenName) > 0 {
 					r.errorf(pos, "positional argument may not follow named")
 				}
 				r.expr(arg)
