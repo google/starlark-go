@@ -327,7 +327,7 @@ def f(a, b=42, *args, **kwargs):
 func TestPrint(t *testing.T) {
 	const src = `
 print("hello")
-def f(): print("world")
+def f(): print("hello", "world", sep=", ")
 f()
 `
 	buf := new(bytes.Buffer)
@@ -341,7 +341,7 @@ f()
 		t.Fatal(err)
 	}
 	want := "foo.go:2: <toplevel>: hello\n" +
-		"foo.go:3: f: world\n"
+		"foo.go:3: f: hello, world\n"
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
