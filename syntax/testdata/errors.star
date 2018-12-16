@@ -204,3 +204,7 @@ c, d = 1, 2 # ok
 a, b, = 1, 2 ### `unparenthesized tuple with trailing comma`
 ---
 a, b = 1, 2, ### `unparenthesized tuple with trailing comma`
+
+---
+# See github.com/google/starlark-go/issues/48
+a = max(range(10))) ### `unexpected '\)'`
