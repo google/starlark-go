@@ -618,7 +618,7 @@ start:
 
 	case ']', ')', '}':
 		if sc.depth == 0 {
-			sc.error(sc.pos, "indentation error")
+			sc.errorf(sc.pos, "unexpected %q", c)
 		} else {
 			sc.depth--
 		}
