@@ -64,7 +64,7 @@ func TestPlusFolding(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 			continue
 		}
-		got := disassemble(Expr(expr, locals))
+		got := disassemble(Expr(expr, "<expr>", locals))
 		if test.want != got {
 			t.Errorf("expression <<%s>> generated <<%s>>, want <<%s>>",
 				test.src, got, test.want)

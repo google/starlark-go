@@ -71,6 +71,7 @@ func main() {
 			// Execute specified file.
 			filename = flag.Arg(0)
 		}
+		thread.Name = "exec " + filename
 		globals, err = starlark.ExecFile(thread, filename, src, nil)
 		if err != nil {
 			repl.PrintError(err)
@@ -78,6 +79,7 @@ func main() {
 		}
 	case flag.NArg() == 0:
 		fmt.Println("Welcome to Starlark (go.starlark.net)")
+		thread.Name = "REPL"
 		repl.REPL(thread, globals)
 	default:
 		log.Fatal("want at most one Starlark file name")
