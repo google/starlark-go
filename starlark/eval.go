@@ -28,6 +28,9 @@ const debug = false
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
 type Thread struct {
+	// Name is an optional name that describes the thread, for debugging.
+	Name string
+
 	// frame is the current Starlark execution frame.
 	frame *Frame
 
@@ -113,6 +116,7 @@ type Frame struct {
 	callable Callable        // current function (or toplevel) or built-in
 	posn     syntax.Position // source position of PC, set during error
 	callpc   uint32          // PC of position of active call, set during call
+	locals   []Value         // local variables, for debugger
 }
 
 // The Frames of a thread are structured as a spaghetti stack, not a
@@ -204,6 +208,11 @@ type Program struct {
 // the compiler version into the cache key when reusing compiled code.
 const CompilerVersion = compile.Version
 
+// Filename returns the name of the file from which this program was loaded.
+func (prog *Program) Filename() string { return prog.compiled.Toplevel.Pos.Filename() }
+
+func (prog *Program) String() string { return prog.Filename() }
+
 // NumLoads returns the number of load statements in the compiled program.
 func (prog *Program) NumLoads() int { return len(prog.compiled.Loads) }
 
@@ -270,7 +279,14 @@ func SourceProgram(filename string, src interface{}, isPredeclared func(string) 
 		return f, nil, err
 	}
 
-	compiled := compile.File(f.Stmts, f.Locals, f.Globals)
+	var pos syntax.Position
+	if len(f.Stmts) > 0 {
+		pos = syntax.Start(f.Stmts[0])
+	} else {
+		pos = syntax.MakePosition(&filename, 1, 1)
+	}
+
+	compiled := compile.File(f.Stmts, pos, "<toplevel>", f.Locals, f.Globals)
 
 	return f, &Program{compiled}, nil
 }
@@ -282,11 +298,11 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	prog, err := compile.DecodeProgram(data)
+	compiled, err := compile.DecodeProgram(data)
 	if err != nil {
 		return nil, err
 	}
-	return &Program{prog}, nil
+	return &Program{compiled}, nil
 }
 
 // Init creates a set of global variables for the program,
@@ -341,6 +357,16 @@ func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Fun
 // If Eval fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Value, error) {
+	f, err := ExprFunc(filename, src, env)
+	if err != nil {
+		return nil, err
+	}
+	return Call(thread, f, nil, nil)
+}
+
+// ExprFunc returns a no-argument function
+// that evaluates the expression whose source is src.
+func ExprFunc(filename string, src interface{}, env StringDict) (*Function, error) {
 	expr, err := syntax.ParseExpr(filename, src, 0)
 	if err != nil {
 		return nil, err
@@ -351,9 +377,7 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 		return nil, err
 	}
 
-	fn := makeToplevelFunction(compile.Expr(expr, locals), env)
-
-	return Call(thread, fn, nil, nil)
+	return makeToplevelFunction(compile.Expr(expr, "<expr>", locals), env), nil
 }
 
 // The following functions are primitive operations of the byte code interpreter.

@@ -28,6 +28,7 @@ squares = [x*x for x in range(10)]
 `
 
 	thread := &starlark.Thread{
+		Name:  "example",
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
 	predeclared := starlark.StringDict{
@@ -90,7 +91,7 @@ func ExampleThread_Load_sequential() {
 
 			// Load and initialize the module in a new thread.
 			data := fakeFilesystem[module]
-			thread := &starlark.Thread{Load: load}
+			thread := &starlark.Thread{Name: "exec " + module, Load: load}
 			globals, err := starlark.ExecFile(thread, module, data, nil)
 			e = &entry{globals, err}
 
@@ -100,7 +101,7 @@ func ExampleThread_Load_sequential() {
 		return e.globals, e.err
 	}
 
-	thread := &starlark.Thread{Load: load}
+	thread := &starlark.Thread{Name: "exec c.star", Load: load}
 	globals, err := load(thread, "c.star")
 	if err != nil {
 		log.Fatal(err)
@@ -250,6 +251,7 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 
 func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
 	thread := &starlark.Thread{
+		Name:  "exec " + module,
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 			// Tunnel the cycle-checker state for this "thread of loading".

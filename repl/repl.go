@@ -215,7 +215,7 @@ func MakeLoad() func(thread *starlark.Thread, module string) (starlark.StringDic
 			cache[module] = nil
 
 			// Load it.
-			thread := &starlark.Thread{Load: thread.Load}
+			thread := &starlark.Thread{Name: "exec " + module, Load: thread.Load}
 			globals, err := starlark.ExecFile(thread, module, nil, nil)
 			e = &entry{globals, err}
 

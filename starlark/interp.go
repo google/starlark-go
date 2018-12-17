@@ -53,6 +53,8 @@ func call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fr.errorf(fr.Position(), "%v", err)
 	}
 
+	fr.locals = locals // for debugger
+
 	if vmdebug {
 		fmt.Printf("Entering %s @ %s\n", f.Name, f.Position(0))
 		fmt.Printf("%d stack, %d locals\n", len(stack), len(locals))
@@ -561,5 +563,8 @@ loop:
 			err = fr.errorf(f.Position(savedpc), "%s", err.Error())
 		}
 	}
+
+	fr.locals = nil
+
 	return result, err
 }

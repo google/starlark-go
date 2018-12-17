@@ -337,11 +337,11 @@ f()
 			caller.Position(), caller.Callable().Name(), msg)
 	}
 	thread := &starlark.Thread{Print: print}
-	if _, err := starlark.ExecFile(thread, "foo.go", src, nil); err != nil {
+	if _, err := starlark.ExecFile(thread, "foo.star", src, nil); err != nil {
 		t.Fatal(err)
 	}
-	want := "foo.go:2: <toplevel>: hello\n" +
-		"foo.go:3: f: hello, world\n"
+	want := "foo.star:2: <toplevel>: hello\n" +
+		"foo.star:3: f: hello, world\n"
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
@@ -452,6 +452,21 @@ func TestRepeatedExec(t *testing.T) {
 	}
 }
 
+// TestEmptyFilePosition ensures that even Programs
+// from empty files have a valid position.
+func TestEmptyPosition(t *testing.T) {
+	var predeclared starlark.StringDict
+	for _, content := range []string{"", "empty = False"} {
+		_, prog, err := starlark.SourceProgram("hello.star", content, predeclared.Has)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := prog.Filename(), "hello.star"; got != want {
+			t.Errorf("Program.Filename() = %q, want %q", got, want)
+		}
+	}
+}
+
 // TestUnpackUserDefined tests that user-defined
 // implementations of starlark.Value may be unpacked.
 func TestUnpackUserDefined(t *testing.T) {
@@ -481,5 +496,56 @@ def somefunc():
 
 	if globals["somefunc"].(*starlark.Function).Doc() != "somefunc doc" {
 		t.Fatal("docstring not found")
+	}
+}
+
+func TestFrameLocals(t *testing.T) {
+	// trace prints a nice stack trace including argument
+	// values of calls to Starlark functions.
+	trace := func(thread *starlark.Thread) string {
+		buf := new(bytes.Buffer)
+		for fr := thread.TopFrame(); fr != nil; fr = fr.Parent() {
+			fmt.Fprintf(buf, "%s(", fr.Callable().Name())
+			if fn, ok := fr.Callable().(*starlark.Function); ok {
+				for i := 0; i < fn.NumParams(); i++ {
+					if i > 0 {
+						buf.WriteString(", ")
+					}
+					name, _ := fn.Param(i)
+					fmt.Fprintf(buf, "%s=%s", name, fr.Local(i))
+				}
+			} else {
+				buf.WriteString("...") // a built-in function
+			}
+			buf.WriteString(")\n")
+		}
+		return buf.String()
+	}
+
+	var got string
+	builtin := func(thread *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+		got = trace(thread)
+		return starlark.None, nil
+	}
+	predeclared := starlark.StringDict{
+		"builtin": starlark.NewBuiltin("builtin", builtin),
+	}
+	_, err := starlark.ExecFile(&starlark.Thread{}, "foo.star", `
+def f(x, y): builtin()
+def g(z): f(z, z*z)
+g(7)
+`, predeclared)
+	if err != nil {
+		t.Errorf("ExecFile failed: %v", err)
+	}
+
+	var want = `
+builtin(...)
+f(x=7, y=49)
+g(z=7)
+<toplevel>()
+`[1:]
+	if got != want {
+		t.Errorf("got <<%s>>, want <<%s>>", got, want)
 	}
 }

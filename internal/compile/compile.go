@@ -406,13 +406,14 @@ func idents(ids []*syntax.Ident) []Ident {
 }
 
 // Expr compiles an expression to a program consisting of a single toplevel function.
-func Expr(expr syntax.Expr, locals []*syntax.Ident) *Funcode {
+func Expr(expr syntax.Expr, name string, locals []*syntax.Ident) *Funcode {
+	pos := syntax.Start(expr)
 	stmts := []syntax.Stmt{&syntax.ReturnStmt{Result: expr}}
-	return File(stmts, locals, nil).Toplevel
+	return File(stmts, pos, name, locals, nil).Toplevel
 }
 
 // File compiles the statements of a file into a program.
-func File(stmts []syntax.Stmt, locals, globals []*syntax.Ident) *Program {
+func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*syntax.Ident) *Program {
 	pcomp := &pcomp{
 		prog: &Program{
 			Globals: idents(globals),
@@ -421,13 +422,7 @@ func File(stmts []syntax.Stmt, locals, globals []*syntax.Ident) *Program {
 		constants: make(map[interface{}]uint32),
 		functions: make(map[*Funcode]uint32),
 	}
-
-	var pos syntax.Position
-	if len(stmts) > 0 {
-		pos = syntax.Start(stmts[0])
-	}
-
-	pcomp.prog.Toplevel = pcomp.function("<toplevel>", pos, stmts, locals, nil)
+	pcomp.prog.Toplevel = pcomp.function(name, pos, stmts, locals, nil)
 
 	return pcomp.prog
 }
