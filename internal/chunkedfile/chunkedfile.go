@@ -50,6 +50,10 @@ type Reporter interface {
 
 // Read parses a chunked file and returns its chunks.
 // It reports failures using the reporter.
+//
+// Error messages of the form "file.star:line:col: ..." are prefixed
+// by a newline so that the Go source position added by (*testing.T).Errorf
+// appears on a separate line so as not to confused editors.
 func Read(filename string, report Reporter) (chunks []Chunk) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -78,12 +82,12 @@ func Read(filename string, report Reporter) (chunks []Chunk) {
 			rest := strings.TrimSpace(line[hashes+len("###"):])
 			pattern, err := strconv.Unquote(rest)
 			if err != nil {
-				report.Errorf("%s:%d: not a quoted regexp: %s", filename, linenum, rest)
+				report.Errorf("\n%s:%d: not a quoted regexp: %s", filename, linenum, rest)
 				continue
 			}
 			rx, err := regexp.Compile(pattern)
 			if err != nil {
-				report.Errorf("%s:%d: %v", filename, linenum, err)
+				report.Errorf("\n%s:%d: %v", filename, linenum, err)
 				continue
 			}
 			wantErrs[linenum] = rx
@@ -104,10 +108,10 @@ func (chunk *Chunk) GotError(linenum int, msg string) {
 	if rx, ok := chunk.wantErrs[linenum]; ok {
 		delete(chunk.wantErrs, linenum)
 		if !rx.MatchString(msg) {
-			chunk.report.Errorf("%s:%d: error %q does not match pattern %q", chunk.filename, linenum, msg, rx)
+			chunk.report.Errorf("\n%s:%d: error %q does not match pattern %q", chunk.filename, linenum, msg, rx)
 		}
 	} else {
-		chunk.report.Errorf("%s:%d: unexpected error: %v", chunk.filename, linenum, msg)
+		chunk.report.Errorf("\n%s:%d: unexpected error: %v", chunk.filename, linenum, msg)
 	}
 }
 
@@ -115,6 +119,6 @@ func (chunk *Chunk) GotError(linenum int, msg string) {
 // Done reports expected errors that did not occur to the chunk's reporter.
 func (chunk *Chunk) Done() {
 	for linenum, rx := range chunk.wantErrs {
-		chunk.report.Errorf("%s:%d: expected error matching %q", chunk.filename, linenum, rx)
+		chunk.report.Errorf("\n%s:%d: expected error matching %q", chunk.filename, linenum, rx)
 	}
 }
