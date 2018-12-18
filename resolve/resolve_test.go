@@ -14,7 +14,22 @@ import (
 	"go.starlark.net/syntax"
 )
 
+func setOptions(src string) {
+	resolve.AllowBitwise = option(src, "bitwise")
+	resolve.AllowFloat = option(src, "float")
+	resolve.AllowGlobalReassign = option(src, "globalreassign")
+	resolve.AllowLambda = option(src, "lambda")
+	resolve.AllowNestedDef = option(src, "nesteddef")
+	resolve.AllowRecursion = option(src, "recursion")
+	resolve.AllowSet = option(src, "set")
+}
+
+func option(chunk, name string) bool {
+	return strings.Contains(chunk, "option:"+name)
+}
+
 func TestResolve(t *testing.T) {
+	defer setOptions("")
 	filename := starlarktest.DataFile("resolve", "testdata/resolve.star")
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		f, err := syntax.Parse(filename, chunk.Source, 0)
@@ -24,11 +39,7 @@ func TestResolve(t *testing.T) {
 		}
 
 		// A chunk may set options by containing e.g. "option:float".
-		resolve.AllowNestedDef = option(chunk.Source, "nesteddef")
-		resolve.AllowLambda = option(chunk.Source, "lambda")
-		resolve.AllowFloat = option(chunk.Source, "float")
-		resolve.AllowSet = option(chunk.Source, "set")
-		resolve.AllowGlobalReassign = option(chunk.Source, "global_reassign")
+		setOptions(chunk.Source)
 
 		if err := resolve.File(f, isPredeclared, isUniversal); err != nil {
 			for _, err := range err.(resolve.ErrorList) {
@@ -37,10 +48,6 @@ func TestResolve(t *testing.T) {
 		}
 		chunk.Done()
 	}
-}
-
-func option(chunk, name string) bool {
-	return strings.Contains(chunk, "option:"+name)
 }
 
 func TestDefVarargsAndKwargsSet(t *testing.T) {

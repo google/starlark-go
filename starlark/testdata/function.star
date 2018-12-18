@@ -1,4 +1,5 @@
 # Tests of Starlark 'function'
+# option:nesteddef option:set
 
 # TODO(adonovan):
 # - add some introspection functions for looking at function values

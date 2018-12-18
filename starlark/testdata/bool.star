@@ -39,10 +39,10 @@ assert.eq(1 if "" else 0, 0)
 # short-circuit evaluation of 'and' and 'or':
 # 'or' yields the first true operand, or the last if all are false.
 assert.eq(0 or "" or [] or 0, 0)
-assert.eq(0 or "" or [] or 123 or 1 / 0, 123)
-assert.fails(lambda : 0 or "" or [] or 0 or 1 / 0, "division by zero")
+assert.eq(0 or "" or [] or 123 or 1 // 0, 123)
+assert.fails(lambda : 0 or "" or [] or 0 or 1 // 0, "division by zero")
 
 # 'and' yields the first false operand, or the last if all are true.
 assert.eq(1 and "a" and [1] and 123, 123)
-assert.eq(1 and "a" and [1] and 0 and 1 / 0, 0)
-assert.fails(lambda : 1 and "a" and [1] and 123 and 1 / 0, "division by zero")
+assert.eq(1 and "a" and [1] and 0 and 1 // 0, 0)
+assert.fails(lambda : 1 and "a" and [1] and 123 and 1 // 0, "division by zero")

@@ -16,8 +16,7 @@ used by Bazel.
 We identify places where their behaviors differ, and an
 [appendix](#dialect-differences) provides a summary of those
 differences.
-We plan to converge both implementations on a single specification
-in early 2018.
+We plan to converge both implementations on a single specification.
 
 This document is maintained by Alan Donovan <adonovan@google.com>.
 It was influenced by the Python specification,
@@ -241,11 +240,10 @@ characters are tokens:
 identifiers:
 
 ```text
-and            else           load
-break          for            not
-continue       if             or
-def            in             pass
-elif           lambda         return
+and            elif           in             or
+break          else           lambda         pass
+continue       for            load           return
+def            if             not            while
 ```
 
 The tokens below also may not be used as identifiers although they do not
@@ -254,14 +252,11 @@ appear in the grammar; they are reserved as possible future keywords:
 <!-- and to remain a syntactic subset of Python -->
 
 ```text
-as             import
-assert         is
-class          nonlocal
-del            raise
-except         try
-finally        while
-from           with
-global         yield
+as             finally        nonlocal
+assert         from           raise
+class          global         try
+del            import         with
+except         is             yield
 ```
 
 <b>Implementation note:</b>
@@ -449,7 +444,7 @@ of protocol messages which may contain signed and unsigned 64-bit
 integers.
 The Java implementation currently supports only signed 32-bit integers.
 
-The Go implementation of the Starlark REPL requires the `-bitwise` flag to
+The Go implementation of Starlark requires the `-bitwise` flag to
 enable support for `&`, `|`, `^`, `~`, `<<`, and `>>` operations.
 The Java implementation does not support `^`, `~`, `<<`, and `>>` operations.
 
@@ -503,9 +498,8 @@ float(3) / 2                                    # 1.5
 The Go implementation of Starlark supports floating-point numbers as an
 optional feature, motivated by the need for lossless manipulation of
 protocol messages.
-The Go implementation of the Starlark REPL requires the `-fp` flag to
-enable support for floating-point literals, the `float` built-in
-function, and the real division operator `/`.
+The `-float` flag enables support for floating-point literals,
+the `float` built-in function, and the real division operator `/`.
 The Java implementation does not yet support floating-point numbers.
 
 
@@ -842,7 +836,7 @@ The only method of a set is `union`, which is equivalent to the `|` operator.
 A set used in a Boolean context is considered true if it is non-empty.
 
 <b>Implementation note:</b>
-The Go implementation of the Starlark REPL requires the `-set` flag to
+The Go implementation of Starlark requires the `-set` flag to
 enable support for sets and the `-bitwise` flag to enable support for
 the `&`, `|`, and `^` operators.
 The Java implementation does not support sets.
@@ -1016,7 +1010,7 @@ f(-1)           # returns 1 without printing
 ```
 
 <b>Implementation note:</b>
-The Go implementation of the Starlark REPL requires the `-recursion`
+The Go implementation of Starlark requires the `-recursion`
 flag to allow recursive functions.
 
 
@@ -1074,7 +1068,7 @@ The parameter names serve merely as documentation.
 After a Starlark file is parsed, but before its execution begins, the
 Starlark interpreter checks statically that the program is well formed.
 For example, `break` and `continue` statements may appear only within
-a loop; `if`, `for`, `while`, and `return` statements may appear only within a
+a loop; a `return` statement may appear only within a
 function; and `load` statements may appear only outside any function.
 
 _Name resolution_ is the static checking process that
@@ -1920,7 +1914,7 @@ set([1, 2]) ^ set([2, 3])       # set([1, 3])
 ```
 
 <b>Implementation note:</b>
-The Go implementation of the Starlark REPL requires the `-set` flag to
+The Go implementation of Starlark requires the `-set` flag to
 enable support for sets.
 The Java implementation does not support sets, nor recognize `&` as a
 token, nor support `int | int`.
@@ -2364,7 +2358,7 @@ twice = lambda(x): x * 2
 ```
 
 <b>Implementation note:</b>
-The Go implementation of the Starlark REPL requires the `-lambda` flag
+The Go implementation of Starlark requires the `-lambda` flag
 to enable support for lambda expressions.
 The Java implementation does not support them.
 See Google Issue b/36358844.
@@ -2550,7 +2544,7 @@ current module.
 <!-- this is too implementation-oriented; it's not a spec. -->
 
 <b>Implementation note:</b>
-The Go implementation of the Starlark REPL requires the `-nesteddef`
+The Go implementation of Starlark requires the `-nesteddef`
 flag to enable support for nested `def` statements.
 The Java implementation does not permit a `def` expression to be
 nested within the body of another function.
@@ -2638,6 +2632,11 @@ else:
 An `if` statement is permitted only within a function definition.
 An `if` statement at top level results in a static error.
 
+<b>Implementation note<b>:
+The Go implementation of Starlark permits `if`-statements to appear at top-level
+if the `-globalreassign` flag is enabled.
+
+
 ### While loops
 
 A `while` loop evaluates an expression (the _condition_) and if the truth
@@ -2659,8 +2658,9 @@ while n > 0:
 A `while` statement is permitted only within a function definition.
 A `while` statement at top level results in a static error.
 
-<b>Implementation note:</b> `while` loops are only allowed when the `-recursion`
-flag is specified.
+<b>Implementation note:</b>
+The Go implementation of Starlark permits `while` loops only if the `-recursion` flag is enabled.
+A `while` statement is permitted at top-level if the `-globalreassign` flag is enabled.
 
 
 ### For loops
@@ -2700,6 +2700,10 @@ iteration.
 
 In Starlark, a `for` loop is permitted only within a function definition.
 A `for` loop at top level results in a static error.
+
+<b>Implementation note<b>:
+The Go implementation of Starlark permits loops to appear at top-level
+if the `-globalreassign` flag is enabled.
 
 
 ### Break and Continue
@@ -2939,7 +2943,7 @@ With no arguments, `float()` returns `0.0`.
 
 <b>Implementation note:</b>
 Floating-point numbers are an optional feature.
-The Go implementation of the Starlark REPL requires the `-fp` flag to
+The Go implementation of Starlark requires the `-float` flag to
 enable support for floating-point literals, the `float` built-in
 function, and the real division operator `/`.
 The Java implementation does not yet support floating-point numbers.
@@ -3150,7 +3154,8 @@ set([3, 1, 4, 1, 5, 9])         # set([3, 1, 4, 5, 9])
 ```
 
 <b>Implementation note:</b>
-Sets are an optional feature of the Go implementation of Starlark.
+Sets are an optional feature of the Go implementation of Starlark,
+enabled by the `-set` flag.
 
 
 ### sorted
@@ -4029,3 +4034,5 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `key` and `reverse`.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
+* `if`, `for`, and `while` are permitted at toplevel (option: `-globalreassign`).
+* top-level rebindings are permitted (option: `-globalreassign`).

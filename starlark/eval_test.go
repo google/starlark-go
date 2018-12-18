@@ -19,13 +19,19 @@ import (
 	"go.starlark.net/syntax"
 )
 
-func init() {
-	// The tests make extensive use of these not-yet-standard features.
-	resolve.AllowLambda = true
-	resolve.AllowNestedDef = true
-	resolve.AllowFloat = true
-	resolve.AllowSet = true
-	resolve.AllowBitwise = true
+// A test may enable non-standard options by containing (e.g.) "option:recursion".
+func setOptions(src string) {
+	resolve.AllowBitwise = option(src, "bitwise")
+	resolve.AllowFloat = option(src, "float")
+	resolve.AllowGlobalReassign = option(src, "globalreassign")
+	resolve.AllowLambda = option(src, "lambda")
+	resolve.AllowNestedDef = option(src, "nesteddef")
+	resolve.AllowRecursion = option(src, "recursion")
+	resolve.AllowSet = option(src, "set")
+}
+
+func option(chunk, name string) bool {
+	return strings.Contains(chunk, "option:"+name)
 }
 
 func TestEvalExpr(t *testing.T) {
@@ -93,6 +99,7 @@ func TestEvalExpr(t *testing.T) {
 }
 
 func TestExecFile(t *testing.T) {
+	defer setOptions("")
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
@@ -119,7 +126,8 @@ func TestExecFile(t *testing.T) {
 				"fibonacci": fib{},
 			}
 
-			resolve.AllowRecursion = option(chunk.Source, "recursion")
+			setOptions(chunk.Source)
+			resolve.AllowLambda = true // used extensively
 
 			_, err := starlark.ExecFile(thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {
@@ -139,16 +147,11 @@ func TestExecFile(t *testing.T) {
 			case nil:
 				// success
 			default:
-				t.Error(err)
+				t.Errorf("\n%s", err)
 			}
-			resolve.AllowRecursion = false
 			chunk.Done()
 		}
 	}
-}
-
-func option(chunk, name string) bool {
-	return strings.Contains(chunk, "option:"+name)
 }
 
 // A fib is an iterable value representing the infinite Fibonacci sequence.

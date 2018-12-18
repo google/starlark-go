@@ -1,4 +1,5 @@
 # Tests of Starlark built-in functions
+# option:float option:set
 
 load("assert.star", "assert")
 

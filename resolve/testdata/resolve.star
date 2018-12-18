@@ -144,7 +144,13 @@ load("foo",
      _e="f") # ok
 
 ---
-# return, if statements and for loops at top-level are forbidden
+# return statements must be within a function
+
+return ### "return statement not within a function"
+
+---
+# if-statements and for-loops at top-level are forbidden
+# (without globalreassign option)
 
 for x in "abc": ### "for loop not within a function"
   pass
@@ -152,7 +158,37 @@ for x in "abc": ### "for loop not within a function"
 if x: ### "if statement not within a function"
   pass
 
-return ### "return statement not within a function"
+---
+# option:globalreassign
+
+for x in "abc": # ok
+  pass
+
+if x: # ok
+  pass
+
+---
+# while loops are forbidden (without -recursion option)
+
+def f():
+  while U: ### "dialect does not support while loops"
+    pass
+
+---
+# option:recursion
+
+def f():
+  while U: # ok
+    pass
+
+while U: ### "while loop not within a function"
+  pass
+
+---
+# option:globalreassign option:recursion
+
+while U: # ok
+  pass
 
 ---
 # The parser allows any expression on the LHS of an assignment.
@@ -247,20 +283,20 @@ b = 1 / 2
 c = 3.141
 
 ---
-# option:global_reassign
+# option:globalreassign
 # Legacy Bazel (and Python) semantics: def must precede use even for globals.
 
 _ = x ### `undefined: x`
 x = 1
 
 ---
-# option:global_reassign
+# option:globalreassign
 # Legacy Bazel (and Python) semantics: reassignment of globals is allowed.
 x = 1
 x = 2 # ok
 
 ---
-# option:global_reassign
+# option:globalreassign
 # Redeclaration of predeclared names is allowed.
 
 # module-specific predeclared name

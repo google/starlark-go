@@ -36,6 +36,8 @@
 #   tuple slice
 #   interpolate with %c, %%
 
+# option:float
+
 load("assert.star", "assert")
 
 # Ordered comparisons require values of the same type.
