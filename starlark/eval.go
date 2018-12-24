@@ -75,9 +75,11 @@ func (thread *Thread) TopFrame() *Frame { return thread.frame }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
-// It is not a true starlark.Value.
+// It is now also a true starlark.Value.
 type StringDict map[string]Value
 
+// String packs the keys and stingified values of d
+// in a human readable string.
 func (d StringDict) String() string {
 	names := make([]string, 0, len(d))
 	for name := range d {
@@ -100,10 +102,61 @@ func (d StringDict) String() string {
 	return buf.String()
 }
 
+// Freeze makes d immutable.
 func (d StringDict) Freeze() {
 	for _, v := range d {
 		v.Freeze()
 	}
+}
+
+// Hash will return an error for StringDict, but
+// is needed to fullfil the Value interface.
+func (d StringDict) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable type: StringDict")
+}
+
+// Truth will return true if and only if d holds at least one key.
+func (d StringDict) Truth() Bool {
+	return len(d) > 0
+}
+
+// Type returns "StringDict".
+func (d StringDict) Type() string {
+	return "StringDict"
+}
+
+// Get searches d for key.
+func (d StringDict) Get(key Value) (v Value, found bool, err error) {
+
+	var skey string
+	switch s := key.(type) {
+	case String:
+		skey = string(s) // avoid quotes
+	default:
+		skey = key.String()
+	}
+	v, found = d[skey]
+	return
+}
+
+// Attr looks up name and returns (nil, nil) if the
+// name attribute is not present.
+func (d StringDict) Attr(name string) (Value, error) {
+	v, ok := d[name]
+	if !ok {
+		return nil, nil
+	}
+	return v, nil
+}
+
+// AttrNames returns all keys in d.
+func (d StringDict) AttrNames() []string {
+	names := make([]string, 0, len(d))
+	for name := range d {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Has reports whether the dictionary contains the specified key.

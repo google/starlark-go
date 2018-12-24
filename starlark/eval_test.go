@@ -549,3 +549,31 @@ g(z=7)
 		t.Errorf("got <<%s>>, want <<%s>>", got, want)
 	}
 }
+
+// TestStringDictPackage verfies that StringDict
+// can serve as a package.
+func TestStringDictPackage(t *testing.T) {
+	const src = `
+pi = math.Pi
+print(pi)
+`
+	buf := new(bytes.Buffer)
+	print := func(thread *starlark.Thread, msg string) {
+		caller := thread.Caller()
+		fmt.Fprintf(buf, "%s: %s: %s\n",
+			caller.Position(), caller.Callable().Name(), msg)
+	}
+	var mathPkg starlark.StringDict = make(map[string]starlark.Value)
+	mathPkg["Pi"] = starlark.Float(math.Pi)
+	var predec starlark.StringDict = make(map[string]starlark.Value)
+	predec["math"] = mathPkg
+
+	thread := &starlark.Thread{Print: print}
+	if _, err := starlark.ExecFile(thread, "foo.star", src, predec); err != nil {
+		t.Fatal(err)
+	}
+	want := "foo.star:3: <toplevel>: 3.14159\n"
+	if got := buf.String(); got != want {
+		t.Errorf("output was %s, want %s", got, want)
+	}
+}
