@@ -150,6 +150,7 @@ assert.eq("%s %r" % ("hi", "hi"), 'hi "hi"') # TODO(adonovan): use ''-quotation
 assert.eq("%%d %d" % 1, "%d 1")
 assert.fails(lambda: "%d %d" % 1, "not enough arguments for format string")
 assert.fails(lambda: "%d %d" % (1, 2, 3), "too many arguments for format string")
+assert.fails(lambda: "" % 1, "too many arguments for format string")
 # %c
 assert.eq("%c" % 65, "A")
 assert.eq("%c" % 0x3b1, "α")
