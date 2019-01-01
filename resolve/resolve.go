@@ -670,6 +670,7 @@ func (r *resolver) expr(e syntax.Expr) {
 		r.expr(e.Fn)
 		var seenVarargs, seenKwargs bool
 		var seenName map[string]bool
+		var n, p int
 		for _, arg := range e.Args {
 			pos, _ := arg.Span()
 			if unop, ok := arg.(*syntax.UnaryExpr); ok && unop.Op == syntax.STARSTAR {
@@ -690,6 +691,7 @@ func (r *resolver) expr(e syntax.Expr) {
 				r.expr(arg)
 			} else if binop, ok := arg.(*syntax.BinaryExpr); ok && binop.Op == syntax.EQ {
 				// k=v
+				n++
 				if seenKwargs {
 					r.errorf(pos, "argument may not follow **kwargs")
 				}
@@ -705,6 +707,7 @@ func (r *resolver) expr(e syntax.Expr) {
 				r.expr(binop.Y)
 			} else {
 				// positional argument
+				p++
 				if seenVarargs {
 					r.errorf(pos, "argument may not follow *args")
 				} else if seenKwargs {
@@ -714,6 +717,16 @@ func (r *resolver) expr(e syntax.Expr) {
 				}
 				r.expr(arg)
 			}
+		}
+
+		// Fail gracefully if compiler-imposed limit is exceeded.
+		if p >= 256 {
+			pos, _ := e.Span()
+			r.errorf(pos, "%v positional arguments in call, limit is 255", p)
+		}
+		if n >= 256 {
+			pos, _ := e.Span()
+			r.errorf(pos, "%v keyword arguments in call, limit is 255", n)
 		}
 
 	case *syntax.LambdaExpr:
