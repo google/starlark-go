@@ -1203,6 +1203,10 @@ func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
 	path := make([]Value, 0, 4)
 	index := 0
+	nargs := 1
+	if tuple, ok := x.(Tuple); ok {
+		nargs = len(tuple)
+	}
 	for {
 		i := strings.IndexByte(format, '%')
 		if i < 0 {
@@ -1237,13 +1241,11 @@ func interpolate(format string, x Value) (Value, error) {
 			format = format[j+1:]
 		} else {
 			// positional argument: %s.
-			if tuple, ok := x.(Tuple); ok {
-				if index >= len(tuple) {
-					return nil, fmt.Errorf("not enough arguments for format string")
-				}
-				arg = tuple[index]
-			} else if index > 0 {
+			if index >= nargs {
 				return nil, fmt.Errorf("not enough arguments for format string")
+			}
+			if tuple, ok := x.(Tuple); ok {
+				arg = tuple[index]
 			} else {
 				arg = x
 			}
@@ -1327,7 +1329,7 @@ func interpolate(format string, x Value) (Value, error) {
 		index++
 	}
 
-	if tuple, ok := x.(Tuple); ok && index < len(tuple) {
+	if index < nargs {
 		return nil, fmt.Errorf("too many arguments for format string")
 	}
 
