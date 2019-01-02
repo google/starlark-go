@@ -1,4 +1,5 @@
 # Tests of Starlark 'dict'
+# option:nesteddef
 
 load("assert.star", "assert", "freeze")
 

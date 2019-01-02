@@ -1,6 +1,7 @@
 # Tests of Starlark 'set'
+# option:set option:bitwise
 
-# Sets are not (yet) a standard part of Starlark, so the features
+# Sets are not a standard part of Starlark, so the features
 # tested in this file must be enabled in the application by setting
 # resolve.AllowSet.  (All sets are created by calls to the 'set'
 # built-in or derived from operations on existing sets.)

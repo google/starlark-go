@@ -66,6 +66,7 @@ assert.eq(m, 3)
 assert.eq(n, 4)
 
 ---
+# option:nesteddef
 # misc assignment
 load("assert.star", "assert")
 
@@ -151,6 +152,7 @@ f()
 g = 1
 
 ---
+# option:nesteddef
 # free variable captured before assignment
 
 def f():
@@ -204,6 +206,7 @@ assert.fails(lambda: tuple, "global variable tuple referenced before assignment"
 tuple = ()
 
 ---
+# option:float option:set
 # Same as above, but set and float are dialect-specific;
 # we shouldn't notice any difference.
 load("assert.star", "assert")
