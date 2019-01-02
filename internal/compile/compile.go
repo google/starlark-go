@@ -266,8 +266,10 @@ var stackEffect = [...]int8{
 	SLICE:       -3,
 	STAR:        -1,
 	TRUE:        +1,
+	UMINUS:      0,
 	UNIVERSAL:   +1,
 	UNPACK:      variableStackEffect,
+	UPLUS:       0,
 }
 
 func (op Opcode) String() string {
