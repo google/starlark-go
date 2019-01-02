@@ -155,6 +155,13 @@ if x: ### "if statement not within a function"
 return ### "return statement not within a function"
 
 ---
+# option:allow_if_outside_function
+
+x = 1
+if x:
+  pass
+---
+
 # The parser allows any expression on the LHS of an assignment.
 
 1 = 2 ### "can't assign to literal"

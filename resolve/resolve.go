@@ -89,13 +89,14 @@ const doesnt = "this Starlark dialect does not "
 // These features are either not standard Starlark (yet), or deprecated
 // features of the BUILD language, so we put them behind flags.
 var (
-	AllowNestedDef      = false // allow def statements within function bodies
-	AllowLambda         = false // allow lambda expressions
-	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
-	AllowSet            = false // allow the 'set' built-in
-	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
-	AllowBitwise        = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
-	AllowRecursion      = false // allow while statements and recursive functions
+	AllowNestedDef         = false // allow def statements within function bodies
+	AllowLambda            = false // allow lambda expressions
+	AllowFloat             = false // allow floating point literals, the 'float' built-in, and x / y
+	AllowSet               = false // allow the 'set' built-in
+	AllowGlobalReassign    = false // allow reassignment to globals declared in same file (deprecated)
+	AllowBitwise           = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
+	AllowRecursion         = false // allow while statements and recursive functions
+	AllowIfOutsideFunction = false // allow if statements outside of function bodies
 )
 
 // File resolves the specified file.
@@ -431,7 +432,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		}
 
 	case *syntax.IfStmt:
-		if r.container().function == nil {
+		if r.container().function == nil && !AllowIfOutsideFunction {
 			r.errorf(stmt.If, "if statement not within a function")
 		}
 		r.expr(stmt.Cond)

@@ -29,6 +29,7 @@ func TestResolve(t *testing.T) {
 		resolve.AllowFloat = option(chunk.Source, "float")
 		resolve.AllowSet = option(chunk.Source, "set")
 		resolve.AllowGlobalReassign = option(chunk.Source, "global_reassign")
+		resolve.AllowIfOutsideFunction = option(chunk.Source, "allow_if_outside_function")
 
 		if err := resolve.File(f, isPredeclared, isUniversal); err != nil {
 			for _, err := range err.(resolve.ErrorList) {

@@ -35,6 +35,7 @@ func init() {
 	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")
 	flag.BoolVar(&resolve.AllowBitwise, "bitwise", resolve.AllowBitwise, "allow bitwise operations (&, |, ^, ~, <<, and >>)")
 	flag.BoolVar(&resolve.AllowRecursion, "recursion", resolve.AllowRecursion, "allow while statements and recursive functions")
+	flag.BoolVar(&resolve.AllowIfOutsideFunction, "if", resolve.AllowIfOutsideFunction, "allow if statements outside of function body")
 }
 
 func main() {
