@@ -307,21 +307,44 @@ func unpackOneArg(v Value, ptr interface{}) error {
 			return fmt.Errorf("got %s, want iterable", v.Type())
 		}
 	default:
+		// v must have type *V, where V is some subtype of starlark.Value.
 		ptrv := reflect.ValueOf(ptr)
 		if ptrv.Kind() != reflect.Ptr {
-			log.Fatalf("internal error: not a pointer: %T", ptr)
+			log.Panicf("internal error: not a pointer: %T", ptr)
 		}
-		param := ptrv.Elem()
-		if !reflect.TypeOf(v).AssignableTo(param.Type()) {
-			// Detect mistakes by caller.
-			if !param.Type().AssignableTo(reflect.TypeOf(new(Value)).Elem()) {
-				log.Fatalf("internal error: invalid pointer type: %T", ptr)
+		paramVar := ptrv.Elem()
+		if !reflect.TypeOf(v).AssignableTo(paramVar.Type()) {
+			// The value is not assignable to the variable.
+
+			// Detect a possible bug in the Go program that called Unpack:
+			// If the variable *ptr is not a subtype of Value,
+			// no value of v can possibly work.
+			if !paramVar.Type().AssignableTo(reflect.TypeOf(new(Value)).Elem()) {
+				log.Panicf("pointer element type does not implement Value: %T", ptr)
 			}
-			// Assume it's safe to call Type() on a zero instance.
-			paramType := param.Interface().(Value).Type()
+
+			// Report Starlark dynamic type error.
+			//
+			// We prefer the Starlark Value.Type name over
+			// its Go reflect.Type name, but calling the
+			// Value.Type method on the variable is not safe
+			// in general. If the variable is an interface,
+			// the call will fail. Even if the variable has
+			// a concrete type, it might not be safe to call
+			// Type() on a zero instance. Thus we must use
+			// recover.
+
+			// Default to Go reflect.Type name
+			paramType := paramVar.Type().String()
+
+			// Attempt to call Value.Type method.
+			func() {
+				defer func() { recover() }()
+				paramType = paramVar.MethodByName("Type").Call(nil)[0].String()
+			}()
 			return fmt.Errorf("got %s, want %s", v.Type(), paramType)
 		}
-		param.Set(reflect.ValueOf(v))
+		paramVar.Set(reflect.ValueOf(v))
 	}
 	return nil
 }
