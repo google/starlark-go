@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -32,12 +31,7 @@ func Benchmark(b *testing.B) {
 		}
 
 		// Repeatedly call each global function named bench_* as a benchmark.
-		var names []string
-		for name := range globals {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
+		for _, name := range globals.Keys() {
 			value := globals[name]
 			if fn, ok := value.(*starlark.Function); ok && strings.HasPrefix(name, "bench_") {
 				b.Run(name, func(b *testing.B) {

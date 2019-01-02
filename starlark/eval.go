@@ -78,22 +78,25 @@ func (thread *Thread) TopFrame() *Frame { return thread.frame }
 // It is not a true starlark.Value.
 type StringDict map[string]Value
 
-func (d StringDict) String() string {
+// Keys returns a new sorted slice of d's keys.
+func (d StringDict) Keys() []string {
 	names := make([]string, 0, len(d))
 	for name := range d {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	return names
+}
 
+func (d StringDict) String() string {
 	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
 	buf.WriteByte('{')
 	sep := ""
-	for _, name := range names {
+	for _, name := range d.Keys() {
 		buf.WriteString(sep)
 		buf.WriteString(name)
 		buf.WriteString(": ")
-		writeValue(&buf, d[name], path)
+		writeValue(&buf, d[name], nil)
 		sep = ", "
 	}
 	buf.WriteByte('}')
@@ -1201,7 +1204,6 @@ func (is *intset) len() int {
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
 	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
 	index := 0
 	nargs := 1
 	if tuple, ok := x.(Tuple); ok {
@@ -1266,7 +1268,7 @@ func interpolate(format string, x Value) (Value, error) {
 			if str, ok := AsString(arg); ok && c == 's' {
 				buf.WriteString(str)
 			} else {
-				writeValue(&buf, arg, path)
+				writeValue(&buf, arg, nil)
 			}
 		case 'd', 'i', 'o', 'x', 'X':
 			i, err := NumberToInt(arg)
