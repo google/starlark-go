@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package starlarkstruct defines the Starlark 'struct' type,
-// an optional language extension.
+// Package starlarkstruct defines the Starlark types 'struct' and
+// 'module', both optional language extensions.
 package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 // It is tempting to introduce a variant of Struct that is a wrapper
