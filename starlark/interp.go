@@ -334,7 +334,7 @@ loop:
 			y := stack[sp-2]
 			x := stack[sp-3]
 			sp -= 3
-			err = setIndex(fr, x, y, z)
+			err = setIndex(x, y, z)
 			if err != nil {
 				break loop
 			}
@@ -343,7 +343,7 @@ loop:
 			y := stack[sp-1]
 			x := stack[sp-2]
 			sp -= 2
-			z, err2 := getIndex(fr, x, y)
+			z, err2 := getIndex(x, y)
 			if err2 != nil {
 				err = err2
 				break loop
@@ -354,7 +354,7 @@ loop:
 		case compile.ATTR:
 			x := stack[sp-1]
 			name := f.Prog.Names[arg]
-			y, err2 := getAttr(fr, x, name)
+			y, err2 := getAttr(x, name)
 			if err2 != nil {
 				err = err2
 				break loop
@@ -366,7 +366,7 @@ loop:
 			x := stack[sp-2]
 			sp -= 2
 			name := f.Prog.Names[arg]
-			if err2 := setField(fr, x, name, y); err2 != nil {
+			if err2 := setField(x, name, y); err2 != nil {
 				err = err2
 				break loop
 			}

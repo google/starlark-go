@@ -398,7 +398,7 @@ func listExtend(x *List, y Iterable) {
 }
 
 // getAttr implements x.dot.
-func getAttr(fr *Frame, x Value, name string) (Value, error) {
+func getAttr(x Value, name string) (Value, error) {
 	// field or method?
 	if x, ok := x.(HasAttrs); ok {
 		if v, err := x.Attr(name); v != nil || err != nil {
@@ -410,7 +410,7 @@ func getAttr(fr *Frame, x Value, name string) (Value, error) {
 }
 
 // setField implements x.name = y.
-func setField(fr *Frame, x Value, name string, y Value) error {
+func setField(x Value, name string, y Value) error {
 	if x, ok := x.(HasSetField); ok {
 		err := x.SetField(name, y)
 		return err
@@ -419,7 +419,7 @@ func setField(fr *Frame, x Value, name string, y Value) error {
 }
 
 // getIndex implements x[y].
-func getIndex(fr *Frame, x, y Value) (Value, error) {
+func getIndex(x, y Value) (Value, error) {
 	switch x := x.(type) {
 	case Mapping: // dict
 		z, found, err := x.Get(y)
@@ -450,7 +450,7 @@ func getIndex(fr *Frame, x, y Value) (Value, error) {
 }
 
 // setIndex implements x[y] = z.
-func setIndex(fr *Frame, x, y, z Value) error {
+func setIndex(x, y, z Value) error {
 	switch x := x.(type) {
 	case HasSetKey:
 		if err := x.SetKey(y, z); err != nil {
