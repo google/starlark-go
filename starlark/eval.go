@@ -122,6 +122,14 @@ type Frame struct {
 	locals   []Value         // local variables, for debugger
 }
 
+// NewFrame returns a new frame with the specified parent and callable.
+//
+// It may be used to synthesize stack frames for error messages.
+// Few clients should need to use this function.
+func NewFrame(parent *Frame, callable Callable) *Frame {
+	return &Frame{parent: parent, callable: callable}
+}
+
 // The Frames of a thread are structured as a spaghetti stack, not a
 // slice, so that an EvalError can copy a stack efficiently and immutably.
 // In hindsight using a slice would have led to a more convenient API.
@@ -904,7 +912,7 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
-	thread.frame = &Frame{parent: thread.frame, callable: c}
+	thread.frame = NewFrame(thread.frame, c)
 	result, err := c.CallInternal(thread, args, kwargs)
 	thread.frame = thread.frame.parent
 
