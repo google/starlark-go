@@ -787,7 +787,6 @@ func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	if err := UnpackArgs("print", nil, kwargs, "sep?", &sep); err != nil {
 		return nil, err
 	}
-	path := make([]Value, 0, 4)
 	var buf bytes.Buffer
 	for i, v := range args {
 		if i > 0 {
@@ -796,7 +795,7 @@ func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 		if s, ok := AsString(v); ok {
 			buf.WriteString(s)
 		} else {
-			writeValue(&buf, v, path)
+			writeValue(&buf, v, nil)
 		}
 	}
 
@@ -1610,7 +1609,6 @@ func string_find(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, 
 func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
 	format := string(recv_.(String))
 	var auto, manual bool // kinds of positional indexing used
-	path := make([]Value, 0, 4)
 	var buf bytes.Buffer
 	index := 0
 	for {
@@ -1736,10 +1734,10 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 			if str, ok := AsString(arg); ok {
 				buf.WriteString(str)
 			} else {
-				writeValue(&buf, arg, path)
+				writeValue(&buf, arg, nil)
 			}
 		case "r":
-			writeValue(&buf, arg, path)
+			writeValue(&buf, arg, nil)
 		default:
 			return nil, fmt.Errorf("unknown conversion %q", conv)
 		}

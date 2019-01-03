@@ -931,13 +931,17 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 // It may be more efficient than v.String() for larger values.
 func toString(v Value) string {
 	var buf bytes.Buffer
-	path := make([]Value, 0, 4)
-	writeValue(&buf, v, path)
+	writeValue(&buf, v, nil)
 	return buf.String()
 }
 
-// path is the list of *List and *Dict values we're currently printing.
+// writeValue writes x to out.
+//
+// path is used to detect cycles.
+// It contains the list of *List and *Dict values we're currently printing.
 // (These are the only potentially cyclic structures.)
+// Callers should generally pass a temporary slice of length zero but non-zero capacity.
+// It is safe to re-use the same path slice for multiple calls.
 func writeValue(out *bytes.Buffer, x Value, path []Value) {
 	switch x := x.(type) {
 	case nil:

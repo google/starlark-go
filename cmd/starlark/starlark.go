@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
-	"sort"
 	"strings"
 
 	"go.starlark.net/repl"
@@ -88,15 +87,10 @@ func main() {
 
 	// Print the global environment.
 	if *showenv {
-		var names []string
-		for name := range globals {
-			if !strings.HasPrefix(name, "_") {
-				names = append(names, name)
+		for _, name := range globals.Keys() {
+			if strings.HasPrefix(name, "_") {
+				fmt.Fprintf(os.Stderr, "%s = %s\n", name, globals[name])
 			}
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			fmt.Fprintf(os.Stderr, "%s = %s\n", name, globals[name])
 		}
 	}
 }

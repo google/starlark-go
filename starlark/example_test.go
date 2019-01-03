@@ -43,13 +43,8 @@ squares = [x*x for x in range(10)]
 	}
 
 	// Print the global environment.
-	var names []string
-	for name := range globals {
-		names = append(names, name)
-	}
-	sort.Strings(names)
 	fmt.Println("\nGlobals:")
-	for _, name := range names {
+	for _, name := range globals.Keys() {
 		v := globals[name]
 		fmt.Printf("%s (%s) = %s\n", name, v.Type(), v.String())
 	}
