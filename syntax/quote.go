@@ -168,7 +168,7 @@ func unquote(quoted string) (s string, triple bool, err error) {
 				err = fmt.Errorf(`truncated escape sequence %s`, quoted)
 				return
 			}
-			n, err1 := strconv.ParseInt(quoted[2:4], 16, 0)
+			n, err1 := strconv.ParseUint(quoted[2:4], 16, 0)
 			if err1 != nil {
 				err = fmt.Errorf(`invalid escape sequence %s`, quoted[:4])
 				return
