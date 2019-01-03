@@ -277,21 +277,36 @@ func SourceProgram(filename string, src interface{}, isPredeclared func(string) 
 	if err != nil {
 		return nil, nil, err
 	}
+	prog, err := FileProgram(f, isPredeclared)
+	return f, prog, err
+}
 
+// FileProgram produces a new program by resolving,
+// and compiling the Starlark source file syntax tree.
+// On success, it returns the compiled program.
+//
+// Resolving a syntax tree mutates it.
+// Do not call FileProgram more than once on the same file.
+//
+// The isPredeclared predicate reports whether a name is
+// a pre-declared identifier of the current module.
+// Its typical value is predeclared.Has,
+// where predeclared is a StringDict of pre-declared values.
+func FileProgram(f *syntax.File, isPredeclared func(string) bool) (*Program, error) {
 	if err := resolve.File(f, isPredeclared, Universe.Has); err != nil {
-		return f, nil, err
+		return nil, err
 	}
 
 	var pos syntax.Position
 	if len(f.Stmts) > 0 {
 		pos = syntax.Start(f.Stmts[0])
 	} else {
-		pos = syntax.MakePosition(&filename, 1, 1)
+		pos = syntax.MakePosition(&f.Path, 1, 1)
 	}
 
 	compiled := compile.File(f.Stmts, pos, "<toplevel>", f.Locals, f.Globals)
 
-	return f, &Program{compiled}, nil
+	return &Program{compiled}, nil
 }
 
 // CompiledProgram produces a new program from the representation
@@ -316,7 +331,7 @@ func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, e
 
 	_, err := Call(thread, toplevel, nil, nil)
 
-	// Convert the global environment to a map and freeze it.
+	// Convert the global environment to a map.
 	// We return a (partial) map even in case of error.
 	return toplevel.Globals(), err
 }
@@ -360,11 +375,34 @@ func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Fun
 // If Eval fails during evaluation, it returns an *EvalError
 // containing a backtrace.
 func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Value, error) {
-	f, err := ExprFunc(filename, src, env)
+	expr, err := syntax.ParseExpr(filename, src, 0)
+	if err != nil {
+		return nil, err
+	}
+	f, err := makeExprFunc(expr, env)
 	if err != nil {
 		return nil, err
 	}
 	return Call(thread, f, nil, nil)
+}
+
+// EvalExpr resolves and evaluates an expression within the
+// specified (predeclared) environment.
+//
+// Resolving an expression mutates it.
+// Do not call EvalExpr more than once for the same expression.
+//
+// Evaluation cannot mutate the environment dictionary itself,
+// though it may modify variables reachable from the dictionary.
+//
+// If Eval fails during evaluation, it returns an *EvalError
+// containing a backtrace.
+func EvalExpr(thread *Thread, expr syntax.Expr, env StringDict) (Value, error) {
+	fn, err := makeExprFunc(expr, env)
+	if err != nil {
+		return nil, err
+	}
+	return Call(thread, fn, nil, nil)
 }
 
 // ExprFunc returns a no-argument function
@@ -374,7 +412,11 @@ func ExprFunc(filename string, src interface{}, env StringDict) (*Function, erro
 	if err != nil {
 		return nil, err
 	}
+	return makeExprFunc(expr, env)
+}
 
+// makeExprFunc returns a no-argument function whose body is expr.
+func makeExprFunc(expr syntax.Expr, env StringDict) (*Function, error) {
 	locals, err := resolve.Expr(expr, env.Has, Universe.Has)
 	if err != nil {
 		return nil, err

@@ -138,7 +138,8 @@ _ = a + b not c ### "got identifier, want in"
 ---
 f(1+2 = 3) ### "keyword argument must have form name=expr"
 ---
-print(1, 2, 3 ### `got end of file, want '\)'`
+print(1, 2, 3
+### `got end of file, want '\)'`
 ---
 _ = a if b ### "conditional expression without else clause"
 ---

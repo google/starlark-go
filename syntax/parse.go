@@ -47,6 +47,38 @@ func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 	return f, nil
 }
 
+// ParseCompoundStmt parses a single compound statement:
+// a blank line, a def, for, while, or if statement, or a
+// semicolon-separated list of simple statements followed
+// by a newline. These are the units on which the REPL operates.
+// ParseCompoundStmt does not consume any following input.
+// The parser calls the readline function each
+// time it needs a new line of input.
+func ParseCompoundStmt(filename string, readline func() ([]byte, error)) (f *File, err error) {
+	in, err := newScanner(filename, readline, false)
+	if err != nil {
+		return nil, err
+	}
+
+	p := parser{in: in}
+	defer p.in.recover(&err)
+
+	p.nextToken() // read first lookahead token
+
+	var stmts []Stmt
+	switch p.tok {
+	case DEF, IF, FOR, WHILE:
+		stmts = p.parseStmt(stmts)
+	case NEWLINE:
+		// blank line
+	default:
+		// Don't consume newline, to avoid blocking again.
+		stmts = p.parseSimpleStmt(stmts, false)
+	}
+
+	return &File{Path: filename, Stmts: stmts}, nil
+}
+
 // ParseExpr parses a Starlark expression.
 // See Parse for explanation of parameters.
 func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
@@ -58,6 +90,10 @@ func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err erro
 	defer p.in.recover(&err)
 
 	p.nextToken() // read first lookahead token
+
+	// TODO(adonovan): Python's eval would use the equivalent of
+	// parseExpr here, which permits an unparenthesized tuple.
+	// We should too.
 	expr = p.parseTest()
 
 	// A following newline (e.g. "f()\n") appears outside any brackets,
@@ -114,7 +150,7 @@ func (p *parser) parseStmt(stmts []Stmt) []Stmt {
 	} else if p.tok == WHILE {
 		return append(stmts, p.parseWhileStmt())
 	}
-	return p.parseSimpleStmt(stmts)
+	return p.parseSimpleStmt(stmts, true)
 }
 
 func (p *parser) parseDefStmt() Stmt {
@@ -219,7 +255,8 @@ func (p *parser) parseForLoopVariables() Expr {
 }
 
 // simple_stmt = small_stmt (SEMI small_stmt)* SEMI? NEWLINE
-func (p *parser) parseSimpleStmt(stmts []Stmt) []Stmt {
+// In REPL mode, it does not consume the NEWLINE.
+func (p *parser) parseSimpleStmt(stmts []Stmt, consumeNL bool) []Stmt {
 	for {
 		stmts = append(stmts, p.parseSmallStmt())
 		if p.tok != SEMI {
@@ -231,9 +268,10 @@ func (p *parser) parseSimpleStmt(stmts []Stmt) []Stmt {
 		}
 	}
 	// EOF without NEWLINE occurs in `if x: pass`, for example.
-	if p.tok != EOF {
+	if p.tok != EOF && consumeNL {
 		p.consume(NEWLINE)
 	}
+
 	return stmts
 }
 
@@ -355,7 +393,7 @@ func (p *parser) parseSuite() []Stmt {
 		return stmts
 	}
 
-	return p.parseSimpleStmt(nil)
+	return p.parseSimpleStmt(nil, true)
 }
 
 func (p *parser) parseIdent() *Ident {
