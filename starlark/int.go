@@ -62,6 +62,8 @@ var (
 	smallint   [256]big.Int
 	smallintok bool
 	zero, one  Int
+
+	_ HasUnary = Int{}
 )
 
 func init() {
@@ -72,6 +74,19 @@ func init() {
 
 	zero = MakeInt64(0)
 	one = MakeInt64(1)
+}
+
+// Unary implements the operations +int, -int, and ~int.
+func (i Int) Unary(op syntax.Token) (Value, error) {
+	switch op {
+	case syntax.MINUS:
+		return zero.Sub(i), nil
+	case syntax.PLUS:
+		return i, nil
+	case syntax.TILDE:
+		return i.Not(), nil
+	}
+	return nil, nil
 }
 
 // Int64 returns the value as an int64.

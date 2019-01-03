@@ -481,26 +481,20 @@ func setIndex(x, y, z Value) error {
 
 // Unary applies a unary operator (+, -, ~, not) to its operand.
 func Unary(op syntax.Token, x Value) (Value, error) {
-	switch op {
-	case syntax.MINUS:
-		switch x := x.(type) {
-		case Int:
-			return zero.Sub(x), nil
-		case Float:
-			return -x, nil
-		}
-	case syntax.PLUS:
-		switch x.(type) {
-		case Int, Float:
-			return x, nil
-		}
-	case syntax.TILDE:
-		if xint, ok := x.(Int); ok {
-			return xint.Not(), nil
-		}
-	case syntax.NOT:
+	// The NOT operator is not customizable.
+	if op == syntax.NOT {
 		return !x.Truth(), nil
 	}
+
+	// Int, Float, and user-defined types
+	if x, ok := x.(HasUnary); ok {
+		// (nil, nil) => unhandled
+		y, err := x.Unary(op)
+		if y != nil || err != nil {
+			return y, err
+		}
+	}
+
 	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }
 
@@ -835,6 +829,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 	}
 
 	// user-defined types
+	// (nil, nil) => unhandled
 	if x, ok := x.(HasBinary); ok {
 		z, err := x.Binary(op, y, Left)
 		if z != nil || err != nil {

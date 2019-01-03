@@ -34,6 +34,7 @@
 //      HasSetField     -- value has settable fields x.f
 //      HasSetIndex     -- value supports element update using x[i]=y
 //      HasSetKey       -- value supports map update using x[k]=v
+//      HasUnary        -- value defines unary operations such as + and -
 //
 // Client applications may also define domain-specific functions in Go
 // and make them available to Starlark programs.  Use NewBuiltin to
@@ -275,6 +276,17 @@ const (
 	Right Side = true
 )
 
+// A HasUnary value may be used as the operand of these unary operators:
+//     +   -   ~
+//
+// An implementation may decline to handle an operation by returning (nil, nil).
+// For this reason, clients should always call the standalone Unary(op, x)
+// function rather than calling the method directly.
+type HasUnary interface {
+	Value
+	Unary(op syntax.Token) (Value, error)
+}
+
 // A HasAttrs value has fields or methods that may be read by a dot expression (y = x.f).
 // Attribute names may be listed using the built-in 'dir' function.
 //
@@ -398,6 +410,17 @@ func AsFloat(x Value) (f float64, ok bool) {
 }
 
 func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y))) }
+
+// Unary implements the operations +float and -float.
+func (f Float) Unary(op syntax.Token) (Value, error) {
+	switch op {
+	case syntax.MINUS:
+		return -f, nil
+	case syntax.PLUS:
+		return +f, nil
+	}
+	return nil, nil
+}
 
 // String is the type of a Starlark string.
 //
