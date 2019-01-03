@@ -552,3 +552,34 @@ g(z=7)
 		t.Errorf("got <<%s>>, want <<%s>>", got, want)
 	}
 }
+
+type badType string
+
+func (b *badType) String() string        { return "badType" }
+func (b *badType) Type() string          { return "badType:" + string(*b) } // panics if b==nil
+func (b *badType) Truth() starlark.Bool  { return true }
+func (b *badType) Hash() (uint32, error) { return 0, nil }
+func (b *badType) Freeze()               {}
+
+var _ starlark.Value = new(badType)
+
+// TestUnpackErrorBadType verifies that the Unpack functions fail
+// gracefully when a parameter's default value's Type method panics.
+func TestUnpackErrorBadType(t *testing.T) {
+	for _, test := range []struct {
+		x    *badType
+		want string
+	}{
+		{new(badType), "got NoneType, want badType"},       // Starlark type name
+		{nil, "got NoneType, want *starlark_test.badType"}, // Go type name
+	} {
+		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x)
+		if err == nil {
+			t.Errorf("UnpackArgs succeeded unexpectedly")
+			continue
+		}
+		if !strings.Contains(err.Error(), test.want) {
+			t.Errorf("UnpackArgs error %q does not contain %q", err, test.want)
+		}
+	}
+}
