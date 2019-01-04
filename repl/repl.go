@@ -23,12 +23,11 @@ package repl // import "go.starlark.net/repl"
 //   This is not necessarily a bug.
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/chzyer/readline"
 	"go.starlark.net/starlark"
@@ -88,98 +87,76 @@ func rep(rl *readline.Instance, thread *starlark.Thread, globals starlark.String
 
 	thread.SetLocal("context", ctx)
 
+	eof := false
+
+	// readline returns EOF, ErrInterrupted, or a line including "\n".
 	rl.SetPrompt(">>> ")
-	line, err := rl.Readline()
-	if err != nil {
-		return err // may be ErrInterrupt
-	}
-
-	if l := strings.TrimSpace(line); l == "" || l[0] == '#' {
-		return nil // blank or comment
-	}
-
-	// If the line contains a well-formed expression, evaluate it.
-	if _, err := syntax.ParseExpr("<stdin>", line, 0); err == nil {
-		if v, err := starlark.Eval(thread, "<stdin>", line, globals); err != nil {
-			PrintError(err)
-		} else if v != starlark.None {
-			fmt.Println(v)
+	readline := func() ([]byte, error) {
+		line, err := rl.Readline()
+		rl.SetPrompt("... ")
+		if err != nil {
+			if err == io.EOF {
+				eof = true
+			}
+			return nil, err
 		}
+		return []byte(line + "\n"), nil
+	}
+
+	// parse
+	f, err := syntax.ParseCompoundStmt("<stdin>", readline)
+	if err != nil {
+		if eof {
+			return io.EOF
+		}
+		PrintError(err)
 		return nil
 	}
 
-	// If the input so far is a single load or assignment statement,
-	// execute it without waiting for a blank line.
-	if f, err := syntax.Parse("<stdin>", line, 0); err == nil && len(f.Stmts) == 1 {
-		switch f.Stmts[0].(type) {
-		case *syntax.AssignStmt, *syntax.LoadStmt:
-			// Execute it as a file.
-			if err := execFileNoFreeze(thread, line, globals); err != nil {
-				PrintError(err)
-			}
+	if expr := soleExpr(f); expr != nil {
+		// eval
+		v, err := starlark.EvalExpr(thread, expr, globals)
+		if err != nil {
+			PrintError(err)
 			return nil
 		}
-	}
 
-	// Otherwise assume it is the first of several
-	// comprising a file, followed by a blank line.
-	var buf bytes.Buffer
-	fmt.Fprintln(&buf, line)
-	for {
-		rl.SetPrompt("... ")
-		line, err := rl.Readline()
-		if err != nil {
-			return err // may be ErrInterrupt
-		}
-		if l := strings.TrimSpace(line); l == "" {
-			break // blank
-		}
-		fmt.Fprintln(&buf, line)
-	}
-	text := buf.Bytes()
-
-	// Try parsing it once more as an expression,
-	// such as a call spread over several lines:
-	//   f(
-	//     1,
-	//     2
-	//   )
-	if _, err := syntax.ParseExpr("<stdin>", text, 0); err == nil {
-		if v, err := starlark.Eval(thread, "<stdin>", text, globals); err != nil {
-			PrintError(err)
-		} else if v != starlark.None {
+		// print
+		if v != starlark.None {
 			fmt.Println(v)
 		}
-		return nil
-	}
+	} else {
+		// compile
+		prog, err := starlark.FileProgram(f, globals.Has)
+		if err != nil {
+			PrintError(err)
+			return nil
+		}
 
-	// Execute it as a file.
-	if err := execFileNoFreeze(thread, text, globals); err != nil {
-		PrintError(err)
+		// execute (but do not freeze)
+		res, err := prog.Init(thread, globals)
+		if err != nil {
+			PrintError(err)
+		}
+
+		// The global names from the previous call become
+		// the predeclared names of this call.
+		// If execution failed, some globals may be undefined.
+		for k, v := range res {
+			globals[k] = v
+		}
 	}
 
 	return nil
 }
 
-// execFileNoFreeze is starlark.ExecFile without globals.Freeze().
-func execFileNoFreeze(thread *starlark.Thread, src interface{}, globals starlark.StringDict) error {
-	_, prog, err := starlark.SourceProgram("<stdin>", src, globals.Has)
-	if err != nil {
-		return err
+func soleExpr(f *syntax.File) syntax.Expr {
+	if len(f.Stmts) == 1 {
+		if stmt, ok := f.Stmts[0].(*syntax.ExprStmt); ok {
+			return stmt.X
+		}
 	}
-
-	res, err := prog.Init(thread, globals)
-
-	// The global names from the previous call become
-	// the predeclared names of this call.
-
-	// Copy globals back to the caller's map.
-	// If execution failed, some globals may be undefined.
-	for k, v := range res {
-		globals[k] = v
-	}
-
-	return err
+	return nil
 }
 
 // PrintError prints the error to stderr,

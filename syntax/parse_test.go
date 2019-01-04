@@ -5,8 +5,12 @@
 package syntax_test
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"go/build"
+	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -175,6 +179,14 @@ else:
 def h():
 	pass`,
 			`(DefStmt Name=f Function=(Function Body=((DefStmt Name=g Function=(Function Body=((BranchStmt Token=pass)))) (BranchStmt Token=pass))))`},
+		{"f();g()",
+			`(ExprStmt X=(CallExpr Fn=f))`},
+		{"f();",
+			`(ExprStmt X=(CallExpr Fn=f))`},
+		{"f();g()\n",
+			`(ExprStmt X=(CallExpr Fn=f))`},
+		{"f();\n",
+			`(ExprStmt X=(CallExpr Fn=f))`},
 	} {
 		f, err := syntax.Parse("foo.star", test.input, 0)
 		if err != nil {
@@ -238,6 +250,67 @@ pass`,
 			writeTree(&buf, reflect.ValueOf(stmt))
 		}
 		if got := buf.String(); test.want != got {
+			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
+		}
+	}
+}
+
+// TestCompoundStmt tests handling of REPL-style compound statements.
+func TestCompoundStmt(t *testing.T) {
+	for _, test := range []struct {
+		input, want string
+	}{
+		// blank lines
+		{"\n",
+			``},
+		{"   \n",
+			``},
+		{"# comment\n",
+			``},
+		// simple statement
+		{"1\n",
+			`(ExprStmt X=1)`},
+		{"print(1)\n",
+			`(ExprStmt X=(CallExpr Fn=print Args=(1)))`},
+		{"1;2;3;\n",
+			`(ExprStmt X=1)(ExprStmt X=2)(ExprStmt X=3)`},
+		{"f();g()\n",
+			`(ExprStmt X=(CallExpr Fn=f))(ExprStmt X=(CallExpr Fn=g))`},
+		{"f();\n",
+			`(ExprStmt X=(CallExpr Fn=f))`},
+		{"f(\n\n\n\n\n\n\n)\n",
+			`(ExprStmt X=(CallExpr Fn=f))`},
+		// complex statements
+		{"def f():\n  pass\n\n",
+			`(DefStmt Name=f Function=(Function Body=((BranchStmt Token=pass))))`},
+		{"if cond:\n  pass\n\n",
+			`(IfStmt Cond=cond True=((BranchStmt Token=pass)))`},
+		// Even as a 1-liner, the following blank line is required.
+		{"if cond: pass\n\n",
+			`(IfStmt Cond=cond True=((BranchStmt Token=pass)))`},
+	} {
+
+		// Fake readline input from string.
+		// The ! suffix, which would cause a parse error,
+		// tests that the parser doesn't read more than necessary.
+		sc := bufio.NewScanner(strings.NewReader(test.input + "!"))
+		readline := func() ([]byte, error) {
+			if sc.Scan() {
+				return []byte(sc.Text() + "\n"), nil
+			}
+			return nil, sc.Err()
+		}
+
+		f, err := syntax.ParseCompoundStmt("foo.star", readline)
+		if err != nil {
+			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
+			continue
+		}
+		var got string
+		for _, stmt := range f.Stmts {
+			got += treeString(stmt)
+		}
+		if test.want != got {
 			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
 		}
 	}
@@ -400,5 +473,28 @@ File
 	want = strings.TrimSpace(want)
 	if got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+// dataFile is the same as starlarktest.DataFile.
+// We make a copy to avoid a dependency cycle.
+var dataFile = func(pkgdir, filename string) string {
+	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+}
+
+func BenchmarkParse(b *testing.B) {
+	filename := dataFile("syntax", "testdata/scan.star")
+	b.StopTimer()
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := syntax.Parse(filename, data, 0)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }

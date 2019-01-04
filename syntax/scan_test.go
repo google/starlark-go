@@ -208,6 +208,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"x ! 0", "foo.star:1:3: unexpected input character '!'"},
 		// github.com/google/starlark-go/issues/80
 		{"([{<>}])", "( [ { < > } ] ) EOF"},
+		{"f();", "f ( ) ; EOF"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {

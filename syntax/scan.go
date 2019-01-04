@@ -7,6 +7,7 @@ package syntax
 // A lexical scanner for Starlark.
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -231,8 +232,7 @@ func (p Position) isBefore(q Position) bool {
 
 // An scanner represents a single input file being parsed.
 type scanner struct {
-	complete       []byte    // entire input
-	rest           []byte    // rest of input
+	rest           []byte    // rest of input (in REPL, a line of input)
 	token          []byte    // token being scanned
 	pos            Position  // current input position
 	depth          int       // nesting of [ ] { } ( )
@@ -242,21 +242,26 @@ type scanner struct {
 	keepComments   bool      // accumulate comments in slice
 	lineComments   []Comment // list of full line comments (if keepComments)
 	suffixComments []Comment // list of suffix comments (if keepComments)
+
+	readline func() ([]byte, error) // read next line of input (REPL only)
 }
 
 func newScanner(filename string, src interface{}, keepComments bool) (*scanner, error) {
-	data, err := readSource(filename, src)
-	if err != nil {
-		return nil, err
-	}
-	return &scanner{
-		complete:     data,
-		rest:         data,
+	sc := &scanner{
 		pos:          Position{file: &filename, Line: 1, Col: 1},
 		indentstk:    make([]int, 1, 10), // []int{0} + spare capacity
 		lineStart:    true,
 		keepComments: keepComments,
-	}, nil
+	}
+	sc.readline, _ = src.(func() ([]byte, error)) // REPL only
+	if sc.readline == nil {
+		data, err := readSource(filename, src)
+		if err != nil {
+			return nil, err
+		}
+		sc.rest = data
+	}
+	return sc, nil
 }
 
 func readSource(filename string, src interface{}) ([]byte, error) {
@@ -316,13 +321,28 @@ func (sc *scanner) recover(err *error) {
 
 // eof reports whether the input has reached end of file.
 func (sc *scanner) eof() bool {
-	return len(sc.rest) == 0
+	return len(sc.rest) == 0 && !sc.readLine()
+}
+
+// readLine attempts to read another line of input.
+// Precondition: len(sc.rest)==0.
+func (sc *scanner) readLine() bool {
+	if sc.readline != nil {
+		var err error
+		sc.rest, err = sc.readline()
+		if err != nil {
+			sc.errorf(sc.pos, "%v", err) // EOF or ErrInterrupt
+		}
+		return len(sc.rest) > 0
+	}
+	return false
 }
 
 // peekRune returns the next rune in the input without consuming it.
 // Newlines in Unix, DOS, or Mac format are treated as one rune, '\n'.
 func (sc *scanner) peekRune() rune {
-	if len(sc.rest) == 0 {
+	// TODO(adonovan): opt: measure and perhaps inline eof.
+	if sc.eof() {
 		return 0
 	}
 
@@ -341,9 +361,16 @@ func (sc *scanner) peekRune() rune {
 // readRune consumes and returns the next rune in the input.
 // Newlines in Unix, DOS, or Mac format are treated as one rune, '\n'.
 func (sc *scanner) readRune() rune {
+	// eof() has been inlined here, both to avoid a call
+	// and to establish len(rest)>0 to avoid a bounds check.
 	if len(sc.rest) == 0 {
-		sc.error(sc.pos, "internal scanner error: readRune at EOF")
-		return 0 // unreachable but eliminates bounds-check below
+		if !sc.readLine() {
+			sc.error(sc.pos, "internal scanner error: readRune at EOF")
+		}
+		// Redundant, but eliminates the bounds-check below.
+		if len(sc.rest) == 0 {
+			return 0
+		}
 	}
 
 	// fast path: ASCII
@@ -520,11 +547,26 @@ start:
 	// newline
 	if c == '\n' {
 		sc.lineStart = true
-		if blank || sc.depth > 0 {
-			// Ignore blank lines, or newlines within expressions (common case).
+
+		// Ignore newlines within expressions (common case).
+		if sc.depth > 0 {
 			sc.readRune()
 			goto start
 		}
+
+		// Ignore blank lines, except in the REPL,
+		// where they emit OUTDENTs and NEWLINE.
+		if blank {
+			if sc.readline == nil {
+				sc.readRune()
+				goto start
+			} else if len(sc.indentstk) > 1 {
+				sc.dents = 1 - len(sc.indentstk)
+				sc.indentstk = sc.indentstk[1:]
+				goto start
+			}
+		}
+
 		// At top-level (not in an expression).
 		sc.startToken(val)
 		sc.readRune()
@@ -759,37 +801,66 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 	start := sc.pos
 	triple := len(sc.rest) >= 3 && sc.rest[0] == byte(quote) && sc.rest[1] == byte(quote) && sc.rest[2] == byte(quote)
 	sc.readRune()
-	if triple {
-		sc.readRune()
-		sc.readRune()
-	}
-
-	quoteCount := 0
-	for {
-		if sc.eof() {
-			sc.error(val.pos, "unexpected EOF in string")
-		}
-		c := sc.readRune()
-		if c == '\n' && !triple {
-			sc.error(val.pos, "unexpected newline in string")
-		}
-		if c == quote {
-			quoteCount++
-			if !triple || quoteCount == 3 {
-				break
-			}
-		} else {
-			quoteCount = 0
-		}
-		if c == '\\' {
+	if !triple {
+		// Precondition: startToken was already called.
+		for {
 			if sc.eof() {
 				sc.error(val.pos, "unexpected EOF in string")
 			}
-			sc.readRune()
+			c := sc.readRune()
+			if c == quote {
+				break
+			}
+			if c == '\n' {
+				sc.error(val.pos, "unexpected newline in string")
+			}
+			if c == '\\' {
+				if sc.eof() {
+					sc.error(val.pos, "unexpected EOF in string")
+				}
+				sc.readRune()
+			}
 		}
+		sc.endToken(val)
+	} else {
+		// triple-quoted string literal
+		sc.readRune()
+		sc.readRune()
+
+		// A triple-quoted string literal may span multiple
+		// gulps of REPL input; it is the only such token.
+		// Thus we must avoid {start,end}Token.
+		var raw bytes.Buffer
+
+		// Copy the prefix, e.g. r''' or """ (see startToken).
+		raw.Write(sc.token[:len(sc.token)-len(sc.rest)])
+
+		quoteCount := 0
+		for {
+			if sc.eof() {
+				sc.error(val.pos, "unexpected EOF in string")
+			}
+			c := sc.readRune()
+			raw.WriteRune(c)
+			if c == quote {
+				quoteCount++
+				if quoteCount == 3 {
+					break
+				}
+			} else {
+				quoteCount = 0
+			}
+			if c == '\\' {
+				if sc.eof() {
+					sc.error(val.pos, "unexpected EOF in string")
+				}
+				c = sc.readRune()
+				raw.WriteRune(c)
+			}
+		}
+		val.raw = raw.String()
 	}
 
-	sc.endToken(val)
 	s, _, err := unquote(val.raw)
 	if err != nil {
 		sc.error(start, err.Error())
