@@ -1505,7 +1505,7 @@ Operand = identifier
         | ListExpr | ListComp
         | DictExpr | DictComp
         | '(' [Expression] [,] ')'
-        | ('-' | '+') PrimaryExpr
+        | ('-' | '+' | '*' | '&') PrimaryExpr
         .
 
 DotSuffix   = '.' identifier .
@@ -1637,13 +1637,15 @@ Examples:
 
 ### Unary operators
 
-There are three unary operators, all appearing before their operand:
-`+`, `-`, `~`, and `not`.
+Starlark has the following unary operators, which all appear before their operand:
+`+`, `-`, `~`, `*`, `&`, and `not`.
 
 ```grammar {.good}
 UnaryExpr = '+' PrimaryExpr
           | '-' PrimaryExpr
           | '~' PrimaryExpr
+          | '*' PrimaryExpr
+          | '&' PrimaryExpr
           | 'not' Test
           .
 ```
@@ -1690,9 +1692,21 @@ The bitwise inversion of x is defined as -(x+1).
 ~0                              # -1
 ```
 
+The Go implementation of Starlark additionally has the unary
+prefix operators `*` and `&`, in order to support Stargo, which
+provides Starlark bindings for Go variables.
+These operators are not part of standard Starlark, and must be enabled
+in Go by the `-addressing` flag.
+
+The expression `*ptr` dereferences a pointer value, `ptr`.
+The expression `&expr` returns the address of an expression `expr`;
+it may be applied only to field selection or index expressions
+such as `&a[i]`, `&x.f`, or `&x[i].f[j].g`.
+Consult the Stargo documentation for more details.
+
 <b>Implementation note:</b>
 The parser in the Java implementation of Starlark does not accept unary
-`+` and `~` expressions.
+`+` and `~` expressions, nor `*` and `&` as unary operators.
 
 ### Binary operators
 

@@ -15,12 +15,14 @@ import (
 	"go.starlark.net/internal/chunkedfile"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
 func setOptions(src string) {
+	resolve.AllowAddressing = option(src, "addressing")
 	resolve.AllowBitwise = option(src, "bitwise")
 	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")
@@ -99,11 +101,14 @@ func TestEvalExpr(t *testing.T) {
 }
 
 func TestExecFile(t *testing.T) {
+	var v starlark.Value = starlark.None
+
 	defer setOptions("")
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
 	for _, file := range []string{
+		"testdata/address.star",
 		"testdata/assign.star",
 		"testdata/bool.star",
 		"testdata/builtins.star",
@@ -121,9 +126,13 @@ func TestExecFile(t *testing.T) {
 	} {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
+
 			predeclared := starlark.StringDict{
 				"hasfields": starlark.NewBuiltin("hasfields", newHasFields),
 				"fibonacci": fib{},
+				"addr": starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{
+					"v": variable{&v},
+				}),
 			}
 
 			setOptions(chunk.Source)
@@ -582,4 +591,37 @@ func TestUnpackErrorBadType(t *testing.T) {
 			t.Errorf("UnpackArgs error %q does not contain %q", err, test.want)
 		}
 	}
+}
+
+type variable struct{ ptr *starlark.Value } // non-nil
+
+var _ starlark.Variable = variable{}
+
+func (v variable) Address() starlark.Value         { return pointer{v.ptr} }
+func (v variable) Value() starlark.Value           { return *v.ptr }
+func (v variable) SetValue(x starlark.Value) error { *v.ptr = x; return nil }
+
+func (v variable) String() string        { return fmt.Sprintf("variable(%s)", *v.ptr) }
+func (v variable) Type() string          { return "variable" }
+func (v variable) Truth() starlark.Bool  { return true }
+func (v variable) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: variable") }
+func (v variable) Freeze()               {}
+
+type pointer struct{ ptr *starlark.Value }
+
+var _ starlark.HasUnary = pointer{}
+
+func (p pointer) String() string        { return "pointer" }
+func (p pointer) Type() string          { return "pointer" }
+func (p pointer) Truth() starlark.Bool  { return true }
+func (p pointer) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: pointer") }
+func (p pointer) Freeze()               {}
+func (p pointer) Unary(op syntax.Token) (starlark.Value, error) {
+	if op == syntax.STAR {
+		if p.ptr == nil {
+			return nil, fmt.Errorf("nil dereference")
+		}
+		return variable{p.ptr}, nil
+	}
+	return nil, nil
 }
