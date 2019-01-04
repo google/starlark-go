@@ -63,7 +63,7 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"error":   starlark.NewBuiltin("error", error_),
 			"catch":   starlark.NewBuiltin("catch", catch),
 			"matches": starlark.NewBuiltin("matches", matches),
-			"struct":  starlark.NewBuiltin("struct", starlarkstruct.Make),
+			"module":  starlark.NewBuiltin("module", starlarkstruct.MakeModule),
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
 		filename := DataFile("starlarktest", "assert.star")
