@@ -15,6 +15,7 @@ import (
 )
 
 func setOptions(src string) {
+	resolve.AllowAddressing = option(src, "addressing")
 	resolve.AllowBitwise = option(src, "bitwise")
 	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")

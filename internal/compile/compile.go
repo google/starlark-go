@@ -37,7 +37,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 5
+const Version = 6
 
 type Opcode uint8
 
@@ -80,9 +80,10 @@ const (
 
 	IN
 
-	// unary operators
+	// unary operators (order of +/-/* must match Token)
 	UPLUS  // x UPLUS x
 	UMINUS // x UMINUS -x
+	USTAR  // x USTAR *x
 	TILDE  // x TILDE ~x
 
 	NONE  // - NONE None
@@ -94,13 +95,16 @@ const (
 	NOT         //          value NOT bool
 	RETURN      //          value RETURN -
 	SETINDEX    //        a i new SETINDEX -
-	INDEX       //            a i INDEX elem
+	INDEX       //            a i INDEX elem        elem = a[i]
 	SETDICT     // dict key value SETDICT -
 	SETDICTUNIQ // dict key value SETDICTUNIQ -
 	APPEND      //      list elem APPEND -
 	SLICE       //   x lo hi step SLICE slice
-	INPLACE_ADD //            x y INPLACE_ADD z      where z is x+y or x.extend(y)
+	INPLACE_ADD //            x y INPLACE_ADD z     where z is x+y or x.extend(y)
 	MAKEDICT    //              - MAKEDICT dict
+	ADDRESS     //            var ADDRESS addr      fails    if not Variable [stargo only]
+	VALUE       //            var VALUE value       identity if not Variable [stargo only]
+	SETVALUE    //          var x SETVALUE -        fails    if not Variable [stargo only]
 
 	// --- opcodes with an argument must go below this line ---
 
@@ -139,6 +143,7 @@ const (
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
 
 var opcodeNames = [...]string{
+	ADDRESS:     "address",
 	AMP:         "amp",
 	APPEND:      "append",
 	ATTR:        "attr",
@@ -186,12 +191,14 @@ var opcodeNames = [...]string{
 	POP:         "pop",
 	PREDECLARED: "predeclared",
 	RETURN:      "return",
+	VALUE:       "value",
 	SETDICT:     "setdict",
 	SETDICTUNIQ: "setdictuniq",
 	SETFIELD:    "setfield",
 	SETGLOBAL:   "setglobal",
 	SETINDEX:    "setindex",
 	SETLOCAL:    "setlocal",
+	SETVALUE:    "setvalue",
 	SLASH:       "slash",
 	SLASHSLASH:  "slashslash",
 	SLICE:       "slice",
@@ -202,6 +209,7 @@ var opcodeNames = [...]string{
 	UNIVERSAL:   "universal",
 	UNPACK:      "unpack",
 	UPLUS:       "uplus",
+	USTAR:       "ustar",
 }
 
 const variableStackEffect = 0x7f
@@ -209,6 +217,7 @@ const variableStackEffect = 0x7f
 // stackEffect records the effect on the size of the operand stack of
 // each kind of instruction. For some instructions this requires computation.
 var stackEffect = [...]int8{
+	ADDRESS:     0,
 	AMP:         -1,
 	APPEND:      -2,
 	ATTR:        0,
@@ -261,6 +270,7 @@ var stackEffect = [...]int8{
 	SETGLOBAL:   -1,
 	SETINDEX:    -3,
 	SETLOCAL:    -1,
+	SETVALUE:    -2,
 	SLASH:       -1,
 	SLASHSLASH:  -1,
 	SLICE:       -3,
@@ -270,6 +280,8 @@ var stackEffect = [...]int8{
 	UNIVERSAL:   +1,
 	UNPACK:      variableStackEffect,
 	UPLUS:       0,
+	USTAR:       0,
+	VALUE:       0,
 }
 
 func (op Opcode) String() string {
@@ -1005,13 +1017,26 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 					fcomp.set(lhs)
 				}
 
+			case *syntax.UnaryExpr:
+				// *x = ...
+				fcomp.expr(lhs.X)
+				fcomp.emit(DUP)
+				fcomp.emit(VALUE)
+				set = func() {
+					fcomp.setPos(lhs.OpPos) // op == STAR
+					fcomp.emit(SETVALUE)
+				}
+
 			case *syntax.IndexExpr:
 				// x[y] = ...
-				fcomp.expr(lhs.X)
+				fcomp.addr(lhs.X)
 				fcomp.expr(lhs.Y)
 				fcomp.emit(DUP2)
 				fcomp.setPos(lhs.Lbrack)
 				fcomp.emit(INDEX)
+				if resolve.AllowAddressing {
+					fcomp.emit(VALUE)
+				}
 				set = func() {
 					fcomp.setPos(lhs.Lbrack)
 					fcomp.emit(SETINDEX)
@@ -1019,11 +1044,14 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 
 			case *syntax.DotExpr:
 				// x.f = ...
-				fcomp.expr(lhs.X)
+				fcomp.addr(lhs.X)
 				fcomp.emit(DUP)
 				name := fcomp.pcomp.nameIndex(lhs.Name.Name)
 				fcomp.setPos(lhs.Dot)
 				fcomp.emit1(ATTR, name)
+				if resolve.AllowAddressing {
+					fcomp.emit(VALUE)
+				}
 				set = func() {
 					fcomp.setPos(lhs.Dot)
 					fcomp.emit1(SETFIELD, name)
@@ -1143,7 +1171,7 @@ func (fcomp *fcomp) assign(pos syntax.Position, lhs syntax.Expr) {
 
 	case *syntax.IndexExpr:
 		// x[y] = rhs
-		fcomp.expr(lhs.X)
+		fcomp.addr(lhs.X)
 		fcomp.emit(EXCH)
 		fcomp.expr(lhs.Y)
 		fcomp.emit(EXCH)
@@ -1152,10 +1180,18 @@ func (fcomp *fcomp) assign(pos syntax.Position, lhs syntax.Expr) {
 
 	case *syntax.DotExpr:
 		// x.f = rhs
-		fcomp.expr(lhs.X)
+		fcomp.addr(lhs.X)
 		fcomp.emit(EXCH)
 		fcomp.setPos(lhs.Dot)
 		fcomp.emit1(SETFIELD, fcomp.pcomp.nameIndex(lhs.Name.Name))
+
+	case *syntax.UnaryExpr:
+		// *x = rhs
+		fcomp.expr(lhs.X)
+		fcomp.emit(USTAR)
+		fcomp.emit(EXCH)
+		fcomp.setPos(lhs.OpPos) // op == STAR
+		fcomp.emit(SETVALUE)
 
 	default:
 		panic(lhs)
@@ -1167,6 +1203,47 @@ func (fcomp *fcomp) assignSequence(pos syntax.Position, lhs []syntax.Expr) {
 	fcomp.emit1(UNPACK, uint32(len(lhs)))
 	for i := range lhs {
 		fcomp.assign(pos, lhs[i])
+	}
+}
+
+// addr emits code for a chain of x.f and a[i] operations such as a.f[i].g[j].
+//
+// In Addressing mode, all nonrecursive calls to addr() (a chain of ATTR
+// and INDEX ops) must be followed by one of ADDRESS, SETFIELD,
+// SETINDEX, or VALUE:
+//
+//    &(expr.f[i].g)          expr ATTR<f> i INDEX ATTR<g> ADDRESS
+//    (expr.f[i].g).x = y     expr ATTR<f> i INDEX ATTR<g> y SETFIELD<x>
+//    (expr.f[i].g)[j] = y    expr ATTR<f> i INDEX ATTR<g> y j SETINDEX
+//    _ = expr.f[i].g         expr ATTR<f> i INDEX ATTR<g> VALUE
+//
+// We could in principle extend this scheme to all variables (such as x
+// in x.f)), not just the x[i] and x.f operations applied to them, but
+// it would add a cost to every variable lookup, and in practice it is
+// unnecessary as most starlark.Variables live in a module such as http
+// for http.DefaultServeMux, so they are acccessed using a dot expression.
+//
+// See comments at starlark.Variable for background.
+//
+func (fcomp *fcomp) addr(e syntax.Expr) {
+	switch e := e.(type) {
+	case *syntax.ParenExpr:
+		fcomp.addr(e.X)
+
+	case *syntax.DotExpr:
+		fcomp.addr(e.X)
+		fcomp.setPos(e.Dot)
+		fcomp.emit1(ATTR, fcomp.pcomp.nameIndex(e.Name.Name))
+
+	case *syntax.IndexExpr:
+		fcomp.addr(e.X)
+		fcomp.expr(e.Y)
+		fcomp.setPos(e.Lbrack)
+		fcomp.emit(INDEX)
+
+	default:
+		fcomp.expr(e)
+
 	}
 }
 
@@ -1207,10 +1284,10 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		fcomp.block = done
 
 	case *syntax.IndexExpr:
-		fcomp.expr(e.X)
-		fcomp.expr(e.Y)
-		fcomp.setPos(e.Lbrack)
-		fcomp.emit(INDEX)
+		fcomp.addr(e)
+		if resolve.AllowAddressing {
+			fcomp.emit(VALUE)
+		}
 
 	case *syntax.SliceExpr:
 		fcomp.setPos(e.Lbrack)
@@ -1255,13 +1332,23 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		}
 
 	case *syntax.UnaryExpr:
-		fcomp.expr(e.X)
+		switch e.Op {
+		case syntax.AMP, syntax.STAR:
+			fcomp.addr(e.X)
+		default:
+			fcomp.expr(e.X)
+		}
 		fcomp.setPos(e.OpPos)
 		switch e.Op {
+		case syntax.AMP:
+			fcomp.emit(ADDRESS)
 		case syntax.MINUS:
 			fcomp.emit(UMINUS)
 		case syntax.PLUS:
 			fcomp.emit(UPLUS)
+		case syntax.STAR:
+			fcomp.emit(USTAR)
+			fcomp.emit(VALUE)
 		case syntax.NOT:
 			fcomp.emit(NOT)
 		case syntax.TILDE:
@@ -1317,9 +1404,10 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		}
 
 	case *syntax.DotExpr:
-		fcomp.expr(e.X)
-		fcomp.setPos(e.Dot)
-		fcomp.emit1(ATTR, fcomp.pcomp.nameIndex(e.Name.Name))
+		fcomp.addr(e)
+		if resolve.AllowAddressing {
+			fcomp.emit(VALUE)
+		}
 
 	case *syntax.CallExpr:
 		fcomp.call(e)

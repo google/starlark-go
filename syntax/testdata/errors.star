@@ -8,7 +8,7 @@ x = 1 +
 
 ---
 
-_ = *x ### `got '\*', want primary`
+_ = %x ### `got '%', want primary`
 
 ---
 
