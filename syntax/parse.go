@@ -628,7 +628,7 @@ var precedence [maxToken]int8
 
 // preclevels groups operators of equal precedence.
 // Comparisons are nonassociative; other binary operators associate to the left.
-// Unary MINUS, unary PLUS, and TILDE have higher precedence so are handled in parsePrimary.
+// Unary -/+/&/*/~ have higher precedence so are handled in parsePrimary.
 // See https://github.com/google/starlark-go/blob/master/doc/spec.md#binary-operators
 var preclevels = [...][]Token{
 	{OR},                                   // or
@@ -787,7 +787,7 @@ func (p *parser) parseArgs() []Expr {
 //          | '[' ...                    // list literal or comprehension
 //          | '{' ...                    // dict literal or comprehension
 //          | '(' ...                    // tuple or parenthesized expression
-//          | ('-'|'+'|'~') primary_with_suffix
+//          | ('-'|'+'|'~'|'&') primary_with_suffix
 func (p *parser) parsePrimary() Expr {
 	switch p.tok {
 	case IDENT:
@@ -833,7 +833,7 @@ func (p *parser) parsePrimary() Expr {
 			Rparen: rparen,
 		}
 
-	case MINUS, PLUS, TILDE: // unary
+	case MINUS, PLUS, TILDE, AMP, STAR: // unary
 		tok := p.tok
 		pos := p.nextToken()
 		x := p.parsePrimaryWithSuffix()

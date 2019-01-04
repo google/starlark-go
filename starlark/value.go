@@ -178,6 +178,8 @@ var (
 
 // An Indexable is a sequence of known length that supports efficient random access.
 // It is not necessarily iterable.
+//
+// Len may return -1 to indicate that a particular value is not indexable.
 type Indexable interface {
 	Value
 	Index(i int) Value // requires 0 <= i < Len()
@@ -187,7 +189,12 @@ type Indexable interface {
 // A Sliceable is a sequence that can be cut into pieces with the slice operator (x[i:j:step]).
 //
 // All native indexable objects are sliceable.
-// This is a separate interface for backwards-compatibility.
+//
+// This is a separate interface from Indexable for backwards-compatibility.
+// Although it is possible to implement the selection of the elements
+// x[i:j:step] in a generic way using only the Indexable interface,
+// the creation of the result value (string, tuple, list, etc)
+// varies by type.
 type Sliceable interface {
 	Indexable
 	// For positive strides (step > 0), 0 <= start <= end <= n.
@@ -288,7 +295,7 @@ const (
 )
 
 // A HasUnary value may be used as the operand of these unary operators:
-//     +   -   ~
+//     +   -   *   ~
 //
 // An implementation may decline to handle an operation by returning (nil, nil).
 // For this reason, clients should always call the standalone Unary(op, x)
@@ -1234,3 +1241,37 @@ func Iterate(x Value) Iterator {
 	}
 	return nil
 }
+
+// A Module is a named collection of values, typically used to
+// represent something imported by a load statement.  It differs from
+// starlarkstruct primarily in that its string representation does not
+// enumerate its fields.
+//
+// TODO: rethink LoadStmt and Thread.Load function: make load(name)
+// with no arguments import an entire Module, not an explicit subset
+// of its members.  This is how imports work in Python and Go, where
+// the basic unit of import is the module or package (e.g. os) not the
+// individual value (e.g. os.Mkdir).
+// TODO: rename "assert.star" to just "assert".
+// Make it so that load("assert") works, with no need for load("assert", "assert").
+//
+// TODO: What should the API look like?
+// load("go") would import the Go builtins Module. Or "go" could be a predeclared Module.
+//
+// load("go", "net/http") could import a package "from Go".
+// Or load("net/http") could do it.  But then Go packages will conflict with starlark libs.
+// But perhaps that's ok because the app curates the set of available packages.
+type Module struct {
+	Name    string
+	Members StringDict
+}
+
+var _ HasAttrs = (*Module)(nil)
+
+func (m *Module) Attr(name string) (Value, error) { return m.Members[name], nil }
+func (m *Module) AttrNames() []string             { return m.Members.Keys() }
+func (m *Module) Freeze()                         { m.Members.Freeze() }
+func (m *Module) Hash() (uint32, error)           { return 0, fmt.Errorf("unhashable: %s", m.Type()) }
+func (m *Module) String() string                  { return fmt.Sprintf("<module %q>", m.Name) }
+func (m *Module) Truth() Bool                     { return true }
+func (m *Module) Type() string                    { return "module" }

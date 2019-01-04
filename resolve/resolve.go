@@ -96,6 +96,7 @@ var (
 	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
 	AllowBitwise        = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
 	AllowRecursion      = false // allow while statements and recursive functions
+	AllowAddressing     = false // allow &a.f and l-value addressing of a.f[i].g
 )
 
 // File resolves the specified file.
@@ -521,15 +522,18 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 		// x = ...
 		allowRebind := isAugmented
 		r.bind(lhs, allowRebind)
+		return
 
 	case *syntax.IndexExpr:
 		// x[i] = ...
 		r.expr(lhs.X)
 		r.expr(lhs.Y)
+		return
 
 	case *syntax.DotExpr:
 		// x.f = ...
 		r.expr(lhs.X)
+		return
 
 	case *syntax.TupleExpr:
 		// (x, y) = ...
@@ -542,6 +546,7 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 		for _, elem := range lhs.List {
 			r.assign(elem, isAugmented)
 		}
+		return
 
 	case *syntax.ListExpr:
 		// [x, y, z] = ...
@@ -554,14 +559,24 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 		for _, elem := range lhs.List {
 			r.assign(elem, isAugmented)
 		}
+		return
 
 	case *syntax.ParenExpr:
 		r.assign(lhs.X, isAugmented)
+		return
 
-	default:
-		name := strings.ToLower(strings.TrimPrefix(fmt.Sprintf("%T", lhs), "*syntax."))
-		r.errorf(syntax.Start(lhs), "can't assign to %s", name)
+	case *syntax.UnaryExpr:
+		if lhs.Op == syntax.STAR {
+			if !AllowAddressing {
+				r.errorf(lhs.OpPos, doesnt+"support address operations")
+			}
+			r.expr(lhs.X)
+			return
+		}
 	}
+
+	name := strings.ToLower(strings.TrimPrefix(fmt.Sprintf("%T", lhs), "*syntax."))
+	r.errorf(syntax.Start(lhs), "can't assign to %s", name)
 }
 
 func (r *resolver) expr(e syntax.Expr) {
@@ -647,6 +662,23 @@ func (r *resolver) expr(e syntax.Expr) {
 		if !AllowBitwise && e.Op == syntax.TILDE {
 			r.errorf(e.OpPos, doesnt+"support bitwise operations")
 		}
+		if e.Op == syntax.STAR {
+			if !AllowAddressing {
+				r.errorf(e.OpPos, doesnt+"support address operations")
+			}
+		}
+		if e.Op == syntax.AMP {
+			if !AllowAddressing {
+				r.errorf(e.OpPos, doesnt+"support address operations")
+			} else {
+				switch unparen(e.X).(type) {
+				case *syntax.DotExpr, *syntax.IndexExpr:
+					// ok
+				default:
+					r.errorf(e.OpPos, "& operator can be applied only to &x.f or &a[i]")
+				}
+			}
+		}
 		r.expr(e.X)
 
 	case *syntax.BinaryExpr:
@@ -688,7 +720,7 @@ func (r *resolver) expr(e syntax.Expr) {
 					r.errorf(pos, "multiple *args not allowed")
 				}
 				seenVarargs = true
-				r.expr(arg)
+				r.expr(unop.X)
 			} else if binop, ok := arg.(*syntax.BinaryExpr); ok && binop.Op == syntax.EQ {
 				// k=v
 				n++
@@ -890,4 +922,14 @@ func (r *resolver) lookupLexical(id *syntax.Ident, env *block) (bind binding) {
 		env.bind(id.Name, bind)
 	}
 	return bind
+}
+
+func unparen(e syntax.Expr) syntax.Expr {
+	for {
+		paren, ok := e.(*syntax.ParenExpr)
+		if !ok {
+			return e
+		}
+		e = paren.X
+	}
 }

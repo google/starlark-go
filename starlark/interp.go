@@ -154,7 +154,7 @@ loop:
 			stack[sp] = z
 			sp++
 
-		case compile.UPLUS, compile.UMINUS, compile.TILDE:
+		case compile.UPLUS, compile.UMINUS, compile.USTAR, compile.TILDE:
 			var unop syntax.Token
 			if op == compile.TILDE {
 				unop = syntax.TILDE
@@ -546,6 +546,36 @@ loop:
 		case compile.UNIVERSAL:
 			stack[sp] = Universe[f.Prog.Names[arg]]
 			sp++
+
+		case compile.ADDRESS:
+			x := stack[sp-1]
+			v, ok := x.(Variable)
+			if !ok {
+				err = fmt.Errorf("%s value has no address", x.Type())
+				break loop
+			}
+			stack[sp-1] = v.Address()
+
+		case compile.VALUE:
+			x := stack[sp-1]
+			if v, ok := x.(Variable); ok {
+				x = v.Value()
+			}
+			stack[sp-1] = x
+
+		case compile.SETVALUE:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			v, ok := x.(Variable)
+			if !ok {
+				err = fmt.Errorf("cannot set value of %s", x.Type())
+				break loop
+			}
+			if err2 := v.SetValue(y); err2 != nil {
+				err = err2
+				break loop
+			}
 
 		default:
 			err = fmt.Errorf("unimplemented: %s", op)

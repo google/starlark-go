@@ -149,7 +149,9 @@ func (fr *Frame) Position() syntax.Position {
 	case *Function:
 		// Starlark function
 		return c.funcode.Position(fr.callpc) // position of active call
-	case interface{ Position() syntax.Position }:
+	case interface {
+		Position() syntax.Position
+	}:
 		// If a built-in Callable defines
 		// a Position method, use it.
 		return c.Position()
@@ -450,7 +452,7 @@ func listExtend(x *List, y Iterable) {
 	}
 }
 
-// getAttr implements x.dot.
+// getAttr implements x.name.
 func getAttr(x Value, name string) (Value, error) {
 	// field or method?
 	if x, ok := x.(HasAttrs); ok {
@@ -468,6 +470,7 @@ func setField(x Value, name string, y Value) error {
 		err := x.SetField(name, y)
 		return err
 	}
+
 	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())
 }
 
@@ -489,6 +492,9 @@ func getIndex(x, y Value) (Value, error) {
 		i, err := AsInt32(y)
 		if err != nil {
 			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
+		}
+		if n < 0 {
+			return nil, fmt.Errorf("cannot index %s: no length", x.Type())
 		}
 		if i < 0 {
 			i += n
