@@ -2148,7 +2148,7 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 		switch updates := updates[0].(type) {
 		case NoneType:
 			// no-op
-		case *Dict:
+		case IterableMapping:
 			// Iterate over dict's key/value pairs, not just keys.
 			for _, item := range updates.Items() {
 				if err := dict.SetKey(item[0], item[1]); err != nil {

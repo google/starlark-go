@@ -237,6 +237,9 @@ type Iterator interface {
 }
 
 // A Mapping is a mapping from keys to values, such as a dictionary.
+//
+// If a type satisfies both Mapping and Iterable, the iterator yields
+// the keys of the mapping.
 type Mapping interface {
 	Value
 	// Get returns the value corresponding to the specified key,
@@ -247,7 +250,14 @@ type Mapping interface {
 	Get(Value) (v Value, found bool, err error)
 }
 
-var _ Mapping = (*Dict)(nil)
+// An IterableMapping is a mapping that supports key enumeration.
+type IterableMapping interface {
+	Mapping
+	Iterate() Iterator // see Iterable interface
+	Items() []Tuple    // a new slice containing all key/value pairs
+}
+
+var _ IterableMapping = (*Dict)(nil)
 
 // A HasSetKey supports map update using x[k]=v syntax, like a dictionary.
 type HasSetKey interface {

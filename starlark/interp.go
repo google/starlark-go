@@ -241,7 +241,7 @@ loop:
 			}
 			if kwargs != nil {
 				// Add key/value items from **kwargs dictionary.
-				dict, ok := kwargs.(*Dict)
+				dict, ok := kwargs.(IterableMapping)
 				if !ok {
 					err = fmt.Errorf("argument after ** must be a mapping, not %s", kwargs.Type())
 					break loop
