@@ -332,8 +332,8 @@ bool                         # True or False
 int                          # a signed integer of arbitrary magnitude
 float                        # an IEEE 754 double-precision floating point number
 string                       # a byte string
-list                         # a fixed-length sequence of values
-tuple                        # a fixed-length sequence of values, unmodifiable
+list                         # a modifiable sequence of values
+tuple                        # an unmodifiable sequence of values
 dict                         # a mapping from values to values
 set                          # a set of values
 function                     # a function implemented in Starlark
@@ -1183,7 +1183,7 @@ x = 2                   # static error: cannot reassign global x declared on lin
 If a name was pre-bound by the application, the Starlark program may
 explicitly bind it, but only once.
 
-<b>Implementation note</b>:
+<b>Implementation note:</b>
 An augmented assignment statement such as `x += 1` is considered a
 binding of `x`.
 However, because of the special behavior of `+=` for lists, which acts
@@ -2632,7 +2632,7 @@ else:
 An `if` statement is permitted only within a function definition.
 An `if` statement at top level results in a static error.
 
-<b>Implementation note</b>:
+<b>Implementation note:</b>
 The Go implementation of Starlark permits `if`-statements to appear at top-level
 if the `-globalreassign` flag is enabled.
 
@@ -2701,7 +2701,7 @@ iteration.
 In Starlark, a `for` loop is permitted only within a function definition.
 A `for` loop at top level results in a static error.
 
-<b>Implementation note<b>:
+<b>Implementation note:</b>
 The Go implementation of Starlark permits loops to appear at top-level
 if the `-globalreassign` flag is enabled.
 
