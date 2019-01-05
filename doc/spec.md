@@ -2632,7 +2632,7 @@ else:
 An `if` statement is permitted only within a function definition.
 An `if` statement at top level results in a static error.
 
-<b>Implementation note<b>:
+<b>Implementation note</b>:
 The Go implementation of Starlark permits `if`-statements to appear at top-level
 if the `-globalreassign` flag is enabled.
 
