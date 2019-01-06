@@ -134,7 +134,7 @@ f()
 load("module", "name") # ok
 
 def f():
-  load("foo", "bar") ### "load statement within a function"
+  load("foo", "bar") ### "load statement not at top level"
 
 load("foo",
      "",     ### "load: empty identifier"
@@ -149,17 +149,8 @@ load("foo",
 return ### "return statement not within a function"
 
 ---
-# if-statements and for-loops at top-level are forbidden
-# (without globalreassign option)
-
-for x in "abc": ### "for loop not within a function"
-  pass
-
-if x: ### "if statement not within a function"
-  pass
-
----
-# option:globalreassign
+# if-statements and for-loops at top-level are OK in core Starlark,
+# but they are rejected by the Bazel BUILD/.bzl dialect.
 
 for x in "abc": # ok
   pass
@@ -170,22 +161,11 @@ if x: # ok
 ---
 # while loops are forbidden (without -recursion option)
 
-def f():
-  while U: ### "dialect does not support while loops"
-    pass
-
----
-# option:recursion
-
-def f():
-  while U: # ok
-    pass
-
-while U: ### "while loop not within a function"
+while U: ### "dialect does not support while loops"
   pass
 
 ---
-# option:globalreassign option:recursion
+# option:recursion
 
 while U: # ok
   pass

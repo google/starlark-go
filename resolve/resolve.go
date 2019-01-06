@@ -93,7 +93,7 @@ var (
 	AllowLambda         = false // allow lambda expressions
 	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
 	AllowSet            = false // allow the 'set' built-in
-	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
+	AllowGlobalReassign = false // allow reassignment to globals declared in same file
 	AllowBitwise        = false // allow bitwise operations (&, |, ^, ~, <<, and >>)
 	AllowRecursion      = false // allow while statements and recursive functions
 )
@@ -211,6 +211,7 @@ type resolver struct {
 	isPredeclared, isUniversal func(name string) bool
 
 	loops int // number of enclosing for loops
+	ifs   int // number of enclosing if-statements
 
 	errors ErrorList
 }
@@ -431,12 +432,11 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		}
 
 	case *syntax.IfStmt:
-		if !AllowGlobalReassign && r.container().function == nil {
-			r.errorf(stmt.If, "if statement not within a function")
-		}
 		r.expr(stmt.Cond)
+		r.ifs++
 		r.stmts(stmt.True)
 		r.stmts(stmt.False)
+		r.ifs--
 
 	case *syntax.AssignStmt:
 		if !AllowBitwise {
@@ -463,9 +463,6 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		r.function(stmt.Def, stmt.Name.Name, &stmt.Function)
 
 	case *syntax.ForStmt:
-		if !AllowGlobalReassign && r.container().function == nil {
-			r.errorf(stmt.For, "for loop not within a function")
-		}
 		r.expr(stmt.X)
 		const allowRebind = false
 		r.assign(stmt.Vars, allowRebind)
@@ -476,9 +473,6 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 	case *syntax.WhileStmt:
 		if !AllowRecursion {
 			r.errorf(stmt.While, doesnt+"support while loops")
-		}
-		if !AllowGlobalReassign && r.container().function == nil {
-			r.errorf(stmt.While, "while loop not within a function")
 		}
 		r.expr(stmt.Cond)
 		r.loops++
@@ -494,8 +488,8 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		}
 
 	case *syntax.LoadStmt:
-		if r.container().function != nil {
-			r.errorf(stmt.Load, "load statement within a function")
+		if r.ifs > 0 || r.loops > 0 || r.container().function != nil {
+			r.errorf(stmt.Load, "load statement not at top level")
 		}
 
 		const allowRebind = false

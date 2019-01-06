@@ -97,6 +97,7 @@ concurrency, and other such features of Python.
     * [Expression statements](#expression-statements)
     * [If statements](#if-statements)
     * [For loops](#for-loops)
+    * [While loops](#while-loops)
     * [Break and Continue](#break-and-continue)
     * [Load statements](#load-statements)
     * [Module execution](#module-execution)
@@ -2629,14 +2630,6 @@ else:
         result = 0
 ```
 
-An `if` statement is permitted only within a function definition.
-An `if` statement at top level results in a static error.
-
-<b>Implementation note:</b>
-The Go implementation of Starlark permits `if`-statements to appear at top-level
-if the `-globalreassign` flag is enabled.
-
-
 ### While loops
 
 A `while` loop evaluates an expression (the _condition_) and if the truth
@@ -2697,13 +2690,6 @@ execute an arbitrary and perhaps unbounded number of iterations.
 Within the body of a `for` loop, `break` and `continue` statements may
 be used to stop the execution of the loop or advance to the next
 iteration.
-
-In Starlark, a `for` loop is permitted only within a function definition.
-A `for` loop at top level results in a static error.
-
-<b>Implementation note:</b>
-The Go implementation of Starlark permits loops to appear at top-level
-if the `-globalreassign` flag is enabled.
 
 
 ### Break and Continue
@@ -2776,7 +2762,8 @@ load("module.star", "x", "y", "z")       # assigns x, y, and z
 load("module.star", "x", y2="y", "z")    # assigns x, y2, and z
 ```
 
-A load statement within a function is a static error.
+Load statements must be at top level.
+It is a static error if a load statement appears within a function, if-statement, or a loop.
 
 
 ## Module execution
@@ -4034,5 +4021,4 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `key` and `reverse`.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
-* `if`, `for`, and `while` are permitted at toplevel (option: `-globalreassign`).
 * top-level rebindings are permitted (option: `-globalreassign`).
