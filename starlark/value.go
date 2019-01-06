@@ -268,7 +268,8 @@ type HasSetKey interface {
 var _ HasSetKey = (*Dict)(nil)
 
 // A HasBinary value may be used as either operand of these binary operators:
-//     +   -   *   /   %   in   not in   |   &
+//     +   -   *   /   //   %   in   not in   |   &   ^   <<   >>
+//
 // The Side argument indicates whether the receiver is the left or right operand.
 //
 // An implementation may decline to handle an operation by returning (nil, nil).
