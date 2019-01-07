@@ -209,6 +209,9 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// github.com/google/starlark-go/issues/80
 		{"([{<>}])", "( [ { < > } ] ) EOF"},
 		{"f();", "f ( ) ; EOF"},
+		// github.com/google/starlark-go/issues/104
+		{"def f():\n  if x:\n    pass\n  ", `def f ( ) : newline indent if x : newline indent pass newline outdent outdent EOF`},
+		{`while cond: pass`, "while cond : pass EOF"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {
