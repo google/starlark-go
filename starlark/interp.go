@@ -20,10 +20,6 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	if debug {
-		fmt.Printf("call of %s %v %v\n", fn.Name(), args, kwargs)
-	}
-
 	if !resolve.AllowRecursion {
 		// detect recursion
 		for fr := thread.frame.parent; fr != nil; fr = fr.parent {
@@ -36,13 +32,8 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 		}
 	}
 
-	return call(thread, args, kwargs)
-}
-
-func call(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	fr := thread.frame
-	fn := fr.callable.(*Function)
 	f := fn.funcode
+	fr := thread.frame
 	nlocals := len(f.Locals)
 	stack := make([]Value, nlocals+f.MaxStack)
 	locals := stack[:nlocals:nlocals] // local variables, starting with parameters
