@@ -685,7 +685,7 @@ start:
 	// other punctuation
 	defer sc.endToken(val)
 	switch c {
-	case '=', '<', '>', '!', '+', '-', '%', '/', '&', '|', '^', '~': // possibly followed by '='
+	case '=', '<', '>', '!', '+', '-', '%', '/', '&', '|', '^': // possibly followed by '='
 		start := sc.pos
 		sc.readRune()
 		if sc.peekRune() == '=' {
@@ -765,18 +765,18 @@ start:
 			return PIPE
 		case '^':
 			return CIRCUMFLEX
-		case '~':
-			return TILDE
 		}
 		panic("unreachable")
 
-	case ':', ';': // single-char tokens (except comma)
+	case ':', ';', '~': // single-char tokens (except comma)
 		sc.readRune()
 		switch c {
 		case ':':
 			return COLON
 		case ';':
 			return SEMI
+		case '~':
+			return TILDE
 		}
 		panic("unreachable")
 
