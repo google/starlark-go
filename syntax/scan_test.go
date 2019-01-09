@@ -209,6 +209,8 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		// github.com/google/starlark-go/issues/80
 		{"([{<>}])", "( [ { < > } ] ) EOF"},
 		{"f();", "f ( ) ; EOF"},
+		// github.com/google/starlark-go/issues/107
+		{"~= ~= 5", "~ = ~ = 5 EOF"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {
