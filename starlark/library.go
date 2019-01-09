@@ -603,60 +603,72 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 		orig := s // save original for error message
 
-		if len(s) > 1 {
-			var sign string
-			i := 0
-			if s[0] == '+' || s[0] == '-' {
-				sign = s[:1]
-				i++
-			}
-
-			if i < len(s) && s[i] == '0' {
-				hasbase := 0
-				if i+2 < len(s) {
-					switch s[i+1] {
-					case 'o', 'O':
-						// SetString doesn't understand "0o755"
-						// so modify s to "0755".
-						// Octals are rare, so allocation is fine.
-						s = sign + "0" + s[i+2:]
-						hasbase = 8
-					case 'x', 'X':
-						hasbase = 16
-					case 'b', 'B':
-						hasbase = 2
-					}
-
-					if hasbase != 0 && b != 0 {
-						// Explicit base doesn't match prefix,
-						// e.g. int("0o755", 16).
-						if hasbase != b {
-							goto invalid
-						}
-
-						// SetString requires base=0
-						// if there's a base prefix.
-						b = 0
-					}
-				}
-
-				// For automatic base detection,
-				// a string starting with zero
-				// must be all zeros.
-				// Thus we reject "0755".
-				if hasbase == 0 && b == 0 {
-					for ; i < len(s); i++ {
-						if s[i] != '0' {
-							goto invalid
-						}
-					}
-				}
+		// remove sign
+		var neg bool
+		if s != "" {
+			if s[0] == '+' {
+				s = s[1:]
+			} else if s[0] == '-' {
+				neg = true
+				s = s[1:]
 			}
 		}
 
-		// NOTE: int(x) permits arbitrary precision, unlike the scanner.
+		// remove base prefix
+		baseprefix := 0
+		if len(s) > 1 && s[0] == '0' {
+			if len(s) > 2 {
+				switch s[1] {
+				case 'o', 'O':
+					s = s[2:]
+					baseprefix = 8
+				case 'x', 'X':
+					s = s[2:]
+					baseprefix = 16
+				case 'b', 'B':
+					s = s[2:]
+					baseprefix = 2
+				}
+			}
+
+			// For automatic base detection,
+			// a string starting with zero
+			// must be all zeros.
+			// Thus we reject int("0755", 0).
+			if baseprefix == 0 && b == 0 {
+				for i := 1; i < len(s); i++ {
+					if s[i] != '0' {
+						goto invalid
+					}
+				}
+				return zero, nil
+			}
+
+			if b != 0 && baseprefix != 0 && baseprefix != b {
+				// Explicit base doesn't match prefix,
+				// e.g. int("0o755", 16).
+				goto invalid
+			}
+		}
+
+		// select base
+		if b == 0 {
+			if baseprefix != 0 {
+				b = baseprefix
+			} else {
+				b = 10
+			}
+		}
+
+		// s has no sign or base prefix.
+		//
+		// int(x) permits arbitrary precision, unlike the scanner.
 		if i, ok := new(big.Int).SetString(s, b); ok {
-			return Int{i}, nil
+			res := Int{i}
+			if neg {
+				res = zero.Sub(res)
+			}
+			return res, nil
 		}
 
 	invalid:
