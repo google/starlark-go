@@ -151,6 +151,11 @@ assert.fails(lambda: int("0123", 0), "invalid literal.*base 0") # valid in Pytho
 assert.fails(lambda: int("-0123", 0), "invalid literal.*base 0")
 # github.com/google/starlark-go/issues/108
 assert.fails(lambda: int("0Oxa", 8), "invalid literal with base 8: 0Oxa")
+# follow-on bugs to issue 108
+assert.fails(lambda: int("--4"), "invalid literal with base 10: --4")
+assert.fails(lambda: int("++4"), "invalid literal with base 10: \+\+4")
+assert.fails(lambda: int("+-4"), "invalid literal with base 10: \+-4")
+assert.fails(lambda: int("0x-4", 16), "invalid literal with base 16: 0x-4")
 
 # bitwise union (int|int), intersection (int&int), XOR (int^int), unary not (~int),
 # left shift (int<<int), and right shift (int>>int).
