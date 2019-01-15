@@ -1724,7 +1724,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 			}
 			arg = args[index]
 			index++
-		} else if num, err := strconv.Atoi(name); err == nil && !strings.HasPrefix(name, "-") {
+		} else if num, ok := decimal(name); ok {
 			// positional argument
 			if auto {
 				return nil, fmt.Errorf("cannot switch from automatic field numbering to manual field specification")
@@ -1778,6 +1778,22 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 		}
 	}
 	return String(buf.String()), nil
+}
+
+// decimal interprets s as a sequence of decimal digits.
+func decimal(s string) (x int, ok bool) {
+	n := len(s)
+	for i := 0; i < n; i++ {
+		digit := s[i] - '0'
+		if digit > 9 {
+			return 0, false
+		}
+		x = x*10 + int(digit)
+		if x < 0 {
+			return 0, false // underflow
+		}
+	}
+	return x, true
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·index
