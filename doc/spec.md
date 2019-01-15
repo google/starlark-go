@@ -2354,7 +2354,7 @@ function created by the lambda expression is called `lambda`.
 def twice(x):
    return x * 2
 
-twice = lambda(x): x * 2
+twice = lambda x: x * 2
 ```
 
 <b>Implementation note:</b>
