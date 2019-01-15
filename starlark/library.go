@@ -660,6 +660,12 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 			}
 		}
 
+		// we explicitly handled sign above.
+		// if a sign remains, it is invalid.
+		if s != "" && (s[0] == '-' || s[0] == '+') {
+			goto invalid
+		}
+
 		// s has no sign or base prefix.
 		//
 		// int(x) permits arbitrary precision, unlike the scanner.
