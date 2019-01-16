@@ -857,35 +857,16 @@ func range_(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	}
 
 	// TODO(adonovan): analyze overflow/underflows cases for 32-bit implementations.
-
-	var n int
-	switch len(args) {
-	case 1:
+	if len(args) == 1 {
 		// range(stop)
 		start, stop = 0, start
-		fallthrough
-	case 2:
-		// range(start, stop)
-		if stop > start {
-			n = stop - start
-		}
-	case 3:
-		// range(start, stop, step)
-		switch {
-		case step > 0:
-			if stop > start {
-				n = (stop-1-start)/step + 1
-			}
-		case step < 0:
-			if start > stop {
-				n = (start-1-stop)/-step + 1
-			}
-		default:
-			return nil, fmt.Errorf("range: step argument must not be zero")
-		}
+	}
+	if step == 0 {
+		// we were given range(start, stop, 0)
+		return nil, fmt.Errorf("range: step argument must not be zero")
 	}
 
-	return rangeValue{start: start, stop: stop, step: step, len: n}, nil
+	return rangeValue{start: start, stop: stop, step: step, len: rangeLen(start, stop, step)}, nil
 }
 
 // A rangeValue is a comparable, immutable, indexable sequence of integers
@@ -904,21 +885,33 @@ func (r rangeValue) Len() int          { return r.len }
 func (r rangeValue) Index(i int) Value { return MakeInt(r.start + i*r.step) }
 func (r rangeValue) Iterate() Iterator { return &rangeIterator{r, 0} }
 
+// rangeLen calculates the length of a range with the provided start, stop, and step.
+// caller must ensure that step is non-zero.
+func rangeLen(start, stop, step int) int {
+	switch {
+	case step > 0:
+		if stop > start {
+			return (stop-1-start)/step + 1
+		}
+	case step < 0:
+		if start > stop {
+			return (start-1-stop)/-step + 1
+		}
+	default:
+		panic("rangeLen: zero step")
+	}
+	return 0
+}
+
 func (r rangeValue) Slice(start, end, step int) Value {
 	newStart := r.start + r.step*start
 	newStop := r.start + r.step*end
 	newStep := r.step * step
-	var newLen int
-	if step > 0 {
-		newLen = (newStop-1-newStart)/newStep + 1
-	} else {
-		newLen = (newStart-1-newStop)/-newStep + 1
-	}
 	return rangeValue{
 		start: newStart,
 		stop:  newStop,
 		step:  newStep,
-		len:   newLen,
+		len:   rangeLen(newStart, newStop, newStep),
 	}
 }
 
