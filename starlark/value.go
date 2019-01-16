@@ -192,7 +192,8 @@ type Sliceable interface {
 	Indexable
 	// For positive strides (step > 0), 0 <= start <= end <= n.
 	// For negative strides (step < 0), -1 <= end <= start < n.
-	// The caller must ensure that the start and end indices are valid.
+	// The caller must ensure that the start and end indices are valid
+	// and that step is non-zero.
 	Slice(start, end, step int) Value
 }
 
