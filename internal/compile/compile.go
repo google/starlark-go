@@ -1567,27 +1567,23 @@ func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
 		p++
 	}
 
-	// Python2, Python3, and Starlark-in-Java all permit named arguments
+	// Python2 and Python3 both permit named arguments
 	// to appear both before and after a *args argument:
 	//   f(1, 2, x=3, *[4], y=5, **dict(z=6))
 	//
-	// However all three implement different argument evaluation orders:
+	// They also differ in their evaluation order:
 	//  Python2: 1 2 3 5 4 6 (*args and **kwargs evaluated last)
 	//  Python3: 1 2 4 3 5 6 (positional args evaluated before named args)
-	//  Starlark-in-Java: 1 2 3 4 5 6 (lexical order)
+	// Starlark-in-Java historically used a third order:
+	//  Lexical: 1 2 3 4 5 6 (all args evaluated left-to-right)
 	//
-	// The Starlark-in-Java semantics are clean but hostile to a
-	// compiler-based implementation because they require that the
-	// compiler emit code for positional, named, *args, more named,
-	// and *kwargs arguments and provide the callee with a map of
-	// the terrain.
+	// After discussion in github.com/bazelbuild/starlark#13, the
+	// spec now requires Starlark to statically reject named
+	// arguments after *args (e.g. y=5), and to use Python2-style
+	// evaluation order. This is both easy to implement and
+	// consistent with lexical order:
 	//
-	// For now we implement the Python2 semantics, but
-	// the spec needs to clarify the correct approach.
-	// Perhaps it would be best if we statically rejected
-	// named arguments after *args (e.g. y=5) so that the
-	// Python2 implementation strategy matches lexical order.
-	// Discussion in github.com/bazelbuild/starlark#13.
+	//   f(1, 2, x=3, *[4], **dict(z=6)) # 1 2 3 4 6
 
 	// *args
 	if varargs != nil {

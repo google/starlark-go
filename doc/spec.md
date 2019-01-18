@@ -990,6 +990,13 @@ same name, such as `f(x=1, x=2)`. A call that provides a `**kwargs`
 argument may yet have two values for the same name, such as
 `f(x=1, **dict(x=2))`. This results in a dynamic error.
 
+Function arguments are evaluated in the order they appear in the call.
+<!-- see https://github.com/bazelbuild/starlark/issues/13 -->
+
+Unlike Python, Starlark does not allow more than one `*args` argument in a
+call, and if a `*args` argument is present it must appear after all
+positional and named arguments.
+
 A function call completes normally after the execution of either a
 `return` statement, or of the last statement in the function body.
 The result of the function call is the value of the return statement's
