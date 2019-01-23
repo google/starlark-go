@@ -88,7 +88,7 @@ func main() {
 	// Print the global environment.
 	if *showenv {
 		for _, name := range globals.Keys() {
-			if strings.HasPrefix(name, "_") {
+			if !strings.HasPrefix(name, "_") {
 				fmt.Fprintf(os.Stderr, "%s = %s\n", name, globals[name])
 			}
 		}
