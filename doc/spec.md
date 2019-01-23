@@ -443,9 +443,6 @@ arithmetic is exact, motivated by the need for lossless manipulation
 of protocol messages which may contain signed and unsigned 64-bit
 integers.
 The Java implementation currently supports only signed 32-bit integers.
-
-The Go implementation of Starlark requires the `-bitwise` flag to
-enable support for `&`, `|`, `^`, `~`, `<<`, and `>>` operations.
 The Java implementation does not support `^`, `~`, `<<`, and `>>` operations.
 
 
@@ -837,8 +834,7 @@ A set used in a Boolean context is considered true if it is non-empty.
 
 <b>Implementation note:</b>
 The Go implementation of Starlark requires the `-set` flag to
-enable support for sets and the `-bitwise` flag to enable support for
-the `&`, `|`, and `^` operators.
+enable support for sets.
 The Java implementation does not support sets.
 
 
@@ -4021,7 +4017,6 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 
 * Integers are represented with infinite precision.
 * Integer arithmetic is exact.
-* Integers support bitwise operators `&`, `|`, `<<`, `>>`, `^`, `~`, and their assignment forms.
 * Floating-point literals are supported (option: `-float`).
 * The `float` built-in function is provided (option: `-float`).
 * Real division using `float / float` is supported (option: `-float`).
