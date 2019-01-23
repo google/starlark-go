@@ -1439,18 +1439,23 @@ func list_remove(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·pop
 func list_pop(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
 	list := recv.(*List)
-	index := list.Len() - 1
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 0, &index); err != nil {
+	n := list.Len()
+	i := n - 1
+	if err := UnpackPositionalArgs(fnname, args, kwargs, 0, &i); err != nil {
 		return nil, err
 	}
-	if index < 0 || index >= list.Len() {
-		return nil, fmt.Errorf("pop: index %d is out of range [0:%d]", index, list.Len())
+	origI := i
+	if i < 0 {
+		i += n
+	}
+	if i < 0 || i >= n {
+		return nil, outOfRange(origI, n, list)
 	}
 	if err := list.checkMutable("pop from"); err != nil {
 		return nil, err
 	}
-	res := list.elems[index]
-	list.elems = append(list.elems[:index], list.elems[index+1:]...)
+	res := list.elems[i]
+	list.elems = append(list.elems[:i], list.elems[i+1:]...)
 	return res, nil
 }
 
