@@ -288,6 +288,7 @@ assert.eq(g(), {"one": 1, "two": 2})
 
 ---
 # parenthesized LHS in augmented assignment (success)
+# option:globalreassign
 load("assert.star", "assert")
 
 a = 5
