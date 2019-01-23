@@ -293,19 +293,15 @@ type use struct {
 
 // bind creates a binding for id in the current block,
 // if there is not one already, and reports an error if
-// a global was re-bound and allowRebind is false.
+// a global was re-bound.
 // It returns whether a binding already existed.
-func (r *resolver) bind(id *syntax.Ident, allowRebind bool) bool {
+func (r *resolver) bind(id *syntax.Ident) bool {
 	// Binding outside any local (comprehension/function) block?
 	if r.env.isModule() {
 		id.Scope = uint8(Global)
 		prev, ok := r.globals[id.Name]
 		if ok {
-			// Global reassignments are permitted only if
-			// they are of the form x += y.  We can't tell
-			// statically whether it's a reassignment
-			// (e.g. int += int) or a mutation (list += list).
-			if !allowRebind && !AllowGlobalReassign {
+			if !AllowGlobalReassign {
 				r.errorf(id.NamePos, "cannot reassign global %s declared at %s", id.Name, prev.NamePos)
 			}
 			id.Index = prev.Index
@@ -446,11 +442,6 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			}
 		}
 		r.expr(stmt.RHS)
-		// x += y may be a re-binding of a global variable,
-		// but we cannot tell without knowing the type of x.
-		// (If x is a list it's equivalent to x.extend(y).)
-		// The use is conservatively treated as binding,
-		// but we suppress the error if it's an already-bound global.
 		isAugmented := stmt.Op != syntax.EQ
 		r.assign(stmt.LHS, isAugmented)
 
@@ -458,8 +449,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		if !AllowNestedDef && r.container().function != nil {
 			r.errorf(stmt.Def, doesnt+"support nested def")
 		}
-		const allowRebind = false
-		r.bind(stmt.Name, allowRebind)
+		r.bind(stmt.Name)
 		r.function(stmt.Def, stmt.Name.Name, &stmt.Function)
 
 	case *syntax.ForStmt:
@@ -467,8 +457,8 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			r.errorf(stmt.For, "for loop not within a function")
 		}
 		r.expr(stmt.X)
-		const allowRebind = false
-		r.assign(stmt.Vars, allowRebind)
+		const isAugmented = false
+		r.assign(stmt.Vars, isAugmented)
 		r.loops++
 		r.stmts(stmt.Body)
 		r.loops--
@@ -498,7 +488,6 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			r.errorf(stmt.Load, "load statement within a function")
 		}
 
-		const allowRebind = false
 		for i, from := range stmt.From {
 			if from.Name == "" {
 				r.errorf(from.NamePos, "load: empty identifier")
@@ -507,7 +496,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			if from.Name[0] == '_' {
 				r.errorf(from.NamePos, "load: names with leading underscores are not exported: %s", from.Name)
 			}
-			r.bind(stmt.To[i], allowRebind)
+			r.bind(stmt.To[i])
 		}
 
 	default:
@@ -519,8 +508,7 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 	switch lhs := lhs.(type) {
 	case *syntax.Ident:
 		// x = ...
-		allowRebind := isAugmented
-		r.bind(lhs, allowRebind)
+		r.bind(lhs)
 
 	case *syntax.IndexExpr:
 		// x[i] = ...
@@ -616,15 +604,15 @@ func (r *resolver) expr(e syntax.Expr) {
 		// enclosing container (function/module) block.
 		r.push(&block{comp: e})
 
-		const allowRebind = false
-		r.assign(clause.Vars, allowRebind)
+		const isAugmented = false
+		r.assign(clause.Vars, isAugmented)
 
 		for _, clause := range e.Clauses[1:] {
 			switch clause := clause.(type) {
 			case *syntax.IfClause:
 				r.expr(clause.Cond)
 			case *syntax.ForClause:
-				r.assign(clause.Vars, allowRebind)
+				r.assign(clause.Vars, isAugmented)
 				r.expr(clause.X)
 			}
 		}
@@ -755,7 +743,6 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 	b := &block{function: function}
 	r.push(b)
 
-	const allowRebind = false
 	var seenOptional bool
 	var star, starStar *syntax.Ident // *args, **kwargs
 	for _, param := range function.Params {
@@ -769,7 +756,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			} else if seenOptional {
 				r.errorf(param.NamePos, "required parameter may not follow optional")
 			}
-			if r.bind(param, allowRebind) {
+			if r.bind(param) {
 				r.errorf(param.NamePos, "duplicate parameter: %s", param.Name)
 			}
 
@@ -780,7 +767,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			} else if star != nil {
 				r.errorf(param.OpPos, "optional parameter may not follow *%s", star.Name)
 			}
-			if id := param.X.(*syntax.Ident); r.bind(id, allowRebind) {
+			if id := param.X.(*syntax.Ident); r.bind(id) {
 				r.errorf(param.OpPos, "duplicate parameter: %s", id.Name)
 			}
 			seenOptional = true
@@ -803,7 +790,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 					starStar = id
 				}
 			}
-			if r.bind(id, allowRebind) {
+			if r.bind(id) {
 				r.errorf(id.NamePos, "duplicate parameter: %s", id.Name)
 			}
 		}

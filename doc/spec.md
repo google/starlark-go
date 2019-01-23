@@ -1090,7 +1090,7 @@ Four Starlark constructs bind names, as illustrated in the example below:
 `load` statements (`a` and `b`),
 `def` statements (`c`),
 function parameters (`d`),
-and assignments (`e`, `h`, including the augmented assignment `e += h`).
+and assignments (`e`, `h`, including the augmented assignment `e += 1`).
 Variables may be assigned or re-assigned explicitly (`e`, `h`), or implicitly, as
 in a `for`-loop (`f`) or comprehension (`g`, `i`).
 
@@ -1182,7 +1182,7 @@ x = 2                   # static error: cannot reassign global x declared on lin
 ```
 
 <!-- The above rule, and the rule that forbids if-statements and loops at
-     toplevel, exist to ensure that there is exactly one statement
+     top level, exist to ensure that there is exactly one statement
      that binds each global variable, which makes cross-referenced
      documentation more useful, the designers assure me, but
      I am skeptical that it's worth the trouble. -->
@@ -1190,14 +1190,13 @@ x = 2                   # static error: cannot reassign global x declared on lin
 If a name was pre-bound by the application, the Starlark program may
 explicitly bind it, but only once.
 
+An augmented assignment statement such as `x += y` is considered both a
+reference to `x` and a binding use of `x`, so it may not be used at
+top level.
+
 <b>Implementation note:</b>
-An augmented assignment statement such as `x += 1` is considered a
-binding of `x`.
-However, because of the special behavior of `+=` for lists, which acts
-like a non-binding reference, the Go implementation suppresses the
-"cannot reassign" error for all augmented assigments at toplevel,
-whereas the Java implementation reports the error even when the
-statement would apply `+=` to a list.
+The Go implementation of Starlark permits augmented assignments to appear
+at top level if the `-globalreassign` flag is enabled.
 
 A function may refer to variables defined in an enclosing function.
 In this example, the inner function `f` refers to a variable `x`
@@ -2640,7 +2639,7 @@ An `if` statement is permitted only within a function definition.
 An `if` statement at top level results in a static error.
 
 <b>Implementation note:</b>
-The Go implementation of Starlark permits `if`-statements to appear at top-level
+The Go implementation of Starlark permits `if`-statements to appear at top level
 if the `-globalreassign` flag is enabled.
 
 
@@ -2667,7 +2666,7 @@ A `while` statement at top level results in a static error.
 
 <b>Implementation note:</b>
 The Go implementation of Starlark permits `while` loops only if the `-recursion` flag is enabled.
-A `while` statement is permitted at top-level if the `-globalreassign` flag is enabled.
+A `while` statement is permitted at top level if the `-globalreassign` flag is enabled.
 
 
 ### For loops
@@ -2709,7 +2708,7 @@ In Starlark, a `for` loop is permitted only within a function definition.
 A `for` loop at top level results in a static error.
 
 <b>Implementation note:</b>
-The Go implementation of Starlark permits loops to appear at top-level
+The Go implementation of Starlark permits loops to appear at top level
 if the `-globalreassign` flag is enabled.
 
 
@@ -4033,7 +4032,6 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * The `chr` and `ord` built-in functions are supported.
 * The `set` built-in function is provided (option: `-set`).
 * `set & set` and `set | set` compute set intersection and union, respectively.
-* `x += y` rebindings are permitted at top level.
 * `assert` is a valid identifier.
 * The parser accepts unary `+` expressions.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
@@ -4041,5 +4039,5 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `key` and `reverse`.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
-* `if`, `for`, and `while` are permitted at toplevel (option: `-globalreassign`).
+* `if`, `for`, and `while` are permitted at top level (option: `-globalreassign`).
 * top-level rebindings are permitted (option: `-globalreassign`).
