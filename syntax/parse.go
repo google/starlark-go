@@ -72,8 +72,11 @@ func ParseCompoundStmt(filename string, readline func() ([]byte, error)) (f *Fil
 	case NEWLINE:
 		// blank line
 	default:
-		// Don't consume newline, to avoid blocking again.
 		stmts = p.parseSimpleStmt(stmts, false)
+		// Require but don't consume newline, to avoid blocking again.
+		if p.tok != NEWLINE {
+			p.in.errorf(p.in.pos, "invalid syntax")
+		}
 	}
 
 	return &File{Path: filename, Stmts: stmts}, nil
