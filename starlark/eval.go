@@ -490,16 +490,24 @@ func getIndex(x, y Value) (Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
 		}
+		origI := i
 		if i < 0 {
 			i += n
 		}
 		if i < 0 || i >= n {
-			return nil, fmt.Errorf("%s index %d out of range [0:%d]",
-				x.Type(), i, n)
+			return nil, outOfRange(origI, n, x)
 		}
 		return x.Index(i), nil
 	}
 	return nil, fmt.Errorf("unhandled index operation %s[%s]", x.Type(), y.Type())
+}
+
+func outOfRange(i, n int, x Value) error {
+	if n == 0 {
+		return fmt.Errorf("index %d out of range: empty %s", i, x.Type())
+	} else {
+		return fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), i, -n, n-1)
+	}
 }
 
 // setIndex implements x[y] = z.
@@ -511,15 +519,17 @@ func setIndex(x, y, z Value) error {
 		}
 
 	case HasSetIndex:
+		n := x.Len()
 		i, err := AsInt32(y)
 		if err != nil {
 			return err
 		}
+		origI := i
 		if i < 0 {
-			i += x.Len()
+			i += n
 		}
-		if i < 0 || i >= x.Len() {
-			return fmt.Errorf("%s index %d out of range [0:%d]", x.Type(), i, x.Len())
+		if i < 0 || i >= n {
+			return outOfRange(origI, n, x)
 		}
 		return x.SetIndex(i, z)
 

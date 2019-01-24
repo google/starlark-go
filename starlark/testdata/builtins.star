@@ -119,7 +119,7 @@ assert.true(4 not in range(4))
 assert.true(1e15 not in range(4)) # too big for int32
 assert.true(1e100 not in range(4)) # too big for int64
 # https://github.com/google/starlark-go/issues/116
-assert.fails(lambda: range(0, 0, 2)[:][0], "range index 0 out of range \[0:0\]")
+assert.fails(lambda: range(0, 0, 2)[:][0], "index 0 out of range: empty range")
 
 # list
 assert.eq(list("abc".elems()), ["a", "b", "c"])

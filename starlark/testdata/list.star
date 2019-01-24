@@ -16,14 +16,14 @@ assert.true(not [])
 
 # indexing, x[i]
 abc = list("abc".elems())
-assert.fails(lambda : abc[-4], "list index -1 out of range \\[0:3\\]")
+assert.fails(lambda : abc[-4], "list index -4 out of range \[-3:2]")
 assert.eq(abc[-3], "a")
 assert.eq(abc[-2], "b")
 assert.eq(abc[-1], "c")
 assert.eq(abc[0], "a")
 assert.eq(abc[1], "b")
 assert.eq(abc[2], "c")
-assert.fails(lambda : abc[3], "list index 3 out of range \\[0:3\\]")
+assert.fails(lambda : abc[3], "list index 3 out of range \[-3:2]")
 
 # x[i] = ...
 x3 = [0, 1, 2]
@@ -98,12 +98,18 @@ listcompblock()
 
 # list.pop
 x4 = [1, 2, 3, 4, 5]
+assert.fails(lambda : x4.pop(-6), "index -6 out of range \[-5:4]")
+assert.fails(lambda : x4.pop(6), "index 6 out of range \[-5:4]")
 assert.eq(x4.pop(), 5)
 assert.eq(x4, [1, 2, 3, 4])
 assert.eq(x4.pop(1), 2)
 assert.eq(x4, [1, 3, 4])
 assert.eq(x4.pop(0), 1)
 assert.eq(x4, [3, 4])
+assert.eq(x4.pop(-2), 3)
+assert.eq(x4, [4])
+assert.eq(x4.pop(-1), 4)
+assert.eq(x4, [])
 
 # TODO(adonovan): test uses of list as sequence
 # (for loop, comprehension, library functions).
