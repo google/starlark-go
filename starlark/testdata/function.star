@@ -66,6 +66,19 @@ fibgen = lambda fib: lambda x: (x if x<2 else fib(x-1)+fib(x-2))
 fib2 = Y(fibgen)
 assert.fails(lambda: [fib2(x) for x in range(10)], "function lambda called recursively")
 
+# However, this stricter check outlaws many useful programs
+# that are still bounded, and creates a hazard because
+# helper functions such as map below cannot be used to
+# call functions that themselves use map:
+def map(f, seq): return [f(x) for x in seq]
+def double(x): return x+x
+assert.eq(map(double, [1, 2, 3]), [2, 4, 6])
+assert.eq(map(double, ["a", "b", "c"]), ["aa", "bb", "cc"])
+def mapdouble(x): return map(double, x)
+assert.fails(lambda: map(mapdouble, ([1, 2, 3], ["a", "b", "c"])),
+             'function map called recursively')
+# With the -recursion option it would yield [[2, 4, 6], ["aa", "bb", "cc"]].
+
 # call of function not through its name
 # (regression test for parsing suffixes of primary expressions)
 hf = hasfields()
