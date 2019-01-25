@@ -288,6 +288,11 @@ func TestCompoundStmt(t *testing.T) {
 		// Even as a 1-liner, the following blank line is required.
 		{"if cond: pass\n\n",
 			`(IfStmt Cond=cond True=((BranchStmt Token=pass)))`},
+		// github.com/google/starlark-go/issues/121
+		{"a; b; c\n",
+			`(ExprStmt X=a)(ExprStmt X=b)(ExprStmt X=c)`},
+		{"a; b c\n",
+			`invalid syntax`},
 	} {
 
 		// Fake readline input from string.
@@ -301,14 +306,14 @@ func TestCompoundStmt(t *testing.T) {
 			return nil, sc.Err()
 		}
 
+		var got string
 		f, err := syntax.ParseCompoundStmt("foo.star", readline)
 		if err != nil {
-			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
-			continue
-		}
-		var got string
-		for _, stmt := range f.Stmts {
-			got += treeString(stmt)
+			got = stripPos(err)
+		} else {
+			for _, stmt := range f.Stmts {
+				got += treeString(stmt)
+			}
 		}
 		if test.want != got {
 			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
