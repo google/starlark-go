@@ -15,7 +15,6 @@ import (
 )
 
 func setOptions(src string) {
-	resolve.AllowBitwise = option(src, "bitwise")
 	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")
 	resolve.AllowLambda = option(src, "lambda")

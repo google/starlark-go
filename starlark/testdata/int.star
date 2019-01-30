@@ -1,5 +1,5 @@
 # Tests of Starlark 'int'
-# option:bitwise option:float
+# option:float
 
 load("assert.star", "assert")
 
