@@ -2178,8 +2178,6 @@ func string_find_impl(fnname string, s string, args Tuple, kwargs []Tuple, allow
 func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	if len(updates) == 1 {
 		switch updates := updates[0].(type) {
-		case NoneType:
-			// no-op
 		case IterableMapping:
 			// Iterate over dict's key/value pairs, not just keys.
 			for _, item := range updates.Items() {
