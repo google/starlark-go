@@ -91,18 +91,17 @@ def g():
   f()
 
 ---
-# It's permitted to rebind a global using a += assignment.
+# It is not permitted to rebind a global using a += assignment.
 
 x = [1]
 x.extend([2]) # ok
-x += [3] # ok (a list mutation, not a global rebinding)
+x += [3] ### `cannot reassign global x`
 
 def f():
    x += [4] # x is local to f
 
 y = 1
-y += 2 # ok (even though it is in fact a global rebinding)
-
+y += 2 ### `cannot reassign global y`
 z += 3 # ok (but fails dynamically because z is undefined)
 
 ---
@@ -193,15 +192,15 @@ while U: # ok
 ---
 # The parser allows any expression on the LHS of an assignment.
 
-1 = 2 ### "can't assign to literal"
-1+2 = 3 ### "can't assign to binaryexpr"
-f() = 4 ### "can't assign to callexpr"
+1 = 0 ### "can't assign to literal"
+1+2 = 0 ### "can't assign to binaryexpr"
+f() = 0 ### "can't assign to callexpr"
 
-[a, b] = [1, 2]
-[a, b] += [3, 4] ### "can't use list expression in augmented assignment"
-(a, b) += [3, 4] ### "can't use tuple expression in augmented assignment"
-[] = [] ### "can't assign to \\[\\]"
-() = () ### "can't assign to ()"
+[a, b] = 0
+[c, d] += 0 ### "can't use list expression in augmented assignment"
+(e, f) += 0 ### "can't use tuple expression in augmented assignment"
+[] = 0 ### "can't assign to \\[\\]"
+() = 0 ### "can't assign to ()"
 
 ---
 # break and continue statements must appear within a loop

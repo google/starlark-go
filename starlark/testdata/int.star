@@ -1,5 +1,5 @@
 # Tests of Starlark 'int'
-# option:bitwise option:float
+# option:float
 
 load("assert.star", "assert")
 
@@ -90,6 +90,24 @@ assert.fails(lambda: int("-0x12"), "invalid literal with base 10")
 assert.fails(lambda: int("0o123"), "invalid literal.*base 10")
 assert.fails(lambda: int("-0o123"), "invalid literal.*base 10")
 # int from string, explicit base
+assert.eq(int("0"), 0)
+assert.eq(int("00"), 0)
+assert.eq(int("0", base=10), 0)
+assert.eq(int("00", base=10), 0)
+assert.eq(int("0", base=8), 0)
+assert.eq(int("00", base=8), 0)
+assert.eq(int("-0"), 0)
+assert.eq(int("-00"), 0)
+assert.eq(int("-0", base=10), 0)
+assert.eq(int("-00", base=10), 0)
+assert.eq(int("-0", base=8), 0)
+assert.eq(int("-00", base=8), 0)
+assert.eq(int("+0"), 0)
+assert.eq(int("+00"), 0)
+assert.eq(int("+0", base=10), 0)
+assert.eq(int("+00", base=10), 0)
+assert.eq(int("+0", base=8), 0)
+assert.eq(int("+00", base=8), 0)
 assert.eq(int("11", base=9), 10)
 assert.eq(int("-11", base=9), -10)
 assert.eq(int("10011", base=2), 19)
@@ -131,6 +149,13 @@ assert.eq(int("+0o123", 0), +83)
 assert.eq(int("-0o123", 0), -83)
 assert.fails(lambda: int("0123", 0), "invalid literal.*base 0") # valid in Python 2.7
 assert.fails(lambda: int("-0123", 0), "invalid literal.*base 0")
+# github.com/google/starlark-go/issues/108
+assert.fails(lambda: int("0Oxa", 8), "invalid literal with base 8: 0Oxa")
+# follow-on bugs to issue 108
+assert.fails(lambda: int("--4"), "invalid literal with base 10: --4")
+assert.fails(lambda: int("++4"), "invalid literal with base 10: \+\+4")
+assert.fails(lambda: int("+-4"), "invalid literal with base 10: \+-4")
+assert.fails(lambda: int("0x-4", 16), "invalid literal with base 16: 0x-4")
 
 # bitwise union (int|int), intersection (int&int), XOR (int^int), unary not (~int),
 # left shift (int<<int), and right shift (int>>int).

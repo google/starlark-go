@@ -603,60 +603,78 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 		orig := s // save original for error message
 
-		if len(s) > 1 {
-			var sign string
-			i := 0
-			if s[0] == '+' || s[0] == '-' {
-				sign = s[:1]
-				i++
-			}
-
-			if i < len(s) && s[i] == '0' {
-				hasbase := 0
-				if i+2 < len(s) {
-					switch s[i+1] {
-					case 'o', 'O':
-						// SetString doesn't understand "0o755"
-						// so modify s to "0755".
-						// Octals are rare, so allocation is fine.
-						s = sign + "0" + s[i+2:]
-						hasbase = 8
-					case 'x', 'X':
-						hasbase = 16
-					case 'b', 'B':
-						hasbase = 2
-					}
-
-					if hasbase != 0 && b != 0 {
-						// Explicit base doesn't match prefix,
-						// e.g. int("0o755", 16).
-						if hasbase != b {
-							goto invalid
-						}
-
-						// SetString requires base=0
-						// if there's a base prefix.
-						b = 0
-					}
-				}
-
-				// For automatic base detection,
-				// a string starting with zero
-				// must be all zeros.
-				// Thus we reject "0755".
-				if hasbase == 0 && b == 0 {
-					for ; i < len(s); i++ {
-						if s[i] != '0' {
-							goto invalid
-						}
-					}
-				}
+		// remove sign
+		var neg bool
+		if s != "" {
+			if s[0] == '+' {
+				s = s[1:]
+			} else if s[0] == '-' {
+				neg = true
+				s = s[1:]
 			}
 		}
 
-		// NOTE: int(x) permits arbitrary precision, unlike the scanner.
+		// remove base prefix
+		baseprefix := 0
+		if len(s) > 1 && s[0] == '0' {
+			if len(s) > 2 {
+				switch s[1] {
+				case 'o', 'O':
+					s = s[2:]
+					baseprefix = 8
+				case 'x', 'X':
+					s = s[2:]
+					baseprefix = 16
+				case 'b', 'B':
+					s = s[2:]
+					baseprefix = 2
+				}
+			}
+
+			// For automatic base detection,
+			// a string starting with zero
+			// must be all zeros.
+			// Thus we reject int("0755", 0).
+			if baseprefix == 0 && b == 0 {
+				for i := 1; i < len(s); i++ {
+					if s[i] != '0' {
+						goto invalid
+					}
+				}
+				return zero, nil
+			}
+
+			if b != 0 && baseprefix != 0 && baseprefix != b {
+				// Explicit base doesn't match prefix,
+				// e.g. int("0o755", 16).
+				goto invalid
+			}
+		}
+
+		// select base
+		if b == 0 {
+			if baseprefix != 0 {
+				b = baseprefix
+			} else {
+				b = 10
+			}
+		}
+
+		// we explicitly handled sign above.
+		// if a sign remains, it is invalid.
+		if s != "" && (s[0] == '-' || s[0] == '+') {
+			goto invalid
+		}
+
+		// s has no sign or base prefix.
+		//
+		// int(x) permits arbitrary precision, unlike the scanner.
 		if i, ok := new(big.Int).SetString(s, b); ok {
-			return Int{i}, nil
+			res := Int{i}
+			if neg {
+				res = zero.Sub(res)
+			}
+			return res, nil
 		}
 
 	invalid:
@@ -839,35 +857,16 @@ func range_(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	}
 
 	// TODO(adonovan): analyze overflow/underflows cases for 32-bit implementations.
-
-	var n int
-	switch len(args) {
-	case 1:
+	if len(args) == 1 {
 		// range(stop)
 		start, stop = 0, start
-		fallthrough
-	case 2:
-		// range(start, stop)
-		if stop > start {
-			n = stop - start
-		}
-	case 3:
-		// range(start, stop, step)
-		switch {
-		case step > 0:
-			if stop > start {
-				n = (stop-1-start)/step + 1
-			}
-		case step < 0:
-			if start > stop {
-				n = (start-1-stop)/-step + 1
-			}
-		default:
-			return nil, fmt.Errorf("range: step argument must not be zero")
-		}
+	}
+	if step == 0 {
+		// we were given range(start, stop, 0)
+		return nil, fmt.Errorf("range: step argument must not be zero")
 	}
 
-	return rangeValue{start: start, stop: stop, step: step, len: n}, nil
+	return rangeValue{start: start, stop: stop, step: step, len: rangeLen(start, stop, step)}, nil
 }
 
 // A rangeValue is a comparable, immutable, indexable sequence of integers
@@ -886,21 +885,33 @@ func (r rangeValue) Len() int          { return r.len }
 func (r rangeValue) Index(i int) Value { return MakeInt(r.start + i*r.step) }
 func (r rangeValue) Iterate() Iterator { return &rangeIterator{r, 0} }
 
+// rangeLen calculates the length of a range with the provided start, stop, and step.
+// caller must ensure that step is non-zero.
+func rangeLen(start, stop, step int) int {
+	switch {
+	case step > 0:
+		if stop > start {
+			return (stop-1-start)/step + 1
+		}
+	case step < 0:
+		if start > stop {
+			return (start-1-stop)/-step + 1
+		}
+	default:
+		panic("rangeLen: zero step")
+	}
+	return 0
+}
+
 func (r rangeValue) Slice(start, end, step int) Value {
 	newStart := r.start + r.step*start
 	newStop := r.start + r.step*end
 	newStep := r.step * step
-	var newLen int
-	if step > 0 {
-		newLen = (newStop-1-newStart)/newStep + 1
-	} else {
-		newLen = (newStart-1-newStop)/-newStep + 1
-	}
 	return rangeValue{
 		start: newStart,
 		stop:  newStop,
 		step:  newStep,
-		len:   newLen,
+		len:   rangeLen(newStart, newStop, newStep),
 	}
 }
 
@@ -1428,18 +1439,23 @@ func list_remove(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·pop
 func list_pop(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
 	list := recv.(*List)
-	index := list.Len() - 1
-	if err := UnpackPositionalArgs(fnname, args, kwargs, 0, &index); err != nil {
+	n := list.Len()
+	i := n - 1
+	if err := UnpackPositionalArgs(fnname, args, kwargs, 0, &i); err != nil {
 		return nil, err
 	}
-	if index < 0 || index >= list.Len() {
-		return nil, fmt.Errorf("pop: index %d is out of range [0:%d]", index, list.Len())
+	origI := i
+	if i < 0 {
+		i += n
+	}
+	if i < 0 || i >= n {
+		return nil, outOfRange(origI, n, list)
 	}
 	if err := list.checkMutable("pop from"); err != nil {
 		return nil, err
 	}
-	res := list.elems[index]
-	list.elems = append(list.elems[:index], list.elems[index+1:]...)
+	res := list.elems[i]
+	list.elems = append(list.elems[:i], list.elems[i+1:]...)
 	return res, nil
 }
 
@@ -1712,7 +1728,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 			}
 			arg = args[index]
 			index++
-		} else if num, err := strconv.Atoi(name); err == nil && !strings.HasPrefix(name, "-") {
+		} else if num, ok := decimal(name); ok {
 			// positional argument
 			if auto {
 				return nil, fmt.Errorf("cannot switch from automatic field numbering to manual field specification")
@@ -1766,6 +1782,22 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 		}
 	}
 	return String(buf.String()), nil
+}
+
+// decimal interprets s as a sequence of decimal digits.
+func decimal(s string) (x int, ok bool) {
+	n := len(s)
+	for i := 0; i < n; i++ {
+		digit := s[i] - '0'
+		if digit > 9 {
+			return 0, false
+		}
+		x = x*10 + int(digit)
+		if x < 0 {
+			return 0, false // underflow
+		}
+	}
+	return x, true
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·index
@@ -2146,8 +2178,6 @@ func string_find_impl(fnname string, s string, args Tuple, kwargs []Tuple, allow
 func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	if len(updates) == 1 {
 		switch updates := updates[0].(type) {
-		case NoneType:
-			// no-op
 		case IterableMapping:
 			// Iterate over dict's key/value pairs, not just keys.
 			for _, item := range updates.Items() {

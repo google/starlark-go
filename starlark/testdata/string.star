@@ -1,5 +1,5 @@
 # Tests of Starlark 'string'
-# option:float option:bitwise option:set
+# option:float option:set
 
 load("assert.star", "assert")
 
@@ -174,6 +174,10 @@ assert.eq("a{x}b{y}c{}".format(1, x=2, y=3), "a2b3c1")
 assert.fails(lambda: "a{z}b".format(x=1), "keyword z not found")
 assert.fails(lambda: "{-1}".format(1), "keyword -1 not found")
 assert.fails(lambda: "{-0}".format(1), "keyword -0 not found")
+assert.fails(lambda: "{+0}".format(1), "keyword \\+0 not found")
+assert.fails(lambda: "{+1}".format(1), "keyword \\+1 not found") # starlark-go/issues/114
+assert.eq("{0000000000001}".format(0, 1), "1")
+assert.eq("{012}".format(*range(100)), "12") # decimal, despite leading zeros
 assert.fails(lambda: '{0,1} and {1}'.format(1, 2), "keyword 0,1 not found")
 assert.fails(lambda: "a{123}b".format(), "tuple index out of range")
 assert.fails(lambda: "a{}b{}c".format(1), "tuple index out of range")

@@ -1,5 +1,5 @@
 # Tests of Starlark 'set'
-# option:set option:bitwise
+# option:set
 
 # Sets are not a standard part of Starlark, so the features
 # tested in this file must be enabled in the application by setting
