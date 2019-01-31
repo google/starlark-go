@@ -180,6 +180,7 @@ var tokenNames = [...]string{
 	OR:            "or",
 	PASS:          "pass",
 	RETURN:        "return",
+	WHILE:         "while",
 }
 
 // A Position describes the location of a rune of input.
@@ -476,8 +477,9 @@ start:
 				break
 			}
 		}
-		// The third clause is "trailing spaces without newline at EOF".
-		if c == '#' || c == '\n' || c == 0 && col > 0 {
+
+		// The third clause matches EOF.
+		if c == '#' || c == '\n' || c == 0 {
 			blank = true
 		}
 
@@ -490,7 +492,7 @@ start:
 				sc.dents++
 				sc.indentstk = append(sc.indentstk, col)
 			} else if col < cur {
-				// dedent(s)
+				// outdent(s)
 				for len(sc.indentstk) > 0 && col < sc.indentstk[len(sc.indentstk)-1] {
 					sc.dents--
 					sc.indentstk = sc.indentstk[:len(sc.indentstk)-1] // pop
@@ -562,7 +564,7 @@ start:
 				goto start
 			} else if len(sc.indentstk) > 1 {
 				sc.dents = 1 - len(sc.indentstk)
-				sc.indentstk = sc.indentstk[1:]
+				sc.indentstk = sc.indentstk[:1]
 				goto start
 			}
 		}
@@ -581,7 +583,7 @@ start:
 		if len(sc.indentstk) > 1 {
 			if savedLineStart {
 				sc.dents = 1 - len(sc.indentstk)
-				sc.indentstk = sc.indentstk[1:]
+				sc.indentstk = sc.indentstk[:1]
 				goto start
 			} else {
 				sc.lineStart = true
