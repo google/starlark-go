@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/build"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -228,7 +229,14 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+	rel := filepath.Join("go.starlark.net", pkgdir, filename)
+	for _, p := range build.Default.SrcDirs() {
+		full := filepath.Join(p, rel)
+		if _, err := os.Stat(full); err == nil {
+			return full
+		}
+	}
+	panic(fmt.Sprintf("could not find %s", rel))
 }
 
 func BenchmarkScan(b *testing.B) {
