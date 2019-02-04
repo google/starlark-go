@@ -4,6 +4,10 @@
 
 // Package starlarkstruct defines the Starlark types 'struct' and
 // 'module', both optional language extensions.
+//
+// TODO(adonovan): remove all the Bazelisms (e.g. to_json, to_proto), by
+// forking this package into tools that want Bazel features and removing
+// them here.
 package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 // It is tempting to introduce a variant of Struct that is a wrapper
@@ -365,6 +369,26 @@ func writeJSON(out *bytes.Buffer, v starlark.Value) error {
 			}
 		}
 		out.WriteByte('}')
+
+	case *starlark.Dict:
+		out.WriteByte('{')
+		for i, item := range v.Items() {
+			if i > 0 {
+				out.WriteString(", ")
+			}
+			if _, ok := item[0].(starlark.String); !ok {
+				return fmt.Errorf("cannot convert non-string dict key to JSON")
+			}
+			if err := writeJSON(out, item[0]); err != nil {
+				return err
+			}
+			out.WriteString(": ")
+			if err := writeJSON(out, item[1]); err != nil {
+				return err
+			}
+		}
+		out.WriteByte('}')
+
 	default:
 		return fmt.Errorf("cannot convert %s to JSON", v.Type())
 	}

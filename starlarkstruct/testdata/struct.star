@@ -68,6 +68,9 @@ assert.eq(bob.to_json(), '{"age": 50, "name": "bob"}')
 # These deprecated methods are hidden from dir:
 assert.eq(hasattr(alice, "to_json"), True)
 assert.eq(hasattr(bob, "to_proto"), True)
+assert.eq(person(attr=dict(a=1, b=2)).to_json(), '{"attr": {"a": 1, "b": 2}}')
+assert.fails(lambda: person(attr={1: 'one'}).to_json(),
+             'cannot convert non-string dict key to JSON')
 
 # to_proto
 assert.eq(struct().to_proto(), '')
