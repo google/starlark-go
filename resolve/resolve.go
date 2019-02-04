@@ -390,6 +390,8 @@ func (r *resolver) useGlobal(id *syntax.Ident) binding {
 		}
 	} else {
 		scope = Undefined
+		// TODO(adonovan): implement spell check. Ideally we
+		// need a way to enumerate universal and predeclared.
 		r.errorf(id.NamePos, "undefined: %s", id.Name)
 	}
 	id.Scope = uint8(scope)
