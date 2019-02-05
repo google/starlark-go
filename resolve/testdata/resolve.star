@@ -310,3 +310,16 @@ U = 1 # ok (legacy)
 # https://github.com/bazelbuild/starlark/starlark/issues/21
 def f(**kwargs): pass
 f(a=1, a=1) ### `keyword argument a repeated`
+
+
+---
+# spelling
+
+print = U
+
+hello = 1
+print(hollo) ### `undefined: hollo \(did you mean hello\?\)`
+
+def f(abc):
+   print(abd) ### `undefined: abd \(did you mean abc\?\)`
+   print(goodbye) ### `undefined: goodbye$`

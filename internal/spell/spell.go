@@ -1,16 +1,16 @@
-package starlark
-
-// This file defines a simple spell checker for use in attribute errors
-// ("no such field .foo; did you mean .food?")
+// Package spell file defines a simple spelling checker for use in attribute errors
+// such as "no such field .foo; did you mean .food?".
+package spell
 
 import (
 	"strings"
 	"unicode"
 )
 
-// nearest returns the element of candidates
-// nearest to x using the Levenshtein metric.
-func nearest(x string, candidates []string) string {
+// Nearest returns the element of candidates
+// nearest to x using the Levenshtein metric,
+// or "" if none were promising.
+func Nearest(x string, candidates []string) string {
 	// Ignore underscores and case when matching.
 	fold := func(s string) string {
 		return strings.Map(func(r rune) rune {
@@ -62,6 +62,10 @@ func levenshtein(x, y string, max int) int {
 		return len(y)
 	}
 
+	if d := abs(len(x) - len(y)); d > max {
+		return d // excessive length divergence
+	}
+
 	row := make([]int, len(y)+1)
 	for i := range row {
 		row[i] = i
@@ -86,10 +90,26 @@ func levenshtein(x, y string, max int) int {
 	return row[len(y)]
 }
 
+func b2i(b bool) int {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 func min(x, y int) int {
 	if x < y {
 		return x
 	} else {
 		return y
+	}
+}
+
+func abs(x int) int {
+	if x >= 0 {
+		return x
+	} else {
+		return -x
 	}
 }

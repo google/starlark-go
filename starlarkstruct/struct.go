@@ -258,7 +258,8 @@ func (s *Struct) Attr(name string) (starlark.Value, error) {
 	if s.constructor != Default {
 		ctor = s.constructor.String() + " "
 	}
-	return nil, fmt.Errorf("%sstruct has no .%s attribute", ctor, name)
+	return nil, starlark.NoSuchAttrError(
+		fmt.Sprintf("%sstruct has no .%s attribute", ctor, name))
 }
 
 func writeProtoStruct(out *bytes.Buffer, depth int, s *Struct) error {

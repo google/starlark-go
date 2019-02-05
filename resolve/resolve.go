@@ -77,8 +77,10 @@ package resolve // import "go.starlark.net/resolve"
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
+	"go.starlark.net/internal/spell"
 	"go.starlark.net/syntax"
 )
 
@@ -334,6 +336,8 @@ func (r *resolver) bind(id *syntax.Ident) bool {
 }
 
 func (r *resolver) use(id *syntax.Ident) {
+	use := use{id, r.env}
+
 	// The spec says that if there is a global binding of a name
 	// then all references to that name in that block refer to the
 	// global, even if the use precedes the def---just as for locals.
@@ -365,15 +369,18 @@ func (r *resolver) use(id *syntax.Ident) {
 	// AllowGlobalReassign flag, which is loosely related and also
 	// required for Bazel.
 	if AllowGlobalReassign && r.env.isModule() {
-		r.useGlobal(id)
+		r.useGlobal(use)
 		return
 	}
 
 	b := r.container()
-	b.uses = append(b.uses, use{id, r.env})
+	b.uses = append(b.uses, use)
 }
 
-func (r *resolver) useGlobal(id *syntax.Ident) binding {
+// useGlobals resolves use.id as a reference to a global.
+// The use.env field captures the original environment for error reporting.
+func (r *resolver) useGlobal(use use) binding {
+	id := use.id
 	var scope Scope
 	if prev, ok := r.globals[id.Name]; ok {
 		scope = Global // use of global declared by module
@@ -390,12 +397,38 @@ func (r *resolver) useGlobal(id *syntax.Ident) binding {
 		}
 	} else {
 		scope = Undefined
-		// TODO(adonovan): implement spell check. Ideally we
-		// need a way to enumerate universal and predeclared.
-		r.errorf(id.NamePos, "undefined: %s", id.Name)
+		var hint string
+		if n := r.spellcheck(use); n != "" {
+			hint = fmt.Sprintf(" (did you mean %s?)", n)
+		}
+		r.errorf(id.NamePos, "undefined: %s%s", id.Name, hint)
 	}
 	id.Scope = uint8(scope)
 	return binding{scope, id.Index}
+}
+
+// spellcheck returns the most likely misspelling of
+// the name use.id in the environment use.env.
+func (r *resolver) spellcheck(use use) string {
+	var names []string
+
+	// locals
+	for b := use.env; b != nil; b = b.parent {
+		for name := range b.bindings {
+			names = append(names, name)
+		}
+	}
+
+	// globals
+	//
+	// We have no way to enumerate predeclared/universe,
+	// which includes prior names in the REPL session.
+	for _, id := range r.moduleGlobals {
+		names = append(names, id.Name)
+	}
+
+	sort.Strings(names)
+	return spell.Nearest(use.id.Name, names)
 }
 
 // resolveLocalUses is called when leaving a container (function/module)
@@ -804,7 +837,7 @@ func (r *resolver) resolveNonLocalUses(b *block) {
 		r.resolveNonLocalUses(child)
 	}
 	for _, use := range b.uses {
-		bind := r.lookupLexical(use.id, use.env)
+		bind := r.lookupLexical(use, use.env)
 		use.id.Scope = uint8(bind.scope)
 		use.id.Index = bind.index
 	}
@@ -827,27 +860,28 @@ func lookupLocal(use use) binding {
 	return binding{} // not found in this function
 }
 
-// lookupLexical looks up an identifier within its lexically enclosing environment.
-func (r *resolver) lookupLexical(id *syntax.Ident, env *block) (bind binding) {
+// lookupLexical looks up an identifier use.id within its lexically enclosing environment.
+// The use.env field captures the original environment for error reporting.
+func (r *resolver) lookupLexical(use use, env *block) (bind binding) {
 	if debug {
-		fmt.Printf("lookupLexical %s in %s = ...\n", id.Name, env)
+		fmt.Printf("lookupLexical %s in %s = ...\n", use.id.Name, env)
 		defer func() { fmt.Printf("= %d\n", bind) }()
 	}
 
 	// Is this the module block?
 	if env.isModule() {
-		return r.useGlobal(id) // global, predeclared, or not found
+		return r.useGlobal(use) // global, predeclared, or not found
 	}
 
 	// Defined in this block?
-	bind, ok := env.bindings[id.Name]
+	bind, ok := env.bindings[use.id.Name]
 	if !ok {
 		// Defined in parent block?
-		bind = r.lookupLexical(id, env.parent)
+		bind = r.lookupLexical(use, env.parent)
 		if env.function != nil && (bind.scope == Local || bind.scope == Free) {
 			// Found in parent block, which belongs to enclosing function.
 			id := &syntax.Ident{
-				Name:  id.Name,
+				Name:  use.id.Name,
 				Scope: uint8(bind.scope),
 				Index: bind.index,
 			}
@@ -862,7 +896,7 @@ func (r *resolver) lookupLexical(id *syntax.Ident, env *block) (bind binding) {
 
 		// Memoize, to avoid duplicate free vars
 		// and redundant global (failing) lookups.
-		env.bind(id.Name, bind)
+		env.bind(use.id.Name, bind)
 	}
 	return bind
 }
