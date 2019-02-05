@@ -452,22 +452,38 @@ func listExtend(x *List, y Iterable) {
 
 // getAttr implements x.dot.
 func getAttr(x Value, name string) (Value, error) {
+	var hint string
+
 	// field or method?
 	if x, ok := x.(HasAttrs); ok {
 		if v, err := x.Attr(name); v != nil || err != nil {
 			return v, err
 		}
+
+		// check spelling
+		if n := nearest(name, x.AttrNames()); n != "" {
+			hint = fmt.Sprintf(" (did you mean .%s?)", n)
+		}
 	}
 
-	return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
+	return nil, fmt.Errorf("%s has no .%s field or method%s", x.Type(), name, hint)
 }
 
 // setField implements x.name = y.
 func setField(x Value, name string, y Value) error {
 	if x, ok := x.(HasSetField); ok {
-		err := x.SetField(name, y)
-		return err
+		if err := x.SetField(name, y); err != ErrNoSuchField {
+			return err
+		}
+
+		// No such field: check spelling.
+		var hint string
+		if n := nearest(name, x.AttrNames()); n != "" {
+			hint = fmt.Sprintf(" (did you mean .%s?)", n)
+		}
+		return fmt.Errorf("%s has no .%s field%s", x.Type(), name, hint)
 	}
+
 	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())
 }
 

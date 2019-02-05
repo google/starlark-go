@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -184,7 +185,10 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	return starlark.ExecFile(thread, filename, nil, nil)
 }
 
-func newHasFields(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func newHasFields(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if len(args)+len(kwargs) > 0 {
+		return nil, fmt.Errorf("%s: unexpected arguments", b.Name())
+	}
 	return &hasfields{attrs: make(map[string]starlark.Value)}, nil
 }
 
@@ -222,6 +226,9 @@ func (hf *hasfields) SetField(name string, val starlark.Value) error {
 	if hf.frozen {
 		return fmt.Errorf("cannot set field on a frozen hasfields")
 	}
+	if strings.HasPrefix(name, "no") {
+		return starlark.ErrNoSuchField // for testing
+	}
 	hf.attrs[name] = val
 	return nil
 }
@@ -231,6 +238,7 @@ func (hf *hasfields) AttrNames() []string {
 	for key := range hf.attrs {
 		names = append(names, key)
 	}
+	sort.Strings(names)
 	return names
 }
 

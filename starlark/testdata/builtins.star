@@ -186,6 +186,21 @@ assert.eq(str(getattr(myset, "union")), "<built-in method union of set value>")
 assert.fails(lambda: getattr(myset, "onion"), "no .onion field or method")
 assert.eq(getattr(myset, "onion", 42), 42)
 
+# error messages should suggest spelling corrections
+hf.one = 1
+hf.two = 2
+hf.three = 3
+hf.forty_five = 45
+assert.fails(lambda: hf.One, 'no .One field.*did you mean .one')
+assert.fails(lambda: hf.oone, 'no .oone field.*did you mean .one')
+assert.fails(lambda: hf.FortyFive, 'no .FortyFive field.*did you mean .forty_five')
+assert.fails(lambda: hf.trhee, 'no .trhee field.*did you mean .three')
+assert.fails(lambda: hf.thirty, 'no .thirty field or method$') # no suggestion
+
+# spell check in setfield too
+def setfield(): hf.noForty_Five = 46  # "no" prefix => SetField returns NoSuchField
+assert.fails(setfield, 'no .noForty_Five field.*did you mean .forty_five')
+
 # repr
 assert.eq(repr(1), "1")
 assert.eq(repr("x"), '"x"')

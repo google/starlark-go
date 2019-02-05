@@ -401,3 +401,8 @@ assert.eq("¿Por qué?".title(), "¿Por Qué?")
 assert.eq("ǉubović".title(), "ǈubović")
 assert.true("ǅenan ǈubović".istitle())
 assert.true(not "Ǆenan Ǉubović".istitle())
+
+# method spell check
+assert.fails(lambda: "".starts_with, "no .starts_with field.*did you mean .startswith")
+assert.fails(lambda: "".StartsWith, "no .StartsWith field.*did you mean .startswith")
+assert.fails(lambda: "".fin, "no .fin field.*.did you mean .find")
