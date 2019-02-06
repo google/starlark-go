@@ -68,7 +68,6 @@ package starlark // import "go.starlark.net/starlark"
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -321,19 +320,21 @@ var (
 
 // A HasSetField value has fields that may be written by a dot expression (x.f = y).
 //
-// An implementation of SetField may return ErrNoSuchField,
-// in which case the runtime will report a better error that
-// includes the field name and warns of possible misspelling.
+// An implementation of SetField may return a NoSuchAttrError,
+// in which case the runtime may augment the error message to
+// warn of possible misspelling.
 type HasSetField interface {
 	HasAttrs
 	SetField(name string, val Value) error
 }
 
-// ErrNoSuchField may be returned by an implementation of
-// HasSetField.SetField to indicate that no such field exists.
-// In that case the runtime will report a better error that
-// includes the field name and warns of possible misspelling.
-var ErrNoSuchField = errors.New("no such field")
+// A NoSuchAttrError may be returned by an implementation of
+// HasAttrs.Attr or HasSetField.SetField to indicate that no such field
+// exists. In that case the runtime may augment the error message to
+// warn of possible misspelling.
+type NoSuchAttrError string
+
+func (e NoSuchAttrError) Error() string { return string(e) }
 
 // NoneType is the type of None.  Its only legal value is None.
 // (We represent it as a number, not struct{}, so that None may be constant.)

@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/internal/spell"
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
@@ -450,36 +451,44 @@ func listExtend(x *List, y Iterable) {
 
 // getAttr implements x.dot.
 func getAttr(x Value, name string) (Value, error) {
-	var hint string
-
-	// field or method?
-	if x, ok := x.(HasAttrs); ok {
-		if v, err := x.Attr(name); v != nil || err != nil {
-			return v, err
-		}
-
-		// check spelling
-		if n := nearest(name, x.AttrNames()); n != "" {
-			hint = fmt.Sprintf(" (did you mean .%s?)", n)
-		}
+	hasAttr, ok := x.(HasAttrs)
+	if !ok {
+		return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
 	}
 
-	return nil, fmt.Errorf("%s has no .%s field or method%s", x.Type(), name, hint)
+	var errmsg string
+	v, err := hasAttr.Attr(name)
+	if err == nil {
+		if v != nil {
+			return v, nil // success
+		}
+		// (nil, nil) => generic error
+		errmsg = fmt.Sprintf("%s has no .%s field or method", x.Type(), name)
+	} else if nsa, ok := err.(NoSuchAttrError); ok {
+		errmsg = string(nsa)
+	} else {
+		return nil, err // return error as is
+	}
+
+	// add spelling hint
+	if n := spell.Nearest(name, hasAttr.AttrNames()); n != "" {
+		errmsg = fmt.Sprintf("%s (did you mean .%s?)", errmsg, n)
+	}
+
+	return nil, fmt.Errorf("%s", errmsg)
 }
 
 // setField implements x.name = y.
 func setField(x Value, name string, y Value) error {
 	if x, ok := x.(HasSetField); ok {
-		if err := x.SetField(name, y); err != ErrNoSuchField {
-			return err
+		err := x.SetField(name, y)
+		if _, ok := err.(NoSuchAttrError); ok {
+			// No such field: check spelling.
+			if n := spell.Nearest(name, x.AttrNames()); n != "" {
+				err = fmt.Errorf("%s (did you mean .%s?)", err, n)
+			}
 		}
-
-		// No such field: check spelling.
-		var hint string
-		if n := nearest(name, x.AttrNames()); n != "" {
-			hint = fmt.Sprintf(" (did you mean .%s?)", n)
-		}
-		return fmt.Errorf("%s has no .%s field%s", x.Type(), name, hint)
+		return err
 	}
 
 	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())

@@ -226,8 +226,8 @@ func (hf *hasfields) SetField(name string, val starlark.Value) error {
 	if hf.frozen {
 		return fmt.Errorf("cannot set field on a frozen hasfields")
 	}
-	if strings.HasPrefix(name, "no") {
-		return starlark.ErrNoSuchField // for testing
+	if strings.HasPrefix(name, "no") { // for testing
+		return starlark.NoSuchAttrError(fmt.Sprintf("no .%s field", name))
 	}
 	hf.attrs[name] = val
 	return nil
