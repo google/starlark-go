@@ -1,101 +1,63 @@
 # Tests of Starlark 'struct' extension.
 # This is not a standard feature and the Go and Starlark APIs may yet change.
 
-load('assert.star', 'assert')
+load("assert.star", "assert")
 
-assert.eq(str(struct), '<built-in function struct>')
+assert.eq(str(struct), "<built-in function struct>")
 
 # struct is a constructor for "unbranded" structs.
-s = struct(host='localhost', port=80)
+s = struct(host = "localhost", port = 80)
 assert.eq(s, s)
-assert.eq(s, struct(host='localhost', port=80))
-assert.ne(s, struct(host='localhost', port=81))
-assert.eq(type(s), 'struct')
-assert.eq(str(s),  'struct(host = "localhost", port = 80)')
-assert.eq(s.host, 'localhost')
+assert.eq(s, struct(host = "localhost", port = 80))
+assert.ne(s, struct(host = "localhost", port = 81))
+assert.eq(type(s), "struct")
+assert.eq(str(s), 'struct(host = "localhost", port = 80)')
+assert.eq(s.host, "localhost")
 assert.eq(s.port, 80)
-assert.fails(lambda: s.protocol, 'struct has no .protocol attribute')
-assert.eq(dir(s), ['host', 'port'])
+assert.fails(lambda : s.protocol, "struct has no .protocol attribute")
+assert.eq(dir(s), ["host", "port"])
 
 # Use gensym to create "branded" struct types.
-hostport = gensym(name='hostport')
-assert.eq(type(hostport), 'symbol')
-assert.eq(str(hostport), 'hostport')
+hostport = gensym(name = "hostport")
+assert.eq(type(hostport), "symbol")
+assert.eq(str(hostport), "hostport")
 
 # Call the symbol to instantiate a new type.
-http = hostport(host='localhost', port=80)
-assert.eq(type(http), 'struct')
-assert.eq(str(http), 'hostport(host = "localhost", port = 80)') # includes name of constructor
+http = hostport(host = "localhost", port = 80)
+assert.eq(type(http), "struct")
+assert.eq(str(http), 'hostport(host = "localhost", port = 80)')  # includes name of constructor
 assert.eq(http, http)
-assert.eq(http, hostport(host='localhost', port=80))
-assert.ne(http, hostport(host='localhost', port=443))
-assert.eq(http.host, 'localhost')
+assert.eq(http, hostport(host = "localhost", port = 80))
+assert.ne(http, hostport(host = "localhost", port = 443))
+assert.eq(http.host, "localhost")
 assert.eq(http.port, 80)
-assert.fails(lambda: http.protocol, 'hostport struct has no .protocol attribute')
+assert.fails(lambda : http.protocol, "hostport struct has no .protocol attribute")
 
-person = gensym(name='person')
-bob = person(name='bob', age=50)
-alice = person(name='alice', city='NYC')
+person = gensym(name = "person")
+bob = person(name = "bob", age = 50)
+alice = person(name = "alice", city = "NYC")
 assert.ne(http, bob)  # different constructor symbols
-assert.ne(bob, alice) # different fields
+assert.ne(bob, alice)  # different fields
 
-hostport2 = gensym(name='hostport')
+hostport2 = gensym(name = "hostport")
 assert.eq(hostport, hostport)
-assert.ne(hostport, hostport2) # same name, different symbol
-assert.ne(http, hostport2(host='localhost', port=80)) # equal fields but different ctor symbols
+assert.ne(hostport, hostport2)  # same name, different symbol
+assert.ne(http, hostport2(host = "localhost", port = 80))  # equal fields but different ctor symbols
 
 # dir
-assert.eq(dir(alice), ['city', 'name'])
-assert.eq(dir(bob), ['age', 'name'])
-assert.eq(dir(http), ['host', 'port'])
+assert.eq(dir(alice), ["city", "name"])
+assert.eq(dir(bob), ["age", "name"])
+assert.eq(dir(http), ["host", "port"])
 
 # hasattr, getattr
-assert.true(hasattr(alice, 'city'))
-assert.eq(hasattr(alice, 'ageaa'), False)
-assert.eq(getattr(alice, 'city'), 'NYC')
+assert.true(hasattr(alice, "city"))
+assert.eq(hasattr(alice, "ageaa"), False)
+assert.eq(getattr(alice, "city"), "NYC")
 
 # +
 assert.eq(bob + bob, bob)
-assert.eq(bob + alice, person(age=50, city='NYC', name='alice'))
-assert.eq(alice + bob, person(age=50, city='NYC', name='bob'))  # not commutative! a misfeature
-assert.fails(lambda: alice + 1, r'struct \+ int')
+assert.eq(bob + alice, person(age = 50, city = "NYC", name = "alice"))
+assert.eq(alice + bob, person(age = 50, city = "NYC", name = "bob"))  # not commutative! a misfeature
+assert.fails(lambda : alice + 1, "struct \+ int")
 assert.eq(http + http, http)
-assert.fails(lambda: http + bob, r'different constructors: hostport \+ person')
-
-# to_json (deprecated)
-assert.eq(alice.to_json(), '{"city": "NYC", "name": "alice"}')
-assert.eq(bob.to_json(), '{"age": 50, "name": "bob"}')
-# These deprecated methods are hidden from dir:
-assert.eq(hasattr(alice, "to_json"), True)
-assert.eq(hasattr(bob, "to_proto"), True)
-assert.eq(person(attr=dict(a=1, b=2)).to_json(), '{"attr": {"a": 1, "b": 2}}')
-assert.fails(lambda: person(attr={1: 'one'}).to_json(),
-             'cannot convert non-string dict key to JSON')
-
-# to_proto
-assert.eq(struct().to_proto(), '')
-assert.eq(struct(int=1, float=3.141, str="hello", bool=True, intlist=[1, 2, 3]).to_proto(),
-          '''bool: true
-float: 3.141
-int: 1
-intlist: 1
-intlist: 2
-intlist: 3
-str: "hello"
-''')
-assert.eq(struct(x=struct(), y=[struct(a=1), struct(b=2, c=struct(p=1, q=2))]).to_proto(),
-          '''x {
-}
-y {
-  a: 1
-}
-y {
-  b: 2
-  c {
-    p: 1
-    q: 2
-  }
-}
-''')
-assert.fails(lambda: struct(none=None).to_proto(), 'cannot convert NoneType to proto')
-assert.fails(lambda: struct(dict={}).to_proto(), 'cannot convert dict to proto')
+assert.fails(lambda : http + bob, "different constructors: hostport \+ person")
