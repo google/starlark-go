@@ -5,9 +5,6 @@
 // Package starlarkstruct defines the Starlark types 'struct' and
 // 'module', both optional language extensions.
 //
-// TODO(adonovan): remove all the Bazelisms (e.g. to_json, to_proto), by
-// forking this package into tools that want Bazel features and removing
-// them here.
 package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 // It is tempting to introduce a variant of Struct that is a wrapper
@@ -27,7 +24,6 @@ package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -118,7 +114,7 @@ func (a entries) Less(i, j int) bool { return a[i].name < a[j].name }
 func (a entries) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 type entry struct {
-	name  string // not to_{proto,json}
+	name  string
 	value starlark.Value
 }
 
@@ -209,9 +205,7 @@ func (x *Struct) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (
 	return nil, nil // unhandled
 }
 
-// Attr returns the value of the specified field,
-// or deprecated method if the name is "to_json" or "to_proto"
-// and the struct has no field of that name.
+// Attr returns the value of the specified field.
 func (s *Struct) Attr(name string) (starlark.Value, error) {
 	// Binary search the entries.
 	// This implementation is a specialization of
@@ -230,30 +224,6 @@ func (s *Struct) Attr(name string) (starlark.Value, error) {
 		return s.entries[i].value, nil
 	}
 
-	// TODO(adonovan): there may be a nice feature for core
-	// starlark.Value here, especially for JSON, but the current
-	// features are incomplete and underspecified.
-	//
-	// to_{json,proto} are deprecated, appropriately; see Google issue b/36412967.
-	switch name {
-	case "to_json", "to_proto":
-		return starlark.NewBuiltin(name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-			var buf bytes.Buffer
-			var err error
-			if name == "to_json" {
-				err = writeJSON(&buf, s)
-			} else {
-				err = writeProtoStruct(&buf, 0, s)
-			}
-			if err != nil {
-				// TODO(adonovan): improve error error messages
-				// to show the path through the object graph.
-				return nil, err
-			}
-			return starlark.String(buf.String()), nil
-		}), nil
-	}
-
 	var ctor string
 	if s.constructor != Default {
 		ctor = s.constructor.String() + " "
@@ -261,161 +231,9 @@ func (s *Struct) Attr(name string) (starlark.Value, error) {
 	return nil, fmt.Errorf("%sstruct has no .%s attribute", ctor, name)
 }
 
-func writeProtoStruct(out *bytes.Buffer, depth int, s *Struct) error {
-	for _, e := range s.entries {
-		if err := writeProtoField(out, depth, e.name, e.value); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func writeProtoField(out *bytes.Buffer, depth int, field string, v starlark.Value) error {
-	if depth > 16 {
-		return fmt.Errorf("to_proto: depth limit exceeded")
-	}
-
-	switch v := v.(type) {
-	case *Struct:
-		fmt.Fprintf(out, "%*s%s {\n", 2*depth, "", field)
-		if err := writeProtoStruct(out, depth+1, v); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "%*s}\n", 2*depth, "")
-		return nil
-
-	case *starlark.List, starlark.Tuple:
-		iter := starlark.Iterate(v)
-		defer iter.Done()
-		var elem starlark.Value
-		for iter.Next(&elem) {
-			if err := writeProtoField(out, depth, field, elem); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	// scalars
-	fmt.Fprintf(out, "%*s%s: ", 2*depth, "", field)
-	switch v := v.(type) {
-	case starlark.Bool:
-		fmt.Fprintf(out, "%t", v)
-
-	case starlark.Int:
-		// TODO(adonovan): limits?
-		out.WriteString(v.String())
-
-	case starlark.Float:
-		fmt.Fprintf(out, "%g", v)
-
-	case starlark.String:
-		fmt.Fprintf(out, "%q", string(v))
-
-	default:
-		return fmt.Errorf("cannot convert %s to proto", v.Type())
-	}
-	out.WriteByte('\n')
-	return nil
-}
-
-// writeJSON writes the JSON representation of a Starlark value to out.
-// TODO(adonovan): there may be a nice feature for core starlark.Value here,
-// but the current feature is incomplete and underspecified.
-func writeJSON(out *bytes.Buffer, v starlark.Value) error {
-	switch v := v.(type) {
-	case starlark.NoneType:
-		out.WriteString("null")
-	case starlark.Bool:
-		fmt.Fprintf(out, "%t", v)
-	case starlark.Int:
-		// TODO(adonovan): test large numbers.
-		out.WriteString(v.String())
-	case starlark.Float:
-		// TODO(adonovan): test.
-		fmt.Fprintf(out, "%g", v)
-	case starlark.String:
-		s := string(v)
-		if goQuoteIsSafe(s) {
-			fmt.Fprintf(out, "%q", s)
-		} else {
-			// vanishingly rare for text strings
-			data, _ := json.Marshal(s)
-			out.Write(data)
-		}
-	case starlark.Indexable: // Tuple, List
-		out.WriteByte('[')
-		for i, n := 0, starlark.Len(v); i < n; i++ {
-			if i > 0 {
-				out.WriteString(", ")
-			}
-			if err := writeJSON(out, v.Index(i)); err != nil {
-				return err
-			}
-		}
-		out.WriteByte(']')
-	case *Struct:
-		out.WriteByte('{')
-		for i, e := range v.entries {
-			if i > 0 {
-				out.WriteString(", ")
-			}
-			if err := writeJSON(out, starlark.String(e.name)); err != nil {
-				return err
-			}
-			out.WriteString(": ")
-			if err := writeJSON(out, e.value); err != nil {
-				return err
-			}
-		}
-		out.WriteByte('}')
-
-	case *starlark.Dict:
-		out.WriteByte('{')
-		for i, item := range v.Items() {
-			if i > 0 {
-				out.WriteString(", ")
-			}
-			if _, ok := item[0].(starlark.String); !ok {
-				return fmt.Errorf("cannot convert non-string dict key to JSON")
-			}
-			if err := writeJSON(out, item[0]); err != nil {
-				return err
-			}
-			out.WriteString(": ")
-			if err := writeJSON(out, item[1]); err != nil {
-				return err
-			}
-		}
-		out.WriteByte('}')
-
-	default:
-		return fmt.Errorf("cannot convert %s to JSON", v.Type())
-	}
-	return nil
-}
-
-func goQuoteIsSafe(s string) bool {
-	for _, r := range s {
-		// JSON doesn't like Go's \xHH escapes for ASCII control codes,
-		// nor its \UHHHHHHHH escapes for runes >16 bits.
-		if r < 0x20 || r >= 0x10000 {
-			return false
-		}
-	}
-	return true
-}
-
 func (s *Struct) len() int { return len(s.entries) }
 
 // AttrNames returns a new sorted list of the struct fields.
-//
-// Unlike in the Java implementation,
-// the deprecated struct methods "to_json" and "to_proto" do not
-// appear in AttrNames, and hence dir(struct), since that would force
-// the majority to have to ignore them, but they may nonetheless be
-// called if the struct does not have fields of these names. Ideally
-// these will go away soon. See Google issue b/36412967.
 func (s *Struct) AttrNames() []string {
 	names := make([]string, len(s.entries))
 	for i, e := range s.entries {
