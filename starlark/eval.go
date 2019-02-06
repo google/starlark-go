@@ -22,8 +22,6 @@ import (
 	"go.starlark.net/syntax"
 )
 
-const debug = false
-
 // A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
