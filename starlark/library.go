@@ -166,7 +166,8 @@ func builtinAttrNames(methods map[string]builtinMethod) []string {
 // If the variable is a bool, int, string, *List, *Dict, Callable,
 // Iterable, or user-defined implementation of Value,
 // UnpackArgs performs the appropriate type check.
-// (An int uses the AsInt32 check.)
+// A bool permits True, False, 0, or 1.
+// An int uses the AsInt32 check.
 // If the parameter name ends with "?",
 // it and all following parameters are optional.
 //
@@ -269,43 +270,52 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 }
 
 func unpackOneArg(v Value, ptr interface{}) error {
-	var ok bool
+	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
 	case *Value:
 		*ptr = v
 	case *string:
-		*ptr, ok = AsString(v)
+		s, ok := AsString(v)
 		if !ok {
 			return fmt.Errorf("got %s, want string", v.Type())
 		}
+		*ptr = s
 	case *bool:
-		*ptr = bool(v.Truth())
+		b, ok := v.(Bool)
+		if !ok {
+			return fmt.Errorf("got %s, want bool", v.Type())
+		}
+		*ptr = bool(b)
 	case *int:
-		var err error
-		*ptr, err = AsInt32(v)
+		i, err := AsInt32(v)
 		if err != nil {
 			return err
 		}
+		*ptr = i
 	case **List:
-		*ptr, ok = v.(*List)
+		list, ok := v.(*List)
 		if !ok {
 			return fmt.Errorf("got %s, want list", v.Type())
 		}
+		*ptr = list
 	case **Dict:
-		*ptr, ok = v.(*Dict)
+		dict, ok := v.(*Dict)
 		if !ok {
 			return fmt.Errorf("got %s, want dict", v.Type())
 		}
+		*ptr = dict
 	case *Callable:
-		*ptr, ok = v.(Callable)
+		f, ok := v.(Callable)
 		if !ok {
 			return fmt.Errorf("got %s, want callable", v.Type())
 		}
+		*ptr = f
 	case *Iterable:
-		*ptr, ok = v.(Iterable)
+		it, ok := v.(Iterable)
 		if !ok {
 			return fmt.Errorf("got %s, want iterable", v.Type())
 		}
+		*ptr = it
 	default:
 		// v must have type *V, where V is some subtype of starlark.Value.
 		ptrv := reflect.ValueOf(ptr)
