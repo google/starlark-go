@@ -2857,7 +2857,7 @@ If the iterable is empty, it returns `False`.
 
 ### all
 
-`all(x)` returns `False` if any element of the iterable sequence x has a truth-value of false.
+`all(x)` returns `False` if any element of the iterable sequence x has a truth value of false.
 If the iterable is empty, it returns `True`.
 
 ### bool
