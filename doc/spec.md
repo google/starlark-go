@@ -1066,6 +1066,12 @@ in the environment of a specific module.
 Except where noted, built-in functions accept only positional arguments.
 The parameter names serve merely as documentation.
 
+Most built-in functions that have a Boolean parameter require its
+argument to be `True` or `False`. Unlike `if` statements, other values
+are not implicitly converted to their truth value and instead cause a
+dynamic error.
+
+
 ## Name binding and variables
 
 After a Starlark file is parsed, but before its execution begins, the
@@ -2846,12 +2852,12 @@ application-specific dialect) without breaking existing programs.
 
 ### any
 
-`any(x)` returns `True` if any element of the iterable sequence x is true.
+`any(x)` returns `True` if any element of the iterable sequence x has a truth value of true.
 If the iterable is empty, it returns `False`.
 
 ### all
 
-`all(x)` returns `False` if any element of the iterable sequence x is false.
+`all(x)` returns `False` if any element of the iterable sequence x has a truth-value of false.
 If the iterable is empty, it returns `True`.
 
 ### bool

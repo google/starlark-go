@@ -1,4 +1,5 @@
 # Tests of Starlark 'bool'
+# option:float
 
 load("assert.star", "assert")
 
@@ -46,3 +47,10 @@ assert.fails(lambda : 0 or "" or [] or 0 or 1 // 0, "division by zero")
 assert.eq(1 and "a" and [1] and 123, 123)
 assert.eq(1 and "a" and [1] and 0 and 1 // 0, 0)
 assert.fails(lambda : 1 and "a" and [1] and 123 and 1 // 0, "division by zero")
+
+# Built-ins that want a bool want an actual bool, not a truth value.
+# See github.com/bazelbuild/starlark/issues/30
+assert.eq(''.splitlines(True), [''])
+assert.fails(lambda: ''.splitlines(1), 'got int, want bool')
+assert.fails(lambda: ''.splitlines("hello"), 'got string, want bool')
+assert.fails(lambda: ''.splitlines(0.0), 'got float, want bool')
