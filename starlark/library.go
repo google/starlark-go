@@ -166,7 +166,6 @@ func builtinAttrNames(methods map[string]builtinMethod) []string {
 // If the variable is a bool, int, string, *List, *Dict, Callable,
 // Iterable, or user-defined implementation of Value,
 // UnpackArgs performs the appropriate type check.
-// A bool permits True, False, 0, or 1.
 // An int uses the AsInt32 check.
 // If the parameter name ends with "?",
 // it and all following parameters are optional.
