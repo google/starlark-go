@@ -765,7 +765,9 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 	r.push(b)
 
 	var seenOptional bool
-	var star, starStar *syntax.Ident // *args, **kwargs
+	var star *syntax.UnaryExpr // * or *args param
+	var starStar *syntax.Ident // **kwargs ident
+	var numKwonlyParams int
 	for _, param := range function.Params {
 		switch param := param.(type) {
 		case *syntax.Ident:
@@ -786,7 +788,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			if starStar != nil {
 				r.errorf(param.OpPos, "optional parameter may not follow **%s", starStar.Name)
 			} else if star != nil {
-				r.errorf(param.OpPos, "optional parameter may not follow *%s", star.Name)
+				numKwonlyParams++
 			}
 			if id := param.X.(*syntax.Ident); r.bind(id) {
 				r.errorf(param.OpPos, "duplicate parameter: %s", id.Name)
@@ -794,30 +796,48 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			seenOptional = true
 
 		case *syntax.UnaryExpr:
-			// *args or **kwargs
-			id := param.X.(*syntax.Ident)
+			// * or *args or **kwargs
 			if param.Op == syntax.STAR {
 				if starStar != nil {
-					r.errorf(param.OpPos, "*%s parameter may not follow **%s", id.Name, starStar.Name)
+					r.errorf(param.OpPos, "* parameter may not follow **%s", starStar.Name)
 				} else if star != nil {
 					r.errorf(param.OpPos, "multiple * parameters not allowed")
 				} else {
-					star = id
+					star = param
 				}
 			} else {
 				if starStar != nil {
 					r.errorf(param.OpPos, "multiple ** parameters not allowed")
-				} else {
-					starStar = id
 				}
-			}
-			if r.bind(id) {
-				r.errorf(id.NamePos, "duplicate parameter: %s", id.Name)
+				starStar = param.X.(*syntax.Ident)
 			}
 		}
 	}
-	function.HasVarargs = star != nil
-	function.HasKwargs = starStar != nil
+
+	// Bind the *args and **kwargs parameters at the end,
+	// so that regular parameters a/b/c are contiguous and
+	// there is no hole for the "*":
+	//   def f(a, b, *args, c=0, **kwargs)
+	//   def f(a, b, *,     c=0, **kwargs)
+	if star != nil {
+		if id, _ := star.X.(*syntax.Ident); id != nil {
+			// *args
+			if r.bind(id) {
+				r.errorf(id.NamePos, "duplicate parameter: %s", id.Name)
+			}
+			function.HasVarargs = true
+		} else if numKwonlyParams == 0 {
+			r.errorf(star.OpPos, "bare * must be followed by optional parameters")
+		}
+	}
+	if starStar != nil {
+		if r.bind(starStar) {
+			r.errorf(starStar.NamePos, "duplicate parameter: %s", starStar.Name)
+		}
+		function.HasKwargs = true
+	}
+
+	function.NumKwonlyParams = numKwonlyParams
 	r.stmts(function.Body)
 
 	// Resolve all uses of this function's local vars,

@@ -423,15 +423,17 @@ func (p *parser) consume(t Token) Position {
 //
 // param = IDENT
 //       | IDENT EQ test
+//       | STAR
 //       | STAR IDENT
 //       | STARSTAR IDENT
 //
 // parseParams parses a parameter list.  The resulting expressions are of the form:
 //
-//      *Ident
-//      *Binary{Op: EQ, X: *Ident, Y: Expr}
-//      *Unary{Op: STAR, X: *Ident}
-//      *Unary{Op: STARSTAR, X: *Ident}
+//      *Ident                                          x
+//      *Binary{Op: EQ, X: *Ident, Y: Expr}             x=y
+//      *Unary{Op: STAR}                                *
+//      *Unary{Op: STAR, X: *Ident}                     *args
+//      *Unary{Op: STARSTAR, X: *Ident}                 **kwargs
 func (p *parser) parseParams() []Expr {
 	var params []Expr
 	stars := false
@@ -447,16 +449,19 @@ func (p *parser) parseParams() []Expr {
 			break
 		}
 
-		// *args or **kwargs
+		// * or *args or **kwargs
 		if p.tok == STAR || p.tok == STARSTAR {
 			stars = true
 			op := p.tok
 			pos := p.nextToken()
-			id := p.parseIdent()
+			var x Expr
+			if op == STARSTAR || p.tok == IDENT {
+				x = p.parseIdent()
+			}
 			params = append(params, &UnaryExpr{
 				OpPos: pos,
 				Op:    op,
-				X:     id,
+				X:     x,
 			})
 			continue
 		}

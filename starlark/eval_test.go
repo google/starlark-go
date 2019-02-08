@@ -268,6 +268,10 @@ def e(**kwargs):
 	return kwargs
 def f(a, b=42, *args, **kwargs):
 	return a, b, args, kwargs
+def g(a, b=42, *args, c=123, **kwargs):
+	return a, b, args, c, kwargs
+def h(a, b=42, *, c=123, **kwargs):
+	return a, b, c, kwargs
 `
 
 	thread := new(starlark.Thread)
@@ -320,6 +324,30 @@ def f(a, b=42, *args, **kwargs):
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
 		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
 			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
+
+		{`g()`, `function g takes at least 1 positional argument (0 given)`},
+		{`g(0)`, `(0, 42, (), 123, {})`},
+		{`g(0, 1)`, `(0, 1, (), 123, {})`},
+		{`g(0, 1, 2)`, `(0, 1, (2,), 123, {})`},
+		{`g(0, 1, 2, 3)`, `(0, 1, (2, 3), 123, {})`},
+		{`g(a=0)`, `(0, 42, (), 123, {})`},
+		{`g(0, b=1)`, `(0, 1, (), 123, {})`},
+		{`g(0, a=1)`, `function g got multiple values for keyword argument "a"`},
+		{`g(0, b=1, c=2, d=3)`, `(0, 1, (), 2, {"d": 3})`},
+		{`g(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`,
+			`(0, 1, (3, 4), 123, {"x": 2, "y": 5, "z": 6})`},
+
+		{`h()`, `function h takes at least 1 positional argument (0 given)`},
+		{`h(0)`, `(0, 42, 123, {})`},
+		{`h(0)`, `(0, 42, 123, {})`},
+		{`h(0, 1)`, `(0, 1, 123, {})`},
+		{`h(0, 1, 2)`, `function h takes at most 2 positional arguments (3 given)`},
+		{`h(a=0)`, `(0, 42, 123, {})`},
+		{`h(0, b=1)`, `(0, 1, 123, {})`},
+		{`h(0, a=1)`, `function h got multiple values for keyword argument "a"`},
+		{`h(0, b=1, c=2)`, `(0, 1, 2, {})`},
+		{`h(0, b=1, d=2)`, `(0, 1, 123, {"d": 2})`},
+		{`h(0, b=1, c=2, d=3)`, `(0, 1, 2, {"d": 3})`},
 	} {
 		var got string
 		if v, err := starlark.Eval(thread, "<expr>", test.src, globals); err != nil {
