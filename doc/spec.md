@@ -1546,7 +1546,7 @@ Primary = int | float | string
 
 Evaluation of a literal yields a value of the given type (string, int,
 or float) with the given value.
-See [Literals](#lexical elements) for details.
+See [Literals](#lexical-elements) for details.
 
 ### Parenthesized expressions
 
