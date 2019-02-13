@@ -3868,6 +3868,7 @@ rightmost splits.
 "banana".rsplit("n")                         # ["ba", "a", "a"]
 "banana".rsplit("n", 1)                      # ["bana", "a"]
 "one two  three".rsplit(None, 1)             # ["one two", "three"]
+"".rsplit("n")                               # [""]
 ```
 
 <a id='string·rstrip'></a>
@@ -3895,8 +3896,7 @@ algorithm: it removes all leading spaces from S
 (or trailing spaces in the case of `rsplit`),
 then splits the string around each consecutive non-empty sequence of
 Unicode white space characters.
-
-If S consists only of white space, `split` returns the empty list.
+If S consists only of white space, `S.split()` returns the empty list.
 
 If `maxsplit` is given and non-negative, it specifies a maximum number of splits.
 
@@ -3906,6 +3906,7 @@ If `maxsplit` is given and non-negative, it specifies a maximum number of splits
 "one two  three".split(None, 1)             # ["one", "two  three"]
 "banana".split("n")                         # ["ba", "a", "a"]
 "banana".split("n", 1)                      # ["ba", "ana"]
+"".split("n")                               # [""]
 ```
 
 <a id='string·elems'></a>
@@ -3961,11 +3962,14 @@ The optional argument, `keepends`, is interpreted as a Boolean.
 If true, line terminators are preserved in the result, though
 the final element does not necessarily end with a line terminator.
 
+As a special case, if S is the empty string,
+`splitlines` returns the empty list.
+
 ```python
 "one\n\ntwo".splitlines()       # ["one", "", "two"]
 "one\n\ntwo".splitlines(True)   # ["one\n", "\n", "two"]
+"".splitlines()                 # [] -- a special case
 ```
-
 
 <a id='string·startswith'></a>
 ### string·startswith
