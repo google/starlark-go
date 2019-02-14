@@ -1147,7 +1147,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 
 	// Too many positional args?
 	n := len(args)
-	maxpos := nparams
+	maxpos := nparams - fn.NumKwonlyParams()
 	if len(args) > maxpos {
 		if !fn.HasVarargs() {
 			return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
@@ -1201,7 +1201,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 	}
 
 	// default values
-	if n < nparams {
+	if n < nparams || fn.NumKwonlyParams() > 0 {
 		m := nparams - len(fn.defaults) // first default
 
 		// report errors for missing non-optional arguments

@@ -39,6 +39,7 @@ package compile
 //	freevar		[]Ident
 //	maxstack	varint
 //	numparams	varint
+//	numkwonlyparams	varint
 //	hasvarargs	varint (0 or 1)
 //	haskwargs	varint (0 or 1)
 //
@@ -185,6 +186,7 @@ func (e *encoder) function(fn *Funcode) {
 	e.idents(fn.Freevars)
 	e.int(fn.MaxStack)
 	e.int(fn.NumParams)
+	e.int(fn.NumKwonlyParams)
 	e.int(b2i(fn.HasVarargs))
 	e.int(b2i(fn.HasKwargs))
 }
@@ -350,20 +352,22 @@ func (d *decoder) function() *Funcode {
 	freevars := d.idents()
 	maxStack := d.int()
 	numParams := d.int()
+	numKwonlyParams := d.int()
 	hasVarargs := d.int() != 0
 	hasKwargs := d.int() != 0
 	return &Funcode{
 		// Prog is filled in later.
-		Pos:        id.Pos,
-		Name:       id.Name,
-		Doc:        doc,
-		Code:       code,
-		pclinetab:  pclinetab,
-		Locals:     locals,
-		Freevars:   freevars,
-		MaxStack:   maxStack,
-		NumParams:  numParams,
-		HasVarargs: hasVarargs,
-		HasKwargs:  hasKwargs,
+		Pos:             id.Pos,
+		Name:            id.Name,
+		Doc:             doc,
+		Code:            code,
+		pclinetab:       pclinetab,
+		Locals:          locals,
+		Freevars:        freevars,
+		MaxStack:        maxStack,
+		NumParams:       numParams,
+		NumKwonlyParams: numKwonlyParams,
+		HasVarargs:      hasVarargs,
+		HasKwargs:       hasKwargs,
 	}
 }

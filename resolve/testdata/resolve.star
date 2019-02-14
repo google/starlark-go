@@ -224,7 +224,7 @@ def f(x=1, y): pass ### `required parameter may not follow optional`
 def f(**kwargs, x): ### `parameter may not follow \*\*kwargs`
   pass
 
-def g(**kwargs, *args): ### `\*args parameter may not follow \*\*kwargs`
+def g(**kwargs, *args): ### `\* parameter may not follow \*\*kwargs`
   pass
 
 def h(**kwargs1, **kwargs2): ### `multiple \*\* parameters not allowed`
@@ -239,7 +239,27 @@ def f(*args, x): ### `required parameter may not follow \* parameter`
 def g(*args1, *args2): ### `multiple \* parameters not allowed`
   pass
 
-def h(*args, a=1, **kwargs): ### `optional parameter may not follow \*args`
+def h(*, ### `bare \* must be followed by optional parameters`
+      *): ### `multiple \* parameters not allowed`
+  pass
+
+def i(*args, *): ### `multiple \* parameters not allowed`
+  pass
+
+def j(*,      ### `bare \* must be followed by optional parameters`
+      *args): ### `multiple \* parameters not allowed`
+  pass
+
+def k(*, **kwargs): ### `bare \* must be followed by optional parameters`
+  pass
+
+def l(*): ### `bare \* must be followed by optional parameters`
+  pass
+
+def m(*args, a=1, **kwargs): # ok
+  pass
+
+def n(*, a=1, **kwargs): # ok
   pass
 
 ---
