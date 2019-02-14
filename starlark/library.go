@@ -2117,16 +2117,17 @@ func string_splitlines(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 	if err := UnpackPositionalArgs(fnname, args, kwargs, 0, &keepends); err != nil {
 		return nil, err
 	}
-	s := string(recv.(String))
 	var lines []string
-	// TODO(adonovan): handle CRLF correctly.
-	if keepends {
-		lines = strings.SplitAfter(s, "\n")
-	} else {
-		lines = strings.Split(s, "\n")
-	}
-	if strings.HasSuffix(s, "\n") {
-		lines = lines[:len(lines)-1]
+	if s := string(recv.(String)); s != "" {
+		// TODO(adonovan): handle CRLF correctly.
+		if keepends {
+			lines = strings.SplitAfter(s, "\n")
+		} else {
+			lines = strings.Split(s, "\n")
+		}
+		if strings.HasSuffix(s, "\n") {
+			lines = lines[:len(lines)-1]
+		}
 	}
 	list := make([]Value, len(lines))
 	for i, x := range lines {
