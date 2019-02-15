@@ -1116,12 +1116,29 @@ func asIndex(v Value, len int, result *int) error {
 // setArgs sets the values of the formal parameters of function fn in
 // based on the actual parameter values in args and kwargs.
 func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
-	// This is adapted from the algorithm from PyEval_EvalCodeEx.
+
+	// This is the general schema of a function:
+	//
+	//   def f(p1, p2=dp2, p3=dp3, *args, k1, k2=dk2, k3, **kwargs)
+	//
+	// The p parameters are non-kwonly, and may be specified positionally.
+	// The k parameters are kwonly, and must be specified by name.
+	// The defaults tuple is (dp2, dp3, mandatory, dk2, mandatory).
+	//
+	// Arguments are processed as follows:
+	// - positional arguments are bound to a prefix of [p1, p2, p3].
+	// - surplus positional arguments are bound to *args.
+	// - keyword arguments are bound to any of {p1, p2, p3, k1, k2, k3};
+	//   duplicate bindings are rejected.
+	// - surplus keyword arguments are bound to **kwargs.
+	// - defaults are bound to each parameter from p2 to k3 if no value was set.
+	//   default values come from the tuple above.
+	//   It is an error if the tuple entry for an unset parameter is 'mandatory'.
 
 	// Nullary function?
 	if fn.NumParams() == 0 {
 		if nactual := len(args) + len(kwargs); nactual > 0 {
-			return fmt.Errorf("function %s takes no arguments (%d given)", fn.Name(), nactual)
+			return fmt.Errorf("function %s accepts no arguments (%d given)", fn.Name(), nactual)
 		}
 		return nil
 	}
@@ -1133,7 +1150,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		return z
 	}
 
-	// nparams is the number of ordinary parameters (sans * or **).
+	// nparams is the number of ordinary parameters (sans *args and **kwargs).
 	nparams := fn.NumParams()
 	var kwdict *Dict
 	if fn.HasKwargs() {
@@ -1145,32 +1162,29 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		nparams--
 	}
 
+	// nonkwonly is the number of non-kwonly parameters.
+	nonkwonly := nparams - fn.NumKwonlyParams()
+
 	// Too many positional args?
 	n := len(args)
-	maxpos := nparams - fn.NumKwonlyParams()
-	if len(args) > maxpos {
+	if len(args) > nonkwonly {
 		if !fn.HasVarargs() {
-			return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
+			return fmt.Errorf("function %s accepts %s%d positional argument%s (%d given)",
 				fn.Name(),
-				cond(len(fn.defaults) > 0, "at most", "exactly"),
-				maxpos,
-				cond(nparams == 1, "", "s"),
-				len(args)+len(kwargs))
+				cond(len(fn.defaults) > fn.NumKwonlyParams(), "at most ", ""),
+				nonkwonly,
+				cond(nonkwonly == 1, "", "s"),
+				len(args))
 		}
-		n = maxpos
+		n = nonkwonly
 	}
 
-	// set of defined (regular) parameters
-	var defined intset
-	defined.init(nparams)
-
-	// ordinary parameters
+	// Bind positional arguments to non-kwonly parameters.
 	for i := 0; i < n; i++ {
 		locals[i] = args[i]
-		defined.set(i)
 	}
 
-	// variadic arguments
+	// Bind surplus positional arguments to *args parameter.
 	if fn.HasVarargs() {
 		tuple := make(Tuple, len(args)-n)
 		for i := n; i < len(args); i++ {
@@ -1179,13 +1193,13 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		locals[nparams] = tuple
 	}
 
-	// keyword arguments
+	// Bind keyword arguments to parameters.
 	paramIdents := fn.funcode.Locals[:nparams]
 	for _, pair := range kwargs {
 		k, v := pair[0].(String), pair[1]
 		if i := findParam(paramIdents, string(k)); i >= 0 {
-			if defined.set(i) {
-				return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+			if locals[i] != nil {
+				return fmt.Errorf("function %s got multiple values for parameter %s", fn.Name(), k)
 			}
 			locals[i] = v
 			continue
@@ -1193,35 +1207,41 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		if kwdict == nil {
 			return fmt.Errorf("function %s got an unexpected keyword argument %s", fn.Name(), k)
 		}
-		n := kwdict.Len()
+		oldlen := kwdict.Len()
 		kwdict.SetKey(k, v)
-		if kwdict.Len() == n {
-			return fmt.Errorf("function %s got multiple values for keyword argument %s", fn.Name(), k)
+		if kwdict.Len() == oldlen {
+			return fmt.Errorf("function %s got multiple values for parameter %s", fn.Name(), k)
 		}
 	}
 
-	// default values
+	// Are defaults required?
 	if n < nparams || fn.NumKwonlyParams() > 0 {
 		m := nparams - len(fn.defaults) // first default
 
-		// report errors for missing non-optional arguments
-		i := n
-		for ; i < m; i++ {
-			if !defined.get(i) {
-				return fmt.Errorf("function %s takes %s %d positional argument%s (%d given)",
-					fn.Name(),
-					cond(fn.HasVarargs() || len(fn.defaults) > 0, "at least", "exactly"),
-					m,
-					cond(m == 1, "", "s"),
-					defined.len())
+		// Report errors for missing required arguments.
+		var missing []string
+		var i int
+		for i = n; i < m; i++ {
+			if locals[i] == nil {
+				missing = append(missing, paramIdents[i].Name)
 			}
 		}
 
-		// set default values
+		// Bind default values to parameters.
 		for ; i < nparams; i++ {
-			if !defined.get(i) {
-				locals[i] = fn.defaults[i-m]
+			if locals[i] == nil {
+				dflt := fn.defaults[i-m]
+				if _, ok := dflt.(mandatory); ok {
+					missing = append(missing, paramIdents[i].Name)
+					continue
+				}
+				locals[i] = dflt
 			}
+		}
+
+		if missing != nil {
+			return fmt.Errorf("function %s missing %d argument%s (%s)",
+				fn.Name(), len(missing), cond(len(missing) > 1, "s", ""), strings.Join(missing, ", "))
 		}
 	}
 	return nil

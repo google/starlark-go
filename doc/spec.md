@@ -941,7 +941,7 @@ f(1, 2, 3, 4)           # (1, 2, (3, 4))
 
 <b>Keyword-variadic functions:</b> Some functions allow callers to
 provide an arbitrary sequence of `name=value` keyword arguments.
-A function definition may include a final _keyworded arguments_ or
+A function definition may include a final _keyword arguments_ or
 _kwargs_ parameter, indicated by a double-star preceding the parameter
 name: `**kwargs`.
 Any surplus named arguments that do not correspond to named parameters
@@ -959,8 +959,8 @@ f(x=2, y=1, z=3)        # (2, 1, {"z": 3})
 It is a static error if any two parameters of a function have the same name.
 
 Just as a function definition may accept an arbitrary number of
-positional or keyworded arguments, a function call may provide an
-arbitrary number of positional or keyworded arguments supplied by a
+positional or named arguments, a function call may provide an
+arbitrary number of positional or named arguments supplied by a
 list or dictionary:
 
 ```python
@@ -2529,11 +2529,27 @@ name preceded by a `*`.  This is the called the _varargs_ parameter,
 and it accumulates surplus positional arguments specified by a call.
 It is conventionally named `*args`.
 
-The varargs parameter may be followed by zero or more optional
-parameters, again of the form `name=expression`, but these optional parameters
-differ from earlier ones in that they are "keyword-only":
-a call must provide their values as keyword arguments,
-not positional ones.
+The varargs parameter may be followed by zero or more
+parameters, again of the forms `name` or `name=expression`,
+but these parameters differ from earlier ones in that they are
+_keyword-only_: if a call provides their values, it must do so as
+keyword arguments, not positional ones.
+
+```python
+def f(a, *, b=2, c):
+  print(a, b, c)
+
+f(1)                    # error: function f missing 1 argument (c)
+f(1, 3)                 # error: function f accepts 1 positional argument (2 given)
+f(1, c=3)               # "1 2 3"
+
+def g(a, *args, b=2, c):
+  print(a, b, c, args)
+
+g(1, 3)                 # error: function g missing 1 argument (c)
+g(1, 4, c=3)            # "1 2 3 (4,)"
+
+```
 
 A non-variadic function may also declare keyword-only parameters,
 by using a bare `*` in place of the `*args` parameter.

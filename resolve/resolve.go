@@ -775,7 +775,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			if starStar != nil {
 				r.errorf(param.NamePos, "required parameter may not follow **%s", starStar.Name)
 			} else if star != nil {
-				r.errorf(param.NamePos, "required parameter may not follow * parameter")
+				numKwonlyParams++
 			} else if seenOptional {
 				r.errorf(param.NamePos, "required parameter may not follow optional")
 			}
@@ -827,7 +827,7 @@ func (r *resolver) function(pos syntax.Position, name string, function *syntax.F
 			}
 			function.HasVarargs = true
 		} else if numKwonlyParams == 0 {
-			r.errorf(star.OpPos, "bare * must be followed by optional parameters")
+			r.errorf(star.OpPos, "bare * must be followed by keyword-only parameters")
 		}
 	}
 	if starStar != nil {
