@@ -233,27 +233,27 @@ def h(**kwargs1, **kwargs2): ### `multiple \*\* parameters not allowed`
 ---
 # Only keyword-only params and **kwargs may follow *args in a declaration.
 
-def f(*args, x): ### `required parameter may not follow \* parameter`
+def f(*args, x): # ok
   pass
 
 def g(*args1, *args2): ### `multiple \* parameters not allowed`
   pass
 
-def h(*, ### `bare \* must be followed by optional parameters`
+def h(*, ### `bare \* must be followed by keyword-only parameters`
       *): ### `multiple \* parameters not allowed`
   pass
 
 def i(*args, *): ### `multiple \* parameters not allowed`
   pass
 
-def j(*,      ### `bare \* must be followed by optional parameters`
+def j(*,      ### `bare \* must be followed by keyword-only parameters`
       *args): ### `multiple \* parameters not allowed`
   pass
 
-def k(*, **kwargs): ### `bare \* must be followed by optional parameters`
+def k(*, **kwargs): ### `bare \* must be followed by keyword-only parameters`
   pass
 
-def l(*): ### `bare \* must be followed by optional parameters`
+def l(*): ### `bare \* must be followed by keyword-only parameters`
   pass
 
 def m(*args, a=1, **kwargs): # ok

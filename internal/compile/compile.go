@@ -37,7 +37,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 6
+const Version = 7
 
 type Opcode uint8
 
@@ -85,9 +85,10 @@ const (
 	UMINUS // x UMINUS -x
 	TILDE  // x TILDE ~x
 
-	NONE  // - NONE None
-	TRUE  // - TRUE True
-	FALSE // - FALSE False
+	NONE      // - NONE None
+	TRUE      // - TRUE True
+	FALSE     // - FALSE False
+	MANDATORY // - MANDATORY Mandatory	     [sentinel value for required kwonly args]
 
 	ITERPUSH    //       iterable ITERPUSH -     [pushes the iterator stack]
 	ITERPOP     //              - ITERPOP -      [pops the iterator stack]
@@ -110,21 +111,21 @@ const (
 	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator]
 	//       or:          - ITERJMP<addr> -      (and jump)
 
-	CONSTANT    //                - CONSTANT<constant>  value
-	MAKETUPLE   //        x1 ... xn MAKETUPLE<n>        tuple
-	MAKELIST    //        x1 ... xn MAKELIST<n>         list
-	MAKEFUNC    //      args kwargs MAKEFUNC<func>      fn
-	LOAD        //  from1 ... fromN module LOAD<n>      v1 ... vN
-	SETLOCAL    //            value SETLOCAL<local>     -
-	SETGLOBAL   //            value SETGLOBAL<global>   -
-	LOCAL       //                - LOCAL<local>        value
-	FREE        //                - FREE<freevar>       value
-	GLOBAL      //                - GLOBAL<global>      value
-	PREDECLARED //                - PREDECLARED<name>   value
-	UNIVERSAL   //                - UNIVERSAL<name>     value
-	ATTR        //                x ATTR<name>          y           y = x.name
-	SETFIELD    //              x y SETFIELD<name>      -           x.name = y
-	UNPACK      //         iterable UNPACK<n>           vn ... v1
+	CONSTANT    //                 - CONSTANT<constant>  value
+	MAKETUPLE   //         x1 ... xn MAKETUPLE<n>        tuple
+	MAKELIST    //         x1 ... xn MAKELIST<n>         list
+	MAKEFUNC    // defaults freevars MAKEFUNC<func>      fn
+	LOAD        //   from1 ... fromN module LOAD<n>      v1 ... vN
+	SETLOCAL    //             value SETLOCAL<local>     -
+	SETGLOBAL   //             value SETGLOBAL<global>   -
+	LOCAL       //                 - LOCAL<local>        value
+	FREE        //                 - FREE<freevar>       value
+	GLOBAL      //                 - GLOBAL<global>      value
+	PREDECLARED //                 - PREDECLARED<name>   value
+	UNIVERSAL   //                 - UNIVERSAL<name>     value
+	ATTR        //                 x ATTR<name>          y           y = x.name
+	SETFIELD    //               x y SETFIELD<name>      -           x.name = y
+	UNPACK      //          iterable UNPACK<n>           vn ... v1
 
 	// n>>8 is #positional args and n&0xff is #named args (pairs).
 	CALL        // fn positional named                CALL<n>        result
@@ -175,6 +176,7 @@ var opcodeNames = [...]string{
 	MAKEFUNC:    "makefunc",
 	MAKELIST:    "makelist",
 	MAKETUPLE:   "maketuple",
+	MANDATORY:   "mandatory",
 	MINUS:       "minus",
 	NEQ:         "neq",
 	NONE:        "none",
@@ -244,6 +246,7 @@ var stackEffect = [...]int8{
 	MAKEFUNC:    -1,
 	MAKELIST:    variableStackEffect,
 	MAKETUPLE:   variableStackEffect,
+	MANDATORY:   +1,
 	MINUS:       -1,
 	NEQ:         -1,
 	NONE:        +1,
@@ -1680,12 +1683,24 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 	// so record the position.
 	fcomp.setPos(pos)
 
-	// Generate tuple of parameter defaults.
+	// Generate tuple of parameter defaults. For:
+	//  def f(p1, p2=dp2, p3=dp3, *, k1, k2=dk2, k3, **kwargs)
+	// the tuple is:
+	//  (dp2, dp3, MANDATORY, dk2, MANDATORY).
 	n := 0
+	seenStar := false
 	for _, param := range f.Params {
-		if binary, ok := param.(*syntax.BinaryExpr); ok {
-			fcomp.expr(binary.Y)
+		switch param := param.(type) {
+		case *syntax.BinaryExpr:
+			fcomp.expr(param.Y)
 			n++
+		case *syntax.UnaryExpr:
+			seenStar = true // * or *args (also **kwargs)
+		case *syntax.Ident:
+			if seenStar {
+				fcomp.emit(MANDATORY)
+				n++
+			}
 		}
 	}
 	fcomp.emit1(MAKETUPLE, uint32(n))

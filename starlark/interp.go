@@ -200,6 +200,10 @@ loop:
 			stack[sp] = False
 			sp++
 
+		case compile.MANDATORY:
+			stack[sp] = mandatory{}
+			sp++
+
 		case compile.JMP:
 			pc = arg
 
@@ -559,3 +563,13 @@ loop:
 
 	return result, err
 }
+
+// mandatory is a sentinel value used in a function's defaults tuple
+// to indicate that a (keyword-only) parameter is mandatory.
+type mandatory struct{}
+
+func (mandatory) String() string        { return "mandatory" }
+func (mandatory) Type() string          { return "mandatory" }
+func (mandatory) Freeze()               {} // immutable
+func (mandatory) Truth() Bool           { return False }
+func (mandatory) Hash() (uint32, error) { return 0, nil }
