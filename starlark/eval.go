@@ -352,7 +352,7 @@ func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Fun
 		case int64:
 			v = MakeInt64(c)
 		case *big.Int:
-			v = Int{c}
+			v = MakeBigInt(c)
 		case string:
 			v = String(c)
 		case float64:
@@ -1063,7 +1063,8 @@ func slice(x, lo, hi, step_ Value) (Value, error) {
 }
 
 // From Hacker's Delight, section 2.8.
-func signum(x int) int { return int(uint64(int64(x)>>63) | (uint64(-x) >> 63)) }
+func signum64(x int64) int { return int(uint64(x>>63) | uint64(-x)>>63) }
+func signum(x int) int     { return signum64(int64(x)) }
 
 // indices converts start_ and end_ to indices in the range [0:len].
 // The start index defaults to 0 and the end index defaults to len.
@@ -1375,13 +1376,13 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 			switch c {
 			case 'd', 'i':
-				buf.WriteString(i.bigint.Text(10))
+				fmt.Fprintf(&buf, "%d", i)
 			case 'o':
-				buf.WriteString(i.bigint.Text(8))
+				fmt.Fprintf(&buf, "%o", i)
 			case 'x':
-				buf.WriteString(i.bigint.Text(16))
+				fmt.Fprintf(&buf, "%x", i)
 			case 'X':
-				buf.WriteString(strings.ToUpper(i.bigint.Text(16)))
+				fmt.Fprintf(&buf, "%X", i)
 			}
 		case 'e', 'f', 'g', 'E', 'F', 'G':
 			f, ok := AsFloat(arg)
