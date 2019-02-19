@@ -16,16 +16,26 @@ import (
 )
 
 func Benchmark(b *testing.B) {
+	defer setOptions("")
+
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := new(starlark.Thread)
 	for _, file := range []string{
 		"testdata/benchmark.star",
 		// ...
 	} {
+
 		filename := filepath.Join(testdata, file)
 
+		src, err := ioutil.ReadFile(filename)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		setOptions(string(src))
+
 		// Evaluate the file once.
-		globals, err := starlark.ExecFile(thread, filename, nil, nil)
+		globals, err := starlark.ExecFile(thread, filename, src, nil)
 		if err != nil {
 			reportEvalError(b, err)
 		}
