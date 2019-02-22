@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/build"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
@@ -133,5 +134,12 @@ func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 // 'go build', under which a test runs in its package directory,
 // and Blaze, under which a test runs in the root of the tree.
 var DataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+	rel := filepath.Join("go.starlark.net", pkgdir, filename)
+	for _, p := range build.Default.SrcDirs() {
+		full := filepath.Join(p, rel)
+		if _, err := os.Stat(full); err == nil {
+			return full
+		}
+	}
+	panic(fmt.Sprintf("could not find %s", rel))
 }

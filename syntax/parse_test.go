@@ -8,9 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"go/build"
 	"io/ioutil"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -490,14 +488,8 @@ File
 	}
 }
 
-// dataFile is the same as starlarktest.DataFile.
-// We make a copy to avoid a dependency cycle.
-var dataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
-}
-
 func BenchmarkParse(b *testing.B) {
-	filename := dataFile("syntax", "testdata/scan.star")
+	filename := starlarktest.DataFile("syntax", "testdata/scan.star")
 	b.StopTimer()
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
