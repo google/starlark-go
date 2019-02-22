@@ -434,62 +434,6 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-func TestWalk(t *testing.T) {
-	const src = `
-for x in y:
-  if x:
-    pass
-  else:
-    f([2*x for x in "abc"])
-`
-	// TODO(adonovan): test that it finds all syntax.Nodes
-	// (compare against a reflect-based implementation).
-	// TODO(adonovan): test that the result of f is used to prune
-	// the descent.
-	f, err := syntax.Parse("hello.go", src, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var buf bytes.Buffer
-	var depth int
-	syntax.Walk(f, func(n syntax.Node) bool {
-		if n == nil {
-			depth--
-			return true
-		}
-		fmt.Fprintf(&buf, "%s%s\n",
-			strings.Repeat("  ", depth),
-			strings.TrimPrefix(reflect.TypeOf(n).String(), "*syntax."))
-		depth++
-		return true
-	})
-	got := buf.String()
-	want := `
-File
-  ForStmt
-    Ident
-    Ident
-    IfStmt
-      Ident
-      BranchStmt
-      ExprStmt
-        CallExpr
-          Ident
-          Comprehension
-            ForClause
-              Ident
-              Literal
-            BinaryExpr
-              Literal
-              Ident`
-	got = strings.TrimSpace(got)
-	want = strings.TrimSpace(want)
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
-	}
-}
-
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
