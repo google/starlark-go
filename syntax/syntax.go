@@ -480,15 +480,22 @@ func (x *TupleExpr) Span() (start, end Position) {
 }
 
 // A UnaryExpr represents a unary expression: Op X.
+//
+// As a special case it may also represent the star
+// parameter in def f(*args) or def f(*, x).
 type UnaryExpr struct {
 	commentsRef
 	OpPos Position
 	Op    Token
-	X     Expr
+	X     Expr // may be nil if Op==STAR
 }
 
 func (x *UnaryExpr) Span() (start, end Position) {
-	_, end = x.X.Span()
+	if x.X != nil {
+		_, end = x.X.Span()
+	} else {
+		end = x.OpPos.add("*")
+	}
 	return x.OpPos, end
 }
 
