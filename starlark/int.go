@@ -15,12 +15,11 @@ import (
 
 // Int is the type of a Starlark int.
 type Int struct {
-	// big != nil <=> value is not representable as int32.
 	// We use only the signed 32 bit range of small to ensure
 	// that small+small and small*small do not overflow.
 
 	small int64    // minint32 <= small <= maxint32
-	big   *big.Int // big.BitLen() >= 32
+	big   *big.Int // big != nil <=> value is not representable as int32
 }
 
 // newBig allocates a new big.Int.
