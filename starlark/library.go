@@ -679,7 +679,7 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		//
 		// int(x) permits arbitrary precision, unlike the scanner.
 		if i, ok := new(big.Int).SetString(s, b); ok {
-			res := Int{i}
+			res := MakeBigInt(i)
 			if neg {
 				res = zero.Sub(res)
 			}

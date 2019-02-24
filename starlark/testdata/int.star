@@ -11,31 +11,54 @@ assert.eq(5 + 7, 12)
 assert.eq(5 * 7, 35)
 assert.eq(5 - 7, -2)
 
+# int boundaries
+maxint64 = (1 << 63) - 1
+minint64 = -1 << 63
+maxint32 = (1 << 31) - 1
+minint32 = -1 << 31
+assert.eq(maxint64, 9223372036854775807)
+assert.eq(minint64, -9223372036854775808)
+assert.eq(maxint32, 2147483647)
+assert.eq(minint32, -2147483648)
+
+
 # truth
-assert.true(123)
-assert.true(-1)
-assert.true(not 0)
+def truth():
+  assert.true(not 0)
+  for m in [1, maxint32]: # Test small/big ranges
+    assert.true(123*m)
+    assert.true(-1*m)
+
+truth()
 
 # floored division
 # (For real division, see float.star.)
-assert.eq(100 // 7, 14)
-assert.eq(100 // -7, -15)
-assert.eq(-100 // 7, -15) # NB: different from Go/Java
-assert.eq(-100 // -7, 14) # NB: different from Go/Java
-assert.eq(98 // 7, 14)
-assert.eq(98 // -7, -14)
-assert.eq(-98 // 7, -14)
-assert.eq(-98 // -7, 14)
+def division():
+  for m in [1, maxint32]: # Test small/big ranges
+    assert.eq((100*m) // (7*m), 14)
+    assert.eq((100*m) // (-7*m), -15)
+    assert.eq((-100*m) // (7*m), -15) # NB: different from Go/Java
+    assert.eq((-100*m) // (-7*m), 14) # NB: different from Go/Java
+    assert.eq((98*m) // (7*m), 14)
+    assert.eq((98*m) // (-7*m), -14)
+    assert.eq((-98*m) // (7*m), -14)
+    assert.eq((-98*m) // (-7*m), 14)
+
+division()
 
 # remainder
-assert.eq(100 % 7, 2)
-assert.eq(100 % -7, -5) # NB: different from Go/Java
-assert.eq(-100 % 7, 5) # NB: different from Go/Java
-assert.eq(-100 % -7, -2)
-assert.eq(98 % 7, 0)
-assert.eq(98 % -7, 0)
-assert.eq(-98 % 7, 0)
-assert.eq(-98 % -7, 0)
+def remainder():
+  for m in [1, maxint32]: # Test small/big ranges
+    assert.eq((100*m) % (7*m), 2*m)
+    assert.eq((100*m) % (-7*m), -5*m) # NB: different from Go/Java
+    assert.eq((-100*m) % (7*m), 5*m) # NB: different from Go/Java
+    assert.eq((-100*m) % (-7*m), -2*m)
+    assert.eq((98*m) % (7*m), 0)
+    assert.eq((98*m) % (-7*m), 0)
+    assert.eq((-98*m) % (7*m), 0)
+    assert.eq((-98*m) % (-7*m), 0)
+
+remainder()
 
 # compound assignment
 def compound():
@@ -178,27 +201,36 @@ assert.fails(lambda: 1 << 512, "shift count too large")
 
 # comparisons
 # TODO(adonovan): test: < > == != etc
-assert.lt(-2, -1)
-assert.lt(-1, 0)
-assert.lt(0, 1)
-assert.lt(1, 2)
-assert.true(2 >= 2)
-assert.true(2 > 1)
-assert.true(1 >= 1)
-assert.true(1 > 0)
-assert.true(0 >= 0)
-assert.true(0 > -1)
-assert.true(-1 >= -1)
-assert.true(-1 > -2)
+def comparisons():
+  for m in [1, maxint32/2, maxint32]: # Test small/big ranges
+    assert.lt(-2*m, -1*m)
+    assert.lt(-1*m, 0*m)
+    assert.lt(0*m, 1*m)
+    assert.lt(1*m, 2*m)
+    assert.true(2*m >= 2*m)
+    assert.true(2*m > 1*m)
+    assert.true(1*m >= 1*m)
+    assert.true(1*m > 0*m)
+    assert.true(0*m >= 0*m)
+    assert.true(0*m > -1*m)
+    assert.true(-1*m >= -1*m)
+    assert.true(-1*m > -2*m)
+
+comparisons()
 
 # precision
-maxint64 = 9223372036854775807 # = 2^63
-minint64 = -maxint64 - 1       # = -2^64
 assert.eq(str(maxint64), "9223372036854775807")
 assert.eq(str(maxint64+1), "9223372036854775808")
 assert.eq(str(minint64), "-9223372036854775808")
 assert.eq(str(minint64-1), "-9223372036854775809")
 assert.eq(str(minint64 * minint64), "85070591730234615865843651857942052864")
+assert.eq(str(maxint32+1), "2147483648")
+assert.eq(str(minint32-1), "-2147483649")
+assert.eq(str(minint32 * minint32), "4611686018427387904")
+assert.eq(str(minint32 | maxint32), "-1")
+assert.eq(str(minint32 & minint32), "-2147483648")
+assert.eq(str(minint32 ^ maxint32), "-1")
+assert.eq(str(minint32 // -1), "2147483648")
 
 # string formatting
 assert.eq("%o %x %d" % (0o755, 0xDEADBEEF, 42), "755 deadbeef 42")

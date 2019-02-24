@@ -25,3 +25,13 @@ range1000 = range(1000)
 def bench_builtin_method():
     for _ in range1000:
         emptydict.get(None)
+
+def bench_int():
+    a = 0
+    for _ in range1000:
+        a += 1
+
+def bench_bigint():
+    a = 1 << 31 # maxint32 + 1
+    for _ in range1000:
+        a += 1
