@@ -481,8 +481,8 @@ func (x *TupleExpr) Span() (start, end Position) {
 
 // A UnaryExpr represents a unary expression: Op X.
 //
-// As a special case it may also represent the star
-// parameter in def f(*args) or def f(*, x).
+// As a special case, UnaryOp{Op:Star} may also represent
+// the star parameter in def f(*args) or def f(*, x).
 type UnaryExpr struct {
 	commentsRef
 	OpPos Position
@@ -500,6 +500,11 @@ func (x *UnaryExpr) Span() (start, end Position) {
 }
 
 // A BinaryExpr represents a binary expression: X Op Y.
+//
+// As a special case, BinaryExpr{Op:EQ} may also
+// represent a named argument in a call f(k=v)
+// or a named parameter in a function declaration
+// def f(param=default).
 type BinaryExpr struct {
 	commentsRef
 	X     Expr
