@@ -67,7 +67,6 @@ package starlark // import "go.starlark.net/starlark"
 // This file defines the data types of Starlark and their basic operations.
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"math/big"
@@ -980,8 +979,8 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 // toString returns the string form of value v.
 // It may be more efficient than v.String() for larger values.
 func toString(v Value) string {
-	var buf bytes.Buffer
-	writeValue(&buf, v, nil)
+	buf := new(strings.Builder)
+	writeValue(buf, v, nil)
 	return buf.String()
 }
 
@@ -992,7 +991,7 @@ func toString(v Value) string {
 // (These are the only potentially cyclic structures.)
 // Callers should generally pass a temporary slice of length zero but non-zero capacity.
 // It is safe to re-use the same path slice for multiple calls.
-func writeValue(out *bytes.Buffer, x Value, path []Value) {
+func writeValue(out *strings.Builder, x Value, path []Value) {
 	switch x := x.(type) {
 	case nil:
 		out.WriteString("<nil>") // indicates a bug

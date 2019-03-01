@@ -23,9 +23,9 @@ package starlarkstruct // import "go.starlark.net/starlarkstruct"
 //    would be, and, like the Go struct, requires only a single allocation.
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -131,7 +131,7 @@ func (s *Struct) ToStringDict(d starlark.StringDict) {
 }
 
 func (s *Struct) String() string {
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	if s.constructor == Default {
 		// NB: The Java implementation always prints struct
 		// even for Bazel provider instances.
