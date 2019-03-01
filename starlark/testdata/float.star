@@ -225,6 +225,12 @@ assert.eq("%g" % 123, "123")
 assert.fails(lambda: "%e" % "123", "requires float, not str")
 assert.fails(lambda: "%f" % "123", "requires float, not str")
 assert.fails(lambda: "%g" % "123", "requires float, not str")
+assert.eq(repr(1.0), "1.0")
+assert.eq(repr(-1.0), "-1.0")
+assert.eq(repr(1.5), "1.5")
+assert.eq(repr(1e9), "1e+09")
+assert.eq(repr(float("NaN")), "NaN")
+assert.eq(repr(float("+Inf")), "+Inf")
 
 i0 = 1
 f0 = 1.0

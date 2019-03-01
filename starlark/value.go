@@ -377,10 +377,17 @@ func (x Bool) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 // Float is the type of a Starlark float.
 type Float float64
 
-func (f Float) String() string { return strconv.FormatFloat(float64(f), 'g', 6, 64) }
-func (f Float) Type() string   { return "float" }
-func (f Float) Freeze()        {} // immutable
-func (f Float) Truth() Bool    { return f != 0.0 }
+func (f Float) String() string {
+	s := strconv.FormatFloat(float64(f), 'g', 6, 64)
+	// See https://github.com/bazelbuild/starlark/issues/130.
+	if !strings.ContainsAny(s, ".eNI") { // 1.5 is ok, 1e5 is ok, NaN is ok, Inf is ok
+		s += ".0"
+	}
+	return s
+}
+func (f Float) Type() string { return "float" }
+func (f Float) Freeze()      {} // immutable
+func (f Float) Truth() Bool  { return f != 0.0 }
 func (f Float) Hash() (uint32, error) {
 	// Equal float and int values must yield the same hash.
 	// TODO(adonovan): opt: if f is non-integral, and thus not equal
