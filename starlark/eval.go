@@ -806,9 +806,12 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 			return False, nil
 		case Mapping: // e.g. dict
-			// Ignore error from Get as we cannot distinguish true
+			_, found, err := y.Get(x)
+			if _, ok := err.(Unhashable); ok {
+				return nil, err
+			}
+			// Ignore other errors from Get as we cannot distinguish true
 			// errors (value cycle, type error) from "key not found".
-			_, found, _ := y.Get(x)
 			return Bool(found), nil
 		case *Set:
 			ok, err := y.Has(x)

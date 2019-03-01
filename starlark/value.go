@@ -102,8 +102,14 @@ type Value interface {
 	// Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y).
 	// Hash may fail if the value's type is not hashable, or if the value
 	// contains a non-hashable value.
+	// Values are encouraged to return an error of type Unhashable in the latter case.
 	Hash() (uint32, error)
 }
+
+// An Unhashable error indicates that a call to Hash has failed because the Value is not hashable.
+type Unhashable string
+
+func (e Unhashable) Error() string { return string(e) }
 
 // A Comparable is a value that defines its own equivalence relation and
 // perhaps ordered comparisons.
@@ -524,7 +530,7 @@ func (si stringIterable) Type() string {
 }
 func (si stringIterable) Freeze()               {} // immutable
 func (si stringIterable) Truth() Bool           { return True }
-func (si stringIterable) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", si.Type()) }
+func (si stringIterable) Hash() (uint32, error) { return 0, Unhashable("unhashable: " + si.Type()) }
 func (si stringIterable) Iterate() Iterator     { return &stringIterator{si, 0} }
 
 type stringIterator struct {
@@ -675,7 +681,7 @@ func (d *Dict) String() string                                  { return toStrin
 func (d *Dict) Type() string                                    { return "dict" }
 func (d *Dict) Freeze()                                         { d.ht.freeze() }
 func (d *Dict) Truth() Bool                                     { return d.Len() > 0 }
-func (d *Dict) Hash() (uint32, error)                           { return 0, fmt.Errorf("unhashable type: dict") }
+func (d *Dict) Hash() (uint32, error)                           { return 0, Unhashable("unhashable type: dict") }
 
 func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, dictMethods) }
 func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
@@ -746,7 +752,7 @@ func (l *List) checkMutable(verb string) error {
 
 func (l *List) String() string        { return toString(l) }
 func (l *List) Type() string          { return "list" }
-func (l *List) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: list") }
+func (l *List) Hash() (uint32, error) { return 0, Unhashable("unhashable type: list") }
 func (l *List) Truth() Bool           { return l.Len() > 0 }
 func (l *List) Len() int              { return len(l.elems) }
 func (l *List) Index(i int) Value     { return l.elems[i] }
@@ -930,7 +936,7 @@ func (s *Set) String() string                         { return toString(s) }
 func (s *Set) Type() string                           { return "set" }
 func (s *Set) elems() []Value                         { return s.ht.keys() }
 func (s *Set) Freeze()                                { s.ht.freeze() }
-func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
+func (s *Set) Hash() (uint32, error)                  { return 0, Unhashable("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
 
 func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
