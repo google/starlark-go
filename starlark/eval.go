@@ -5,7 +5,6 @@
 package starlark
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -88,14 +87,14 @@ func (d StringDict) Keys() []string {
 }
 
 func (d StringDict) String() string {
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	buf.WriteByte('{')
 	sep := ""
 	for _, name := range d.Keys() {
 		buf.WriteString(sep)
 		buf.WriteString(name)
 		buf.WriteString(": ")
-		writeValue(&buf, d[name], nil)
+		writeValue(buf, d[name], nil)
 		sep = ", "
 	}
 	buf.WriteByte('}')
@@ -175,14 +174,14 @@ func (e *EvalError) Error() string { return e.Msg }
 // Backtrace returns a user-friendly error message describing the stack
 // of calls that led to this error.
 func (e *EvalError) Backtrace() string {
-	var buf bytes.Buffer
-	e.Frame.WriteBacktrace(&buf)
-	fmt.Fprintf(&buf, "Error: %s", e.Msg)
+	buf := new(strings.Builder)
+	e.Frame.WriteBacktrace(buf)
+	fmt.Fprintf(buf, "Error: %s", e.Msg)
 	return buf.String()
 }
 
 // WriteBacktrace writes a user-friendly description of the stack to buf.
-func (fr *Frame) WriteBacktrace(out *bytes.Buffer) {
+func (fr *Frame) WriteBacktrace(out *strings.Builder) {
 	fmt.Fprintf(out, "Traceback (most recent call last):\n")
 	var print func(fr *Frame)
 	print = func(fr *Frame) {
@@ -1302,7 +1301,7 @@ func (is *intset) len() int {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation
 func interpolate(format string, x Value) (Value, error) {
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	index := 0
 	nargs := 1
 	if tuple, ok := x.(Tuple); ok {
@@ -1367,7 +1366,7 @@ func interpolate(format string, x Value) (Value, error) {
 			if str, ok := AsString(arg); ok && c == 's' {
 				buf.WriteString(str)
 			} else {
-				writeValue(&buf, arg, nil)
+				writeValue(buf, arg, nil)
 			}
 		case 'd', 'i', 'o', 'x', 'X':
 			i, err := NumberToInt(arg)
@@ -1376,13 +1375,13 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 			switch c {
 			case 'd', 'i':
-				fmt.Fprintf(&buf, "%d", i)
+				fmt.Fprintf(buf, "%d", i)
 			case 'o':
-				fmt.Fprintf(&buf, "%o", i)
+				fmt.Fprintf(buf, "%o", i)
 			case 'x':
-				fmt.Fprintf(&buf, "%x", i)
+				fmt.Fprintf(buf, "%x", i)
 			case 'X':
-				fmt.Fprintf(&buf, "%X", i)
+				fmt.Fprintf(buf, "%X", i)
 			}
 		case 'e', 'f', 'g', 'E', 'F', 'G':
 			f, ok := AsFloat(arg)
@@ -1391,17 +1390,17 @@ func interpolate(format string, x Value) (Value, error) {
 			}
 			switch c {
 			case 'e':
-				fmt.Fprintf(&buf, "%e", f)
+				fmt.Fprintf(buf, "%e", f)
 			case 'f':
-				fmt.Fprintf(&buf, "%f", f)
+				fmt.Fprintf(buf, "%f", f)
 			case 'g':
-				fmt.Fprintf(&buf, "%g", f)
+				fmt.Fprintf(buf, "%g", f)
 			case 'E':
-				fmt.Fprintf(&buf, "%E", f)
+				fmt.Fprintf(buf, "%E", f)
 			case 'F':
-				fmt.Fprintf(&buf, "%F", f)
+				fmt.Fprintf(buf, "%F", f)
 			case 'G':
-				fmt.Fprintf(&buf, "%G", f)
+				fmt.Fprintf(buf, "%G", f)
 			}
 		case 'c':
 			switch arg := arg.(type) {

@@ -10,7 +10,6 @@ package starlark
 // mutable types such as lists and dicts.
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"math/big"
@@ -837,7 +836,7 @@ func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	if err := UnpackArgs("print", nil, kwargs, "sep?", &sep); err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	for i, v := range args {
 		if i > 0 {
 			buf.WriteString(sep)
@@ -845,14 +844,15 @@ func print(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 		if s, ok := AsString(v); ok {
 			buf.WriteString(s)
 		} else {
-			writeValue(&buf, v, nil)
+			writeValue(buf, v, nil)
 		}
 	}
 
+	s := buf.String()
 	if thread.Print != nil {
-		thread.Print(thread, buf.String())
+		thread.Print(thread, s)
 	} else {
-		fmt.Fprintln(os.Stderr, &buf)
+		fmt.Fprintln(os.Stderr, s)
 	}
 	return None, nil
 }
@@ -1474,7 +1474,7 @@ func string_capitalize(fnname string, recv Value, args Tuple, kwargs []Tuple) (V
 		return nil, err
 	}
 	s := string(recv.(String))
-	var res bytes.Buffer
+	res := new(strings.Builder)
 	res.Grow(len(s))
 	for i, r := range s {
 		if i == 0 {
@@ -1657,7 +1657,7 @@ func string_find(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value, 
 func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value, error) {
 	format := string(recv_.(String))
 	var auto, manual bool // kinds of positional indexing used
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	index := 0
 	for {
 		literal := format
@@ -1782,10 +1782,10 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 			if str, ok := AsString(arg); ok {
 				buf.WriteString(str)
 			} else {
-				writeValue(&buf, arg, nil)
+				writeValue(buf, arg, nil)
 			}
 		case "r":
-			writeValue(&buf, arg, nil)
+			writeValue(buf, arg, nil)
 		default:
 			return nil, fmt.Errorf("unknown conversion %q", conv)
 		}
@@ -1823,7 +1823,7 @@ func string_join(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 	}
 	iter := iterable.Iterate()
 	defer iter.Done()
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	var x Value
 	for i := 0; iter.Next(&x); i++ {
 		if i > 0 {
@@ -1984,7 +1984,7 @@ func string_title(fnname string, recv Value, args Tuple, kwargs []Tuple) (Value,
 	// Python semantics differ from x==strings.{To,}Title(x) in Go:
 	// "uppercase characters may only follow uncased characters and
 	// lowercase characters only cased ones."
-	var buf bytes.Buffer
+	buf := new(strings.Builder)
 	buf.Grow(len(s))
 	var prevCased bool
 	for _, r := range s {

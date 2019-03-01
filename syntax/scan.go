@@ -7,7 +7,6 @@ package syntax
 // A lexical scanner for Starlark.
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -832,7 +831,7 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 		// A triple-quoted string literal may span multiple
 		// gulps of REPL input; it is the only such token.
 		// Thus we must avoid {start,end}Token.
-		var raw bytes.Buffer
+		raw := new(strings.Builder)
 
 		// Copy the prefix, e.g. r''' or """ (see startToken).
 		raw.Write(sc.token[:len(sc.token)-len(sc.rest)])
