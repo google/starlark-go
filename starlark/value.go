@@ -989,7 +989,7 @@ func toString(v Value) string {
 // path is used to detect cycles.
 // It contains the list of *List and *Dict values we're currently printing.
 // (These are the only potentially cyclic structures.)
-// Callers should generally pass a temporary slice of length zero but non-zero capacity.
+// Callers should generally pass nil for path.
 // It is safe to re-use the same path slice for multiple calls.
 func writeValue(out *strings.Builder, x Value, path []Value) {
 	switch x := x.(type) {
