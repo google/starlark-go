@@ -414,11 +414,11 @@ func (r *resolver) spellcheck(use use) string {
 }
 
 // resolveLocalUses is called when leaving a container (function/module)
-// block.  It resolves all uses of locals within that block.
+// block.  It resolves all uses of locals/cells within that block.
 func (b *block) resolveLocalUses() {
 	unresolved := b.uses[:0]
 	for _, use := range b.uses {
-		if bind := lookupLocal(use); bind != nil && bind.Scope == syntax.LocalScope {
+		if bind := lookupLocal(use); bind != nil && (bind.Scope == syntax.LocalScope || bind.Scope == syntax.CellScope) {
 			use.id.Binding = bind
 		} else {
 			unresolved = append(unresolved, use)
@@ -877,10 +877,14 @@ func (r *resolver) lookupLexical(use use, env *block) (bind *syntax.Binding) {
 	if !ok {
 		// Defined in parent block?
 		bind = r.lookupLexical(use, env.parent)
-		if env.function != nil && (bind.Scope == syntax.LocalScope || bind.Scope == syntax.FreeScope) {
+		if env.function != nil && (bind.Scope == syntax.LocalScope || bind.Scope == syntax.FreeScope || bind.Scope == syntax.CellScope) {
 			// Found in parent block, which belongs to enclosing function.
 			// Add the parent's binding to the function's freevars,
-			// and add a new 'free' binding to the inner function's block.
+			// and add a new 'free' binding to the inner function's block,
+			// and turn the parent's local into cell.
+			if bind.Scope == syntax.LocalScope {
+				bind.Scope = syntax.CellScope
+			}
 			index := len(env.function.FreeVars)
 			env.function.FreeVars = append(env.function.FreeVars, bind)
 			bind = &syntax.Binding{

@@ -482,8 +482,7 @@ func TestInt(t *testing.T) {
 
 func TestBacktrace(t *testing.T) {
 	// This test ensures continuity of the stack of active Starlark
-	// functions, including propagation through built-ins such as 'min'
-	// (though min does not itself appear in the stack).
+	// functions, including propagation through built-ins such as 'min'.
 	const src = `
 def f(x): return 1//x
 def g(x): f(x)
