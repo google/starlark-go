@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
 
@@ -411,8 +412,8 @@ func (fn *Funcode) Position(pc uint32) syntax.Position {
 	return pos
 }
 
-// bindings converts syntax.Bindings to compiled form.
-func bindings(bindings []*syntax.Binding) []Binding {
+// bindings converts resolve.Bindings to compiled form.
+func bindings(bindings []*resolve.Binding) []Binding {
 	res := make([]Binding, len(bindings))
 	for i, bind := range bindings {
 		res[i].Name = bind.First.Name
@@ -422,14 +423,14 @@ func bindings(bindings []*syntax.Binding) []Binding {
 }
 
 // Expr compiles an expression to a program consisting of a single toplevel function.
-func Expr(expr syntax.Expr, name string, locals []*syntax.Binding) *Funcode {
+func Expr(expr syntax.Expr, name string, locals []*resolve.Binding) *Funcode {
 	pos := syntax.Start(expr)
 	stmts := []syntax.Stmt{&syntax.ReturnStmt{Result: expr}}
 	return File(stmts, pos, name, locals, nil).Toplevel
 }
 
 // File compiles the statements of a file into a program.
-func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*syntax.Binding) *Program {
+func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*resolve.Binding) *Program {
 	pcomp := &pcomp{
 		prog: &Program{
 			Globals: bindings(globals),
@@ -443,7 +444,7 @@ func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals
 	return pcomp.prog
 }
 
-func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.Stmt, locals, freevars []*syntax.Binding) *Funcode {
+func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.Stmt, locals, freevars []*resolve.Binding) *Funcode {
 	fcomp := &fcomp{
 		pcomp: pcomp,
 		pos:   pos,
@@ -459,7 +460,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 
 	// Record indices of locals that require cells.
 	for i, local := range locals {
-		if local.Scope == syntax.CellScope {
+		if local.Scope == resolve.Cell {
 			fcomp.fn.Cells = append(fcomp.fn.Cells, i)
 		}
 	}
@@ -917,13 +918,13 @@ func (fcomp *fcomp) setPos(pos syntax.Position) {
 func (fcomp *fcomp) set(id *syntax.Ident) {
 	bind := id.Binding
 	switch bind.Scope {
-	case syntax.LocalScope:
+	case resolve.Local:
 		fcomp.emit1(SETLOCAL, uint32(bind.Index))
-	case syntax.CellScope:
+	case resolve.Cell:
 		// TODO(adonovan): opt: make a single op for LOCAL<n>, SETCELL.
 		fcomp.emit1(LOCAL, uint32(bind.Index))
 		fcomp.emit(SETCELL)
-	case syntax.GlobalScope:
+	case resolve.Global:
 		fcomp.emit1(SETGLOBAL, uint32(bind.Index))
 	default:
 		log.Fatalf("%s: set(%s): not global/local/cell (%d)", id.NamePos, id.Name, bind.Scope)
@@ -933,25 +934,25 @@ func (fcomp *fcomp) set(id *syntax.Ident) {
 // lookup emits code to push the value of the specified variable.
 func (fcomp *fcomp) lookup(id *syntax.Ident) {
 	bind := id.Binding
-	if bind.Scope != syntax.UniversalScope { // (universal lookup can't fail)
+	if bind.Scope != resolve.Universal { // (universal lookup can't fail)
 		fcomp.setPos(id.NamePos)
 	}
 	switch bind.Scope {
-	case syntax.LocalScope:
+	case resolve.Local:
 		fcomp.emit1(LOCAL, uint32(bind.Index))
-	case syntax.FreeScope:
+	case resolve.Free:
 		// TODO(adonovan): opt: make a single op for FREE<n>, CELL.
 		fcomp.emit1(FREE, uint32(bind.Index))
 		fcomp.emit(CELL)
-	case syntax.CellScope:
+	case resolve.Cell:
 		// TODO(adonovan): opt: make a single op for LOCAL<n>, CELL.
 		fcomp.emit1(LOCAL, uint32(bind.Index))
 		fcomp.emit(CELL)
-	case syntax.GlobalScope:
+	case resolve.Global:
 		fcomp.emit1(GLOBAL, uint32(bind.Index))
-	case syntax.PredeclaredScope:
+	case resolve.Predeclared:
 		fcomp.emit1(PREDECLARED, fcomp.pcomp.nameIndex(id.Name))
-	case syntax.UniversalScope:
+	case resolve.Universal:
 		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Name))
 	default:
 		log.Fatalf("%s: compiler.lookup(%s): scope = %d", id.NamePos, id.Name, bind.Scope)
@@ -1740,9 +1741,9 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 		// Don't call fcomp.lookup because we want
 		// the cell itself, not its content.
 		switch freevar.Scope {
-		case syntax.FreeScope:
+		case resolve.Free:
 			fcomp.emit1(FREE, uint32(freevar.Index))
-		case syntax.CellScope:
+		case resolve.Cell:
 			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		}
 	}
