@@ -71,8 +71,8 @@ type File struct {
 	Stmts []Stmt
 
 	// set by resolver:
-	Locals  []*Ident // this file's (comprehension-)local variables
-	Globals []*Ident // this file's global variables
+	Locals  []*Binding // this file's (comprehension-)local variables
+	Globals []*Binding // this file's global variables
 }
 
 func (x *File) Span() (start, end Position) {
@@ -126,11 +126,11 @@ type Function struct {
 	Body     []Stmt
 
 	// set by resolver:
-	HasVarargs      bool     // whether params includes *args (convenience)
-	HasKwargs       bool     // whether params includes **kwargs (convenience)
-	NumKwonlyParams int      // number of keyword-only optional parameters
-	Locals          []*Ident // this function's local variables, parameters first
-	FreeVars        []*Ident // enclosing local variables to capture in closure
+	HasVarargs      bool       // whether params includes *args (convenience)
+	HasKwargs       bool       // whether params includes **kwargs (convenience)
+	NumKwonlyParams int        // number of keyword-only optional parameters
+	Locals          []*Binding // this function's local variables, parameters first
+	FreeVars        []*Binding // enclosing local variables to capture in closure
 }
 
 func (x *Function) Span() (start, end Position) {
@@ -260,10 +260,8 @@ type Ident struct {
 	NamePos Position
 	Name    string
 
-	// set by resolver:
-
-	Scope uint8 // see type resolve.Scope
-	Index int   // index into enclosing {DefStmt,File}.Locals (if scope==Local) or DefStmt.FreeVars (if scope==Free) or File.Globals (if scope==Global)
+	// set by resolver
+	Binding *Binding
 }
 
 func (x *Ident) Span() (start, end Position) {
