@@ -1247,7 +1247,7 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 	return nil
 }
 
-func findParam(params []compile.Ident, name string) int {
+func findParam(params []compile.Binding, name string) int {
 	for i, param := range params {
 		if param.Name == name {
 			return i

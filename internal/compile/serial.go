@@ -96,7 +96,7 @@ func (prog *Program) Encode() []byte {
 	e.p = append(e.p, "????"...) // string data offset; filled in later
 	e.int(Version)
 	e.string(prog.Toplevel.Pos.Filename())
-	e.idents(prog.Loads)
+	e.bindings(prog.Loads)
 	e.int(len(prog.Names))
 	for _, name := range prog.Names {
 		e.string(name)
@@ -118,7 +118,7 @@ func (prog *Program) Encode() []byte {
 			e.string(c.Text(10))
 		}
 	}
-	e.idents(prog.Globals)
+	e.bindings(prog.Globals)
 	e.function(prog.Toplevel)
 	e.int(len(prog.Functions))
 	for _, fn := range prog.Functions {
@@ -161,29 +161,29 @@ func (e *encoder) bytes(b []byte) {
 	e.s = append(e.s, b...)
 }
 
-func (e *encoder) ident(id Ident) {
-	e.string(id.Name)
-	e.int(int(id.Pos.Line))
-	e.int(int(id.Pos.Col))
+func (e *encoder) binding(bind Binding) {
+	e.string(bind.Name)
+	e.int(int(bind.Pos.Line))
+	e.int(int(bind.Pos.Col))
 }
 
-func (e *encoder) idents(ids []Ident) {
-	e.int(len(ids))
-	for _, id := range ids {
-		e.ident(id)
+func (e *encoder) bindings(binds []Binding) {
+	e.int(len(binds))
+	for _, bind := range binds {
+		e.binding(bind)
 	}
 }
 
 func (e *encoder) function(fn *Funcode) {
-	e.ident(Ident{fn.Name, fn.Pos})
+	e.binding(Binding{fn.Name, fn.Pos})
 	e.string(fn.Doc)
 	e.bytes(fn.Code)
 	e.int(len(fn.pclinetab))
 	for _, x := range fn.pclinetab {
 		e.int64(int64(x))
 	}
-	e.idents(fn.Locals)
-	e.idents(fn.Freevars)
+	e.bindings(fn.Locals)
+	e.bindings(fn.Freevars)
 	e.int(fn.MaxStack)
 	e.int(fn.NumParams)
 	e.int(fn.NumKwonlyParams)
@@ -228,7 +228,7 @@ func DecodeProgram(data []byte) (_ *Program, err error) {
 	filename := d.string()
 	d.filename = &filename
 
-	loads := d.idents()
+	loads := d.bindings()
 
 	names := make([]string, d.int())
 	for i := range names {
@@ -252,7 +252,7 @@ func DecodeProgram(data []byte) (_ *Program, err error) {
 		constants[i] = c
 	}
 
-	globals := d.idents()
+	globals := d.bindings()
 	toplevel := d.function()
 	funcs := make([]*Funcode, d.int())
 	for i := range funcs {
@@ -323,33 +323,33 @@ func (d *decoder) bytes() []byte {
 	return r
 }
 
-func (d *decoder) ident() Ident {
+func (d *decoder) binding() Binding {
 	name := d.string()
 	line := int32(d.int())
 	col := int32(d.int())
-	return Ident{Name: name, Pos: syntax.MakePosition(d.filename, line, col)}
+	return Binding{Name: name, Pos: syntax.MakePosition(d.filename, line, col)}
 }
 
-func (d *decoder) idents() []Ident {
-	idents := make([]Ident, d.int())
-	for i := range idents {
-		idents[i] = d.ident()
+func (d *decoder) bindings() []Binding {
+	bindings := make([]Binding, d.int())
+	for i := range bindings {
+		bindings[i] = d.binding()
 	}
-	return idents
+	return bindings
 }
 
 func (d *decoder) bool() bool { return d.int() != 0 }
 
 func (d *decoder) function() *Funcode {
-	id := d.ident()
+	id := d.binding()
 	doc := d.string()
 	code := d.bytes()
 	pclinetab := make([]uint16, d.int())
 	for i := range pclinetab {
 		pclinetab[i] = uint16(d.int())
 	}
-	locals := d.idents()
-	freevars := d.idents()
+	locals := d.bindings()
+	freevars := d.bindings()
 	maxStack := d.int()
 	numParams := d.int()
 	numKwonlyParams := d.int()

@@ -30,7 +30,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
 
@@ -289,12 +288,12 @@ func (op Opcode) String() string {
 // Programs are serialized by the gobProgram function,
 // which must be updated whenever this declaration is changed.
 type Program struct {
-	Loads     []Ident       // name (really, string) and position of each load stmt
+	Loads     []Binding     // name (really, string) and position of each load stmt
 	Names     []string      // names of attributes and predeclared variables
 	Constants []interface{} // = string | int64 | float64 | *big.Int
 	Functions []*Funcode
-	Globals   []Ident  // for error messages and tracing
-	Toplevel  *Funcode // module initialization function
+	Globals   []Binding // for error messages and tracing
+	Toplevel  *Funcode  // module initialization function
 }
 
 // A Funcode is the code of a compiled Starlark function.
@@ -308,16 +307,16 @@ type Funcode struct {
 	Doc                   string          // docstring of this function
 	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
-	Locals                []Ident         // locals, parameters first
-	Freevars              []Ident         // for tracing
+	Locals                []Binding       // locals, parameters first
+	Freevars              []Binding       // for tracing
 	MaxStack              int
 	NumParams             int
 	NumKwonlyParams       int
 	HasVarargs, HasKwargs bool
 }
 
-// An Ident is the name and position of an identifier.
-type Ident struct {
+// A Binding is the name and position of a binding identifier.
+type Binding struct {
 	Name string
 	Pos  syntax.Position
 }
@@ -401,28 +400,28 @@ func (fn *Funcode) Position(pc uint32) syntax.Position {
 	return pos
 }
 
-// idents convert syntactic identifiers to compiled form.
-func idents(ids []*syntax.Ident) []Ident {
-	res := make([]Ident, len(ids))
-	for i, id := range ids {
-		res[i].Name = id.Name
-		res[i].Pos = id.NamePos
+// bindings converts syntax.Bindings to compiled form.
+func bindings(bindings []*syntax.Binding) []Binding {
+	res := make([]Binding, len(bindings))
+	for i, bind := range bindings {
+		res[i].Name = bind.First.Name
+		res[i].Pos = bind.First.NamePos
 	}
 	return res
 }
 
 // Expr compiles an expression to a program consisting of a single toplevel function.
-func Expr(expr syntax.Expr, name string, locals []*syntax.Ident) *Funcode {
+func Expr(expr syntax.Expr, name string, locals []*syntax.Binding) *Funcode {
 	pos := syntax.Start(expr)
 	stmts := []syntax.Stmt{&syntax.ReturnStmt{Result: expr}}
 	return File(stmts, pos, name, locals, nil).Toplevel
 }
 
 // File compiles the statements of a file into a program.
-func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*syntax.Ident) *Program {
+func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*syntax.Binding) *Program {
 	pcomp := &pcomp{
 		prog: &Program{
-			Globals: idents(globals),
+			Globals: bindings(globals),
 		},
 		names:     make(map[string]uint32),
 		constants: make(map[interface{}]uint32),
@@ -433,7 +432,7 @@ func File(stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals
 	return pcomp.prog
 }
 
-func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.Stmt, locals, freevars []*syntax.Ident) *Funcode {
+func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.Stmt, locals, freevars []*syntax.Binding) *Funcode {
 	fcomp := &fcomp{
 		pcomp: pcomp,
 		pos:   pos,
@@ -442,8 +441,8 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			Pos:      pos,
 			Name:     name,
 			Doc:      docStringFromBody(stmts),
-			Locals:   idents(locals),
-			Freevars: idents(freevars),
+			Locals:   bindings(locals),
+			Freevars: bindings(freevars),
 		},
 	}
 
@@ -898,34 +897,36 @@ func (fcomp *fcomp) setPos(pos syntax.Position) {
 // set emits code to store the top-of-stack value
 // to the specified local or global variable.
 func (fcomp *fcomp) set(id *syntax.Ident) {
-	switch resolve.Scope(id.Scope) {
-	case resolve.Local:
-		fcomp.emit1(SETLOCAL, uint32(id.Index))
-	case resolve.Global:
-		fcomp.emit1(SETGLOBAL, uint32(id.Index))
+	bind := id.Binding
+	switch bind.Scope {
+	case syntax.LocalScope:
+		fcomp.emit1(SETLOCAL, uint32(bind.Index))
+	case syntax.GlobalScope:
+		fcomp.emit1(SETGLOBAL, uint32(bind.Index))
 	default:
-		log.Fatalf("%s: set(%s): neither global nor local (%d)", id.NamePos, id.Name, id.Scope)
+		log.Fatalf("%s: set(%s): neither global nor local (%d)", id.NamePos, id.Name, bind.Scope)
 	}
 }
 
 // lookup emits code to push the value of the specified variable.
 func (fcomp *fcomp) lookup(id *syntax.Ident) {
-	switch resolve.Scope(id.Scope) {
-	case resolve.Local:
+	bind := id.Binding
+	switch bind.Scope {
+	case syntax.LocalScope:
 		fcomp.setPos(id.NamePos)
-		fcomp.emit1(LOCAL, uint32(id.Index))
-	case resolve.Free:
-		fcomp.emit1(FREE, uint32(id.Index))
-	case resolve.Global:
+		fcomp.emit1(LOCAL, uint32(bind.Index))
+	case syntax.FreeScope:
+		fcomp.emit1(FREE, uint32(bind.Index))
+	case syntax.GlobalScope:
 		fcomp.setPos(id.NamePos)
-		fcomp.emit1(GLOBAL, uint32(id.Index))
-	case resolve.Predeclared:
+		fcomp.emit1(GLOBAL, uint32(bind.Index))
+	case syntax.PredeclaredScope:
 		fcomp.setPos(id.NamePos)
 		fcomp.emit1(PREDECLARED, fcomp.pcomp.nameIndex(id.Name))
-	case resolve.Universal:
+	case syntax.UniversalScope:
 		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Name))
 	default:
-		log.Fatalf("%s: compiler.lookup(%s): scope = %d", id.NamePos, id.Name, id.Scope)
+		log.Fatalf("%s: compiler.lookup(%s): scope = %d", id.NamePos, id.Name, bind.Scope)
 	}
 }
 
@@ -1108,7 +1109,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 			fcomp.string(stmt.From[i].Name)
 		}
 		module := stmt.Module.Value.(string)
-		fcomp.pcomp.prog.Loads = append(fcomp.pcomp.prog.Loads, Ident{
+		fcomp.pcomp.prog.Loads = append(fcomp.pcomp.prog.Loads, Binding{
 			Name: module,
 			Pos:  stmt.Module.TokenPos,
 		})
@@ -1116,7 +1117,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		fcomp.setPos(stmt.Load)
 		fcomp.emit1(LOAD, uint32(len(stmt.From)))
 		for i := range stmt.To {
-			fcomp.emit1(SETGLOBAL, uint32(stmt.To[len(stmt.To)-1-i].Index))
+			fcomp.emit1(SETGLOBAL, uint32(stmt.To[len(stmt.To)-1-i].Binding.Index))
 		}
 
 	default:
@@ -1708,7 +1709,12 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 	// Capture the values of the function's
 	// free variables from the lexical environment.
 	for _, freevar := range f.FreeVars {
-		fcomp.lookup(freevar)
+		switch freevar.Scope {
+		case syntax.LocalScope:
+			fcomp.emit1(LOCAL, uint32(freevar.Index))
+		case syntax.FreeScope:
+			fcomp.emit1(FREE, uint32(freevar.Index))
+		}
 	}
 	fcomp.emit1(MAKETUPLE, uint32(len(f.FreeVars)))
 
