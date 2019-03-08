@@ -238,3 +238,54 @@ assert.eq(y, ((1, 2, 4), dict(x=3, y=5, z=6)))
 # *args and *kwargs are evaluated last.
 # See github.com/bazelbuild/starlark#13 for pending spec change.
 assert.eq(r, [1, 2, 3, 5, 4, 6])
+
+
+---
+# option:nesteddef option:recursion
+# See github.com/bazelbuild/starlark#170
+load("assert.star", "assert")
+
+def a():
+    list = []
+    def b(n):
+        list.append(n)
+        if n > 0:
+            b(n - 1) # recursive reference to b
+
+    b(3)
+    return list
+
+assert.eq(a(), [3, 2, 1, 0])
+
+def c():
+    list = []
+    x = 1
+    def d():
+      list.append(x) # this use of x observes both assignments
+    d()
+    x = 2
+    d()
+    return list
+
+assert.eq(c(), [1, 2])
+
+def e():
+    def f():
+      return x # forward reference ok: x is a closure cell
+    x = 1
+    return f()
+
+assert.eq(e(), 1)
+
+---
+# option:nesteddef
+load("assert.star", "assert")
+
+def e():
+    x = 1
+    def f():
+      print(x) # this reference to x fails
+      x = 3    # because this assignment makes x local to f
+    f()
+
+assert.fails(e, "local variable x referenced before assignment")

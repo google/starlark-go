@@ -153,14 +153,16 @@ g = 1
 
 ---
 # option:nesteddef
-# free variable captured before assignment
+# Free variables are captured by reference, so this is ok.
+load("assert.star", "assert")
 
 def f():
-   def g(): ### "local variable outer referenced before assignment"
+   def g():
      return outer
    outer = 1
+   return g()
 
-f()
+assert.eq(f(), 1)
 
 ---
 load("assert.star", "assert")

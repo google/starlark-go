@@ -8,8 +8,12 @@
 //   - an stack of active iterators.
 //   - an array of local variables.
 //     The number of local variables and their indices are computed by the resolver.
+//     Locals (possibly including parameters) that are shared with nested functions
+//     are 'cells': their locals array slot will contain a value of type 'cell',
+//     an indirect value in a box that is explicitly read/updated by instructions.
 //   - an array of free variables, for nested functions.
-//     As with locals, these are computed by the resolver.
+//     Free variables are a subset of the ancestors' cell variables.
+//     As with locals and cells, these are computed by the resolver.
 //   - an array of global variables, shared among all functions in the same module.
 //     All elements are initially nil.
 //   - two maps of predeclared and universal identifiers.
@@ -36,7 +40,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 7
+const Version = 8
 
 type Opcode uint8
 
@@ -89,18 +93,20 @@ const (
 	FALSE     // - FALSE False
 	MANDATORY // - MANDATORY Mandatory	     [sentinel value for required kwonly args]
 
-	ITERPUSH    //       iterable ITERPUSH -     [pushes the iterator stack]
-	ITERPOP     //              - ITERPOP -      [pops the iterator stack]
-	NOT         //          value NOT bool
-	RETURN      //          value RETURN -
-	SETINDEX    //        a i new SETINDEX -
-	INDEX       //            a i INDEX elem
-	SETDICT     // dict key value SETDICT -
+	ITERPUSH    //       iterable ITERPUSH    -  [pushes the iterator stack]
+	ITERPOP     //              - ITERPOP     -    [pops the iterator stack]
+	NOT         //          value NOT         bool
+	RETURN      //          value RETURN      -
+	SETINDEX    //        a i new SETINDEX    -
+	INDEX       //            a i INDEX       elem
+	SETDICT     // dict key value SETDICT     -
 	SETDICTUNIQ // dict key value SETDICTUNIQ -
-	APPEND      //      list elem APPEND -
-	SLICE       //   x lo hi step SLICE slice
+	APPEND      //      list elem APPEND      -
+	SLICE       //   x lo hi step SLICE       slice
 	INPLACE_ADD //            x y INPLACE_ADD z      where z is x+y or x.extend(y)
-	MAKEDICT    //              - MAKEDICT dict
+	MAKEDICT    //              - MAKEDICT    dict
+	SETCELL     //     value cell SETCELL     -
+	CELL        //           cell CELL        value
 
 	// --- opcodes with an argument must go below this line ---
 
@@ -118,7 +124,7 @@ const (
 	SETLOCAL    //             value SETLOCAL<local>     -
 	SETGLOBAL   //             value SETGLOBAL<global>   -
 	LOCAL       //                 - LOCAL<local>        value
-	FREE        //                 - FREE<freevar>       value
+	FREE        //                 - FREE<freevar>       cell
 	GLOBAL      //                 - GLOBAL<global>      value
 	PREDECLARED //                 - PREDECLARED<name>   value
 	UNIVERSAL   //                 - UNIVERSAL<name>     value
@@ -146,6 +152,7 @@ var opcodeNames = [...]string{
 	CALL_KW:     "call_kw ",
 	CALL_VAR:    "call_var",
 	CALL_VAR_KW: "call_var_kw",
+	CELL:        "cell",
 	CIRCUMFLEX:  "circumflex",
 	CJMP:        "cjmp",
 	CONSTANT:    "constant",
@@ -187,6 +194,7 @@ var opcodeNames = [...]string{
 	POP:         "pop",
 	PREDECLARED: "predeclared",
 	RETURN:      "return",
+	SETCELL:     "setcell",
 	SETDICT:     "setdict",
 	SETDICTUNIQ: "setdictuniq",
 	SETFIELD:    "setfield",
@@ -217,6 +225,7 @@ var stackEffect = [...]int8{
 	CALL_KW:     variableStackEffect,
 	CALL_VAR:    variableStackEffect,
 	CALL_VAR_KW: variableStackEffect,
+	CELL:        0,
 	CIRCUMFLEX:  -1,
 	CJMP:        -1,
 	CONSTANT:    +1,
@@ -257,6 +266,7 @@ var stackEffect = [...]int8{
 	POP:         -1,
 	PREDECLARED: +1,
 	RETURN:      -1,
+	SETCELL:     -2,
 	SETDICT:     -3,
 	SETDICTUNIQ: -3,
 	SETFIELD:    -2,
@@ -308,6 +318,7 @@ type Funcode struct {
 	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
 	Locals                []Binding       // locals, parameters first
+	Cells                 []int           // indices of Locals that require cells
 	Freevars              []Binding       // for tracing
 	MaxStack              int
 	NumParams             int
@@ -444,6 +455,13 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			Locals:   bindings(locals),
 			Freevars: bindings(freevars),
 		},
+	}
+
+	// Record indices of locals that require cells.
+	for i, local := range locals {
+		if local.Scope == syntax.CellScope {
+			fcomp.fn.Cells = append(fcomp.fn.Cells, i)
+		}
 	}
 
 	if debug {
@@ -895,33 +913,43 @@ func (fcomp *fcomp) setPos(pos syntax.Position) {
 }
 
 // set emits code to store the top-of-stack value
-// to the specified local or global variable.
+// to the specified local, cell, or global variable.
 func (fcomp *fcomp) set(id *syntax.Ident) {
 	bind := id.Binding
 	switch bind.Scope {
 	case syntax.LocalScope:
 		fcomp.emit1(SETLOCAL, uint32(bind.Index))
+	case syntax.CellScope:
+		// TODO(adonovan): opt: make a single op for LOCAL<n>, SETCELL.
+		fcomp.emit1(LOCAL, uint32(bind.Index))
+		fcomp.emit(SETCELL)
 	case syntax.GlobalScope:
 		fcomp.emit1(SETGLOBAL, uint32(bind.Index))
 	default:
-		log.Fatalf("%s: set(%s): neither global nor local (%d)", id.NamePos, id.Name, bind.Scope)
+		log.Fatalf("%s: set(%s): not global/local/cell (%d)", id.NamePos, id.Name, bind.Scope)
 	}
 }
 
 // lookup emits code to push the value of the specified variable.
 func (fcomp *fcomp) lookup(id *syntax.Ident) {
 	bind := id.Binding
+	if bind.Scope != syntax.UniversalScope { // (universal lookup can't fail)
+		fcomp.setPos(id.NamePos)
+	}
 	switch bind.Scope {
 	case syntax.LocalScope:
-		fcomp.setPos(id.NamePos)
 		fcomp.emit1(LOCAL, uint32(bind.Index))
 	case syntax.FreeScope:
+		// TODO(adonovan): opt: make a single op for FREE<n>, CELL.
 		fcomp.emit1(FREE, uint32(bind.Index))
+		fcomp.emit(CELL)
+	case syntax.CellScope:
+		// TODO(adonovan): opt: make a single op for LOCAL<n>, CELL.
+		fcomp.emit1(LOCAL, uint32(bind.Index))
+		fcomp.emit(CELL)
 	case syntax.GlobalScope:
-		fcomp.setPos(id.NamePos)
 		fcomp.emit1(GLOBAL, uint32(bind.Index))
 	case syntax.PredeclaredScope:
-		fcomp.setPos(id.NamePos)
 		fcomp.emit1(PREDECLARED, fcomp.pcomp.nameIndex(id.Name))
 	case syntax.UniversalScope:
 		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Name))
@@ -1706,14 +1734,16 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 	}
 	fcomp.emit1(MAKETUPLE, uint32(n))
 
-	// Capture the values of the function's
+	// Capture the cells of the function's
 	// free variables from the lexical environment.
 	for _, freevar := range f.FreeVars {
+		// Don't call fcomp.lookup because we want
+		// the cell itself, not its content.
 		switch freevar.Scope {
-		case syntax.LocalScope:
-			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		case syntax.FreeScope:
 			fcomp.emit1(FREE, uint32(freevar.Index))
+		case syntax.CellScope:
+			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		}
 	}
 	fcomp.emit1(MAKETUPLE, uint32(len(f.FreeVars)))

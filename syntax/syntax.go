@@ -129,8 +129,8 @@ type Function struct {
 	HasVarargs      bool       // whether params includes *args (convenience)
 	HasKwargs       bool       // whether params includes **kwargs (convenience)
 	NumKwonlyParams int        // number of keyword-only optional parameters
-	Locals          []*Binding // this function's local variables, parameters first
-	FreeVars        []*Binding // enclosing local variables to capture in closure
+	Locals          []*Binding // this function's local/cell variables, parameters first
+	FreeVars        []*Binding // enclosing cells to capture in closure
 }
 
 func (x *Function) Span() (start, end Position) {

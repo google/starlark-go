@@ -35,6 +35,8 @@ package compile
 //	pclinetab	[]varint
 //	numlocals	varint
 //	locals		[]Ident
+//	numcells	varint
+//	cells		[]int
 //	numfreevars	varint
 //	freevar		[]Ident
 //	maxstack	varint
@@ -183,6 +185,10 @@ func (e *encoder) function(fn *Funcode) {
 		e.int64(int64(x))
 	}
 	e.bindings(fn.Locals)
+	e.int(len(fn.Cells))
+	for _, index := range fn.Cells {
+		e.int(index)
+	}
 	e.bindings(fn.Freevars)
 	e.int(fn.MaxStack)
 	e.int(fn.NumParams)
@@ -338,6 +344,14 @@ func (d *decoder) bindings() []Binding {
 	return bindings
 }
 
+func (d *decoder) ints() []int {
+	ints := make([]int, d.int())
+	for i := range ints {
+		ints[i] = d.int()
+	}
+	return ints
+}
+
 func (d *decoder) bool() bool { return d.int() != 0 }
 
 func (d *decoder) function() *Funcode {
@@ -349,6 +363,7 @@ func (d *decoder) function() *Funcode {
 		pclinetab[i] = uint16(d.int())
 	}
 	locals := d.bindings()
+	cells := d.ints()
 	freevars := d.bindings()
 	maxStack := d.int()
 	numParams := d.int()
@@ -363,6 +378,7 @@ func (d *decoder) function() *Funcode {
 		Code:            code,
 		pclinetab:       pclinetab,
 		Locals:          locals,
+		Cells:           cells,
 		Freevars:        freevars,
 		MaxStack:        maxStack,
 		NumParams:       numParams,

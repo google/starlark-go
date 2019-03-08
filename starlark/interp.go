@@ -52,6 +52,12 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 		defer fmt.Println("Leaving ", f.Name)
 	}
 
+	// Spill indicated locals to cells.
+	// Each cell is a separate alloc to avoid spurious liveness.
+	for _, index := range f.Cells {
+		locals[index] = &cell{locals[index]}
+	}
+
 	// TODO(adonovan): add static check that beneath this point
 	// - there is exactly one return statement
 	// - there is no redefinition of 'err'.
@@ -502,6 +508,12 @@ loop:
 			locals[arg] = stack[sp-1]
 			sp--
 
+		case compile.SETCELL:
+			x := stack[sp-2]
+			y := stack[sp-1]
+			sp -= 2
+			y.(*cell).v = x
+
 		case compile.SETGLOBAL:
 			fn.globals[arg] = stack[sp-1]
 			sp--
@@ -518,6 +530,10 @@ loop:
 		case compile.FREE:
 			stack[sp] = fn.freevars[arg]
 			sp++
+
+		case compile.CELL:
+			x := stack[sp-1]
+			stack[sp-1] = x.(*cell).v
 
 		case compile.GLOBAL:
 			x := fn.globals[arg]
@@ -573,3 +589,21 @@ func (mandatory) Type() string          { return "mandatory" }
 func (mandatory) Freeze()               {} // immutable
 func (mandatory) Truth() Bool           { return False }
 func (mandatory) Hash() (uint32, error) { return 0, nil }
+
+// A cell is a box containing a Value.
+// Local variables marked as cells hold their value indirectly
+// so that they may be shared by outer and inner nested functions.
+// Cells are always accessed using indirect CELL/SETCELL instructions.
+// The FreeVars tuple contains only cells.
+// The FREE instruction always yields a cell.
+type cell struct{ v Value }
+
+func (c *cell) String() string { return "cell" }
+func (c *cell) Type() string   { return "cell" }
+func (c *cell) Freeze() {
+	if c.v != nil {
+		c.v.Freeze()
+	}
+}
+func (c *cell) Truth() Bool           { panic("unreachable") }
+func (c *cell) Hash() (uint32, error) { panic("unreachable") }
