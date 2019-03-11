@@ -137,7 +137,7 @@ func File(file *syntax.File, isPredeclared, isUniversal func(name string) bool) 
 // It returns the local variables bound within the expression.
 //
 // The isPredeclared and isUniversal predicates behave as for the File function.
-func Expr(expr syntax.Expr, isPredeclared, isUniversal func(name string) bool) ([]*syntax.Binding, error) {
+func Expr(expr syntax.Expr, isPredeclared, isUniversal func(name string) bool) ([]*Binding, error) {
 	r := newResolver(isPredeclared, isUniversal)
 	r.expr(expr)
 	r.env.resolveLocalUses()
@@ -166,10 +166,24 @@ func newResolver(isPredeclared, isUniversal func(name string) bool) *resolver {
 		env:           new(block), // module block
 		isPredeclared: isPredeclared,
 		isUniversal:   isUniversal,
-		globals:       make(map[string]*syntax.Binding),
-		predeclared:   make(map[string]*syntax.Binding),
+		globals:       make(map[string]*Binding),
+		predeclared:   make(map[string]*Binding),
 	}
 }
+
+// Declare aliases for types and constants that logically belong here.
+
+type Binding = syntax.Binding
+
+const (
+	Undefined   = syntax.UndefinedScope
+	Local       = syntax.LocalScope
+	Cell        = syntax.CellScope
+	Free        = syntax.FreeScope
+	Global      = syntax.GlobalScope
+	Predeclared = syntax.PredeclaredScope
+	Universal   = syntax.UniversalScope
+)
 
 type resolver struct {
 	// env is the current local environment:
@@ -180,13 +194,13 @@ type resolver struct {
 	// moduleLocals contains the local variables of the module
 	// (due to comprehensions outside any function).
 	// moduleGlobals contains the global variables of the module.
-	moduleLocals  []*syntax.Binding
-	moduleGlobals []*syntax.Binding
+	moduleLocals  []*Binding
+	moduleGlobals []*Binding
 
 	// globals maps each global name in the module to its binding.
 	// predeclared does the same for predeclared and universal names.
-	globals     map[string]*syntax.Binding
-	predeclared map[string]*syntax.Binding
+	globals     map[string]*Binding
+	predeclared map[string]*Binding
 
 	// These predicates report whether a name is
 	// pre-declared, either in this module or universally.
@@ -226,7 +240,7 @@ type block struct {
 	// bindings maps a name to its binding.
 	// A local binding has an index into its innermost enclosing container's locals array.
 	// A free binding has an index into its innermost enclosing function's freevars array.
-	bindings map[string]*syntax.Binding
+	bindings map[string]*Binding
 
 	// children records the child blocks of the current one.
 	children []*block
@@ -241,9 +255,9 @@ type block struct {
 
 func (b *block) isModule() bool { return b.parent == nil }
 
-func (b *block) bind(name string, bind *syntax.Binding) {
+func (b *block) bind(name string, bind *Binding) {
 	if b.bindings == nil {
-		b.bindings = make(map[string]*syntax.Binding)
+		b.bindings = make(map[string]*Binding)
 	}
 	b.bindings[name] = bind
 }
@@ -278,9 +292,9 @@ func (r *resolver) bind(id *syntax.Ident) bool {
 		bind, ok := r.globals[id.Name]
 		if !ok {
 			// first global binding of this name
-			bind = &syntax.Binding{
+			bind = &Binding{
 				First: id,
-				Scope: syntax.GlobalScope,
+				Scope: Global,
 				Index: len(r.moduleGlobals),
 			}
 			r.globals[id.Name] = bind
@@ -296,15 +310,15 @@ func (r *resolver) bind(id *syntax.Ident) bool {
 	// Assign it a new local (positive) index in the current container.
 	_, ok := r.env.bindings[id.Name]
 	if !ok {
-		var locals *[]*syntax.Binding
+		var locals *[]*Binding
 		if fn := r.container().function; fn != nil {
 			locals = &fn.Locals
 		} else {
 			locals = &r.moduleLocals
 		}
-		bind := &syntax.Binding{
+		bind := &Binding{
 			First: id,
-			Scope: syntax.LocalScope,
+			Scope: Local,
 			Index: len(*locals),
 		}
 		r.env.bind(id.Name, bind)
@@ -359,26 +373,30 @@ func (r *resolver) use(id *syntax.Ident) {
 
 // useGlobals resolves use.id as a reference to a global.
 // The use.env field captures the original environment for error reporting.
-func (r *resolver) useGlobal(use use) (bind *syntax.Binding) {
+func (r *resolver) useGlobal(use use) (bind *Binding) {
 	id := use.id
 	if prev, ok := r.globals[id.Name]; ok {
-		bind = prev // use of global declared by module
+		// use of global declared by module
+		bind = prev
 	} else if prev, ok := r.predeclared[id.Name]; ok {
-		bind = prev // repeated use of predeclared or universal
+		// repeated use of predeclared or universal
+		bind = prev
 	} else if r.isPredeclared(id.Name) {
-		bind = &syntax.Binding{Scope: syntax.PredeclaredScope} // use of pre-declared name
-		r.predeclared[id.Name] = bind                          // save it
+		// use of pre-declared name
+		bind = &Binding{Scope: Predeclared}
+		r.predeclared[id.Name] = bind // save it
 	} else if r.isUniversal(id.Name) {
+		// use of universal name
 		if !AllowFloat && id.Name == "float" {
 			r.errorf(id.NamePos, doesnt+"support floating point")
 		}
 		if !AllowSet && id.Name == "set" {
 			r.errorf(id.NamePos, doesnt+"support sets")
 		}
-		bind = &syntax.Binding{Scope: syntax.UniversalScope} // use of universal name
-		r.predeclared[id.Name] = bind                        // save it
+		bind = &Binding{Scope: Universal}
+		r.predeclared[id.Name] = bind // save it
 	} else {
-		bind = &syntax.Binding{Scope: syntax.UndefinedScope}
+		bind = &Binding{Scope: Undefined}
 		var hint string
 		if n := r.spellcheck(use); n != "" {
 			hint = fmt.Sprintf(" (did you mean %s?)", n)
@@ -418,7 +436,7 @@ func (r *resolver) spellcheck(use use) string {
 func (b *block) resolveLocalUses() {
 	unresolved := b.uses[:0]
 	for _, use := range b.uses {
-		if bind := lookupLocal(use); bind != nil && (bind.Scope == syntax.LocalScope || bind.Scope == syntax.CellScope) {
+		if bind := lookupLocal(use); bind != nil && (bind.Scope == Local || bind.Scope == Cell) {
 			use.id.Binding = bind
 		} else {
 			unresolved = append(unresolved, use)
@@ -843,10 +861,10 @@ func (r *resolver) resolveNonLocalUses(b *block) {
 }
 
 // lookupLocal looks up an identifier within its immediately enclosing function.
-func lookupLocal(use use) *syntax.Binding {
+func lookupLocal(use use) *Binding {
 	for env := use.env; env != nil; env = env.parent {
 		if bind, ok := env.bindings[use.id.Name]; ok {
-			if bind.Scope == syntax.FreeScope {
+			if bind.Scope == Free {
 				// shouldn't exist till later
 				log.Fatalf("%s: internal error: %s, %v", use.id.NamePos, use.id.Name, bind)
 			}
@@ -861,7 +879,7 @@ func lookupLocal(use use) *syntax.Binding {
 
 // lookupLexical looks up an identifier use.id within its lexically enclosing environment.
 // The use.env field captures the original environment for error reporting.
-func (r *resolver) lookupLexical(use use, env *block) (bind *syntax.Binding) {
+func (r *resolver) lookupLexical(use use, env *block) (bind *Binding) {
 	if debug {
 		fmt.Printf("lookupLexical %s in %s = ...\n", use.id.Name, env)
 		defer func() { fmt.Printf("= %v\n", bind) }()
@@ -877,19 +895,19 @@ func (r *resolver) lookupLexical(use use, env *block) (bind *syntax.Binding) {
 	if !ok {
 		// Defined in parent block?
 		bind = r.lookupLexical(use, env.parent)
-		if env.function != nil && (bind.Scope == syntax.LocalScope || bind.Scope == syntax.FreeScope || bind.Scope == syntax.CellScope) {
+		if env.function != nil && (bind.Scope == Local || bind.Scope == Free || bind.Scope == Cell) {
 			// Found in parent block, which belongs to enclosing function.
 			// Add the parent's binding to the function's freevars,
 			// and add a new 'free' binding to the inner function's block,
 			// and turn the parent's local into cell.
-			if bind.Scope == syntax.LocalScope {
-				bind.Scope = syntax.CellScope
+			if bind.Scope == Local {
+				bind.Scope = Cell
 			}
 			index := len(env.function.FreeVars)
 			env.function.FreeVars = append(env.function.FreeVars, bind)
-			bind = &syntax.Binding{
+			bind = &Binding{
 				First: bind.First,
-				Scope: syntax.FreeScope,
+				Scope: Free,
 				Index: index,
 			}
 			if debug {

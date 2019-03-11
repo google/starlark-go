@@ -6,6 +6,8 @@ package syntax
 
 // A Binding ties together all identifiers that denote the same variable.
 // The resolver computes a binding for every Ident.
+//
+// Where possible, refer to this type using the alias resolve.Binding.
 type Binding struct {
 	Scope Scope
 
@@ -20,6 +22,7 @@ type Binding struct {
 }
 
 // The Scope of Binding indicates what kind of scope it has.
+// Where possible, refer to these constants using the aliases resolve.Local, etc.
 type Scope uint8
 
 const (
