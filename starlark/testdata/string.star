@@ -391,7 +391,17 @@ assert.fails(lambda: any("abc"), "got string, want iterable") # any
 assert.fails(lambda: reversed("abc"), "got string, want iterable") # reversed
 assert.fails(lambda: zip("ab", "cd"), "not iterable: string") # zip
 
-# TODO(adonovan): tests for: {,r}index join
+# str.join
+assert.eq(','.join([]), '')
+assert.eq(','.join(["a"]), 'a')
+assert.eq(','.join(["a", "b"]), 'a,b')
+assert.eq(','.join(["a", "b", "c"]), 'a,b,c')
+assert.eq(','.join(("a", "b", "c")), 'a,b,c')
+assert.eq(''.join(("a", "b", "c")), 'abc')
+assert.fails(lambda: ''.join(None), 'got NoneType, want iterable')
+assert.fails(lambda: ''.join(["one", 2]), 'join: in list, want string, got int')
+
+# TODO(adonovan): tests for: {,r}index
 
 # str.capitalize
 assert.eq("hElLo, WoRlD!".capitalize(), "Hello, world!")

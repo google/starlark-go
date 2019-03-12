@@ -551,7 +551,7 @@ func getattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	if dflt != nil {
 		return dflt, nil
 	}
-	return nil, fmt.Errorf("%s has no .%s field or method", object.Type(), name)
+	return nil, fmt.Errorf("getattr: %s has no .%s field or method", object.Type(), name)
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hasattr
@@ -716,7 +716,7 @@ func len_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 	}
 	len := Len(x)
 	if len < 0 {
-		return nil, fmt.Errorf("value of type %s has no len", x.Type())
+		return nil, fmt.Errorf("len: value of type %s has no len", x.Type())
 	}
 	return MakeInt(len), nil
 }
@@ -1674,7 +1674,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 				break
 			}
 			if len(literal) == j+1 || literal[j+1] != '}' {
-				return nil, fmt.Errorf("single '}' in format")
+				return nil, fmt.Errorf("format: single '}' in format")
 			}
 			buf.WriteString(literal[:j+1])
 			literal = literal[j+2:]
@@ -1694,7 +1694,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 		format = format[i+1:]
 		i = strings.IndexByte(format, '}')
 		if i < 0 {
-			return nil, fmt.Errorf("unmatched '{' in format")
+			return nil, fmt.Errorf("format: unmatched '{' in format")
 		}
 
 		var arg Value
@@ -1729,22 +1729,22 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 		if name == "" {
 			// "{}": automatic indexing
 			if manual {
-				return nil, fmt.Errorf("cannot switch from manual field specification to automatic field numbering")
+				return nil, fmt.Errorf("format: cannot switch from manual field specification to automatic field numbering")
 			}
 			auto = true
 			if index >= len(args) {
-				return nil, fmt.Errorf("tuple index out of range")
+				return nil, fmt.Errorf("format: tuple index out of range")
 			}
 			arg = args[index]
 			index++
 		} else if num, ok := decimal(name); ok {
 			// positional argument
 			if auto {
-				return nil, fmt.Errorf("cannot switch from automatic field numbering to manual field specification")
+				return nil, fmt.Errorf("format: cannot switch from automatic field numbering to manual field specification")
 			}
 			manual = true
 			if num >= len(args) {
-				return nil, fmt.Errorf("tuple index out of range")
+				return nil, fmt.Errorf("format: tuple index out of range")
 			} else {
 				arg = args[num]
 			}
@@ -1760,15 +1760,15 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 				// Starlark does not support Python's x.y or a[i] syntaxes,
 				// or nested use of {...}.
 				if strings.Contains(name, ".") {
-					return nil, fmt.Errorf("attribute syntax x.y is not supported in replacement fields: %s", name)
+					return nil, fmt.Errorf("format: attribute syntax x.y is not supported in replacement fields: %s", name)
 				}
 				if strings.Contains(name, "[") {
-					return nil, fmt.Errorf("element syntax a[i] is not supported in replacement fields: %s", name)
+					return nil, fmt.Errorf("format: element syntax a[i] is not supported in replacement fields: %s", name)
 				}
 				if strings.Contains(name, "{") {
-					return nil, fmt.Errorf("nested replacement fields not supported")
+					return nil, fmt.Errorf("format: nested replacement fields not supported")
 				}
-				return nil, fmt.Errorf("keyword %s not found", name)
+				return nil, fmt.Errorf("format: keyword %s not found", name)
 			}
 		}
 
@@ -1787,7 +1787,7 @@ func string_format(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Valu
 		case "r":
 			writeValue(buf, arg, nil)
 		default:
-			return nil, fmt.Errorf("unknown conversion %q", conv)
+			return nil, fmt.Errorf("format: unknown conversion %q", conv)
 		}
 	}
 	return String(buf.String()), nil
@@ -1831,7 +1831,7 @@ func string_join(fnname string, recv_ Value, args Tuple, kwargs []Tuple) (Value,
 		}
 		s, ok := AsString(x)
 		if !ok {
-			return nil, fmt.Errorf("in list, want string, got %s", x.Type())
+			return nil, fmt.Errorf("join: in list, want string, got %s", x.Type())
 		}
 		buf.WriteString(s)
 	}
@@ -2176,7 +2176,7 @@ func string_find_impl(fnname string, s string, args Tuple, kwargs []Tuple, allow
 	}
 	if i < 0 {
 		if !allowError {
-			return nil, fmt.Errorf("substring not found")
+			return nil, fmt.Errorf("%s: substring not found", fnname)
 		}
 		return MakeInt(-1), nil
 	}
