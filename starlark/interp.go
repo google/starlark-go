@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/internal/spell"
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
@@ -499,6 +500,9 @@ loop:
 				v, ok := dict[from]
 				if !ok {
 					err = fmt.Errorf("load: name %s not found in module %s", from, module)
+					if n := spell.Nearest(from, dict.Keys()); n != "" {
+						err = fmt.Errorf("%s (did you mean %s?)", err, n)
+					}
 					break loop
 				}
 				stack[sp-1-i] = v
