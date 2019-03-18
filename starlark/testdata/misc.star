@@ -133,3 +133,8 @@ assert.eq([] + [1] + l + [2, 3], [1, 4, 2, 3])
 assert.fails(lambda: "a" + "b" + 1 + "c", "unknown binary op: string \\+ int")
 assert.fails(lambda: () + () + 1 + (), "unknown binary op: tuple \\+ int")
 assert.fails(lambda: [] + [] + 1 + [], "unknown binary op: list \\+ int")
+
+
+
+---
+load('assert.star', 'froze') ### `name froze not found .*did you mean freeze`
