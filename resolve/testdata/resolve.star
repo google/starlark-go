@@ -343,3 +343,30 @@ print(hollo) ### `undefined: hollo \(did you mean hello\?\)`
 def f(abc):
    print(abd) ### `undefined: abd \(did you mean abc\?\)`
    print(goodbye) ### `undefined: goodbye$`
+
+---
+load("module", "x") # ok
+x = 1 ### `cannot reassign local x`
+load("module", "x") ### `cannot reassign top-level x`
+
+---
+# option:loadbindsglobally
+load("module", "x") # ok
+x = 1 ### `cannot reassign global x`
+load("module", "x") ### `cannot reassign global x`
+
+---
+# option:globalreassign
+load("module", "x") # ok
+x = 1 # ok
+load("module", "x") # ok
+
+---
+# option:globalreassign option:loadbindsglobally
+load("module", "x") # ok
+x = 1
+load("module", "x") # ok
+
+---
+_ = x # forward ref to file-local
+load("module", "x") # ok

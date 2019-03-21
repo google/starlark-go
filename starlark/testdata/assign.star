@@ -301,3 +301,35 @@ assert.eq(a, 8)
 # parenthesized LHS in augmented assignment (error)
 
 (a) += 5 ### "global variable a referenced before assignment"
+
+---
+# option:globalreassign
+load("assert.star", "assert")
+assert = 1
+load("assert.star", "assert")
+
+---
+# option:globalreassign option:loadbindsglobally
+load("assert.star", "assert")
+assert = 1
+load("assert.star", "assert")
+
+---
+# option:loadbindsglobally
+_ = assert ### "global variable assert referenced before assignment"
+load("assert.star", "assert")
+
+---
+_ = assert ### "local variable assert referenced before assignment"
+load("assert.star", "assert")
+
+---
+def f(): assert.eq(1, 1) # forward ref OK
+load("assert.star", "assert")
+f()
+
+---
+# option:loadbindsglobally
+def f(): assert.eq(1, 1) # forward ref OK
+load("assert.star", "assert")
+f()

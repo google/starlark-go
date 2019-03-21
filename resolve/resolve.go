@@ -8,12 +8,14 @@
 // The resolver sets the Locals and FreeVars arrays of each DefStmt and
 // the LocalIndex field of each syntax.Ident that refers to a local or
 // free variable.  It also sets the Locals array of a File for locals
-// bound by comprehensions outside any function.  Identifiers for global
-// variables do not get an index.
+// bound by top-level comprehensions and load statements.
+// Identifiers for global variables do not get an index.
 package resolve // import "go.starlark.net/resolve"
 
 // All references to names are statically resolved.  Names may be
-// predeclared, global, or local to a function or module-level comprehension.
+// predeclared, global, or local to a function or file.
+// File-local variables include those bound by top-level comprehensions
+// and by load statements. ("Top-level" means "outside of any function".)
 // The resolver maps each global name to a small integer and each local
 // name to a small integer; these integers enable a fast and compact
 // representation of globals and locals in the evaluator.
@@ -23,17 +25,18 @@ package resolve // import "go.starlark.net/resolve"
 // build language), enabling the evaluator to share the representation
 // of the universal environment across all modules.
 //
-// The lexical environment is a tree of blocks with the module block at
-// its root.  The module's child blocks may be of two kinds: functions
+// The lexical environment is a tree of blocks with the file block at
+// its root. The file's child blocks may be of two kinds: functions
 // and comprehensions, and these may have further children of either
 // kind.
 //
 // Python-style resolution requires multiple passes because a name is
 // determined to be local to a function only if the function contains a
-// "binding" use of it; similarly, a name is determined be global (as
-// opposed to predeclared) if the module contains a binding use at the
-// top level. For both locals and globals, a non-binding use may
-// lexically precede the binding to which it is resolved.
+// "binding" use of it; similarly, a name is determined to be global (as
+// opposed to predeclared) if the module contains a top-level binding use.
+// Unlike ordinary top-level assignments, the bindings created by load
+// statements are local to the file block.
+// A non-binding use may lexically precede the binding to which it is resolved.
 // In the first pass, we inspect each function, recording in
 // 'uses' each identifier and the environment block in which it occurs.
 // If a use of a name is binding, such as a function parameter or
@@ -41,16 +44,17 @@ package resolve // import "go.starlark.net/resolve"
 // local variable to the enclosing function.
 //
 // As we finish resolving each function, we inspect all the uses within
-// that function and discard ones that were found to be local. The
+// that function and discard ones that were found to be function-local. The
 // remaining ones must be either free (local to some lexically enclosing
-// function), or nonlocal (global or predeclared), but we cannot tell
+// function), or top-level (global, predeclared, or file-local), but we cannot tell
 // which until we have finished inspecting the outermost enclosing
-// function. At that point, we can distinguish local from global names
+// function. At that point, we can distinguish local from top-level names
 // (and this is when Python would compute free variables).
 //
 // However, Starlark additionally requires that all references to global
 // names are satisfied by some declaration in the current module;
-// Starlark permits a function to forward-reference a global that has not
+// Starlark permits a function to forward-reference a global or file-local
+// that has not
 // been declared yet so long as it is declared before the end of the
 // module.  So, instead of re-resolving the unresolved references after
 // each top-level function, we defer this until the end of the module
@@ -64,15 +68,18 @@ package resolve // import "go.starlark.net/resolve"
 // the bindings map so that we create at most one freevar per name.  If
 // the name was not local, we check that it was defined at module level.
 //
-// We resolve all uses of locals in the module (due to comprehensions)
-// in a similar way and compute the set of its local variables.
+// We resolve all uses of locals in the module (due to load statements
+// and comprehensions) in a similar way and compute the file's set of
+// local variables.
 //
 // Starlark enforces that all global names are assigned at most once on
 // all control flow paths by forbidding if/else statements and loops at
 // top level. A global may be used before it is defined, leading to a
-// dynamic error.
-//
-// TODO(adonovan): opt: reuse local slots once locals go out of scope.
+// dynamic error. However, the AllowGlobalReassign flag (really: allow
+// top-level reassign) makes the resolver allow multiple to a variable
+// at top-level. It also allows if-, for-, and while-loops at top-level,
+// which in turn may make the evaluator dynamically assign multiple
+// values to a variable at top-level. (These two roles should be separated.)
 
 import (
 	"fmt"
@@ -95,10 +102,10 @@ var (
 	AllowLambda         = false // allow lambda expressions
 	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
 	AllowSet            = false // allow the 'set' built-in
-	AllowGlobalReassign = false // allow reassignment to globals declared in same file (deprecated)
+	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
 	AllowRecursion      = false // allow while statements and recursive functions
-
-	AllowBitwise = true // obsolete; bitwise operations (&, |, ^, ~, <<, and >>) are always enabled
+	AllowBitwise        = true  // obsolete; bitwise operations (&, |, ^, ~, <<, and >>) are always enabled
+	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
 )
 
 // File resolves the specified file.
@@ -162,8 +169,10 @@ type Error struct {
 func (e Error) Error() string { return e.Pos.String() + ": " + e.Msg }
 
 func newResolver(isPredeclared, isUniversal func(name string) bool) *resolver {
+	file := new(block)
 	return &resolver{
-		env:           new(block), // module block
+		file:          file,
+		env:           file,
 		isPredeclared: isPredeclared,
 		isUniversal:   isUniversal,
 		globals:       make(map[string]*Binding),
@@ -188,11 +197,12 @@ const (
 type resolver struct {
 	// env is the current local environment:
 	// a linked list of blocks, innermost first.
-	// The tail of the list is the module block.
-	env *block
+	// The tail of the list is the file block.
+	env  *block
+	file *block // file block (contains load bindings)
 
 	// moduleLocals contains the local variables of the module
-	// (due to comprehensions outside any function).
+	// (due to load statements and comprehensions outside any function).
 	// moduleGlobals contains the global variables of the module.
 	moduleLocals  []*Binding
 	moduleGlobals []*Binding
@@ -212,11 +222,11 @@ type resolver struct {
 }
 
 // container returns the innermost enclosing "container" block:
-// a function (function != nil) or module (function == nil).
+// a function (function != nil) or file (function == nil).
 // Container blocks accumulate local variable bindings.
 func (r *resolver) container() *block {
 	for b := r.env; ; b = b.parent {
-		if b.function != nil || b.isModule() {
+		if b.function != nil || b == r.file {
 			return b
 		}
 	}
@@ -231,9 +241,9 @@ func (r *resolver) push(b *block) {
 func (r *resolver) pop() { r.env = r.env.parent }
 
 type block struct {
-	parent *block // nil for module block
+	parent *block // nil for file block
 
-	// In the module (root) block, both these fields are nil.
+	// In the file (root) block, both these fields are nil.
 	function *syntax.Function      // only for function blocks
 	comp     *syntax.Comprehension // only for comprehension blocks
 
@@ -245,15 +255,13 @@ type block struct {
 	// children records the child blocks of the current one.
 	children []*block
 
-	// uses records all identifiers seen in this container (function or module),
+	// uses records all identifiers seen in this container (function or file),
 	// and a reference to the environment in which they appear.
 	// As we leave each container block, we resolve them,
 	// so that only free and global ones remain.
 	// At the end of each top-level function we compute closures.
 	uses []use
 }
-
-func (b *block) isModule() bool { return b.parent == nil }
 
 func (b *block) bind(name string, bind *Binding) {
 	if b.bindings == nil {
@@ -269,7 +277,7 @@ func (b *block) String() string {
 	if b.comp != nil {
 		return "comprehension block at " + fmt.Sprint(b.comp.Span())
 	}
-	return "module block"
+	return "file block"
 }
 
 func (r *resolver) errorf(posn syntax.Position, format string, args ...interface{}) {
@@ -282,30 +290,41 @@ type use struct {
 	env *block
 }
 
-// bind creates a binding for id in the current block,
-// if there is not one already, and reports an error if
-// a global was re-bound.
-// It returns whether a binding already existed.
+// bind creates a binding for id: a global (not file-local)
+// binding at top-level, a local binding otherwise.
+// At top-level, it reports an error if a global or file-local
+// binding already exists, unless AllowGlobalReassign.
+// It sets id.Binding to the binding (whether old or new),
+// and returns whether a binding already existed.
 func (r *resolver) bind(id *syntax.Ident) bool {
 	// Binding outside any local (comprehension/function) block?
-	if r.env.isModule() {
-		bind, ok := r.globals[id.Name]
+	if r.env == r.file {
+		bind, ok := r.file.bindings[id.Name]
 		if !ok {
-			// first global binding of this name
-			bind = &Binding{
-				First: id,
-				Scope: Global,
-				Index: len(r.moduleGlobals),
+			bind, ok = r.globals[id.Name]
+			if !ok {
+				// first global binding of this name
+				bind = &Binding{
+					First: id,
+					Scope: Global,
+					Index: len(r.moduleGlobals),
+				}
+				r.globals[id.Name] = bind
+				r.moduleGlobals = append(r.moduleGlobals, bind)
 			}
-			r.globals[id.Name] = bind
-			r.moduleGlobals = append(r.moduleGlobals, bind)
-		} else if !AllowGlobalReassign {
-			r.errorf(id.NamePos, "cannot reassign global %s declared at %s", id.Name, bind.First.NamePos)
+		}
+		if ok && !AllowGlobalReassign {
+			r.errorf(id.NamePos, "cannot reassign %s %s declared at %s",
+				bind.Scope, id.Name, bind.First.NamePos)
 		}
 		id.Binding = bind
 		return ok
 	}
 
+	return r.bindLocal(id)
+}
+
+func (r *resolver) bindLocal(id *syntax.Ident) bool {
 	// Mark this name as local to current block.
 	// Assign it a new local (positive) index in the current container.
 	_, ok := r.env.bindings[id.Name]
@@ -362,8 +381,8 @@ func (r *resolver) use(id *syntax.Ident) {
 	// We will piggyback support for the legacy semantics on the
 	// AllowGlobalReassign flag, which is loosely related and also
 	// required for Bazel.
-	if AllowGlobalReassign && r.env.isModule() {
-		r.useGlobal(use)
+	if AllowGlobalReassign && r.env == r.file {
+		r.useToplevel(use)
 		return
 	}
 
@@ -371,11 +390,15 @@ func (r *resolver) use(id *syntax.Ident) {
 	b.uses = append(b.uses, use)
 }
 
-// useGlobals resolves use.id as a reference to a global.
+// useToplevel resolves use.id as a reference to a name visible at top-level.
 // The use.env field captures the original environment for error reporting.
-func (r *resolver) useGlobal(use use) (bind *Binding) {
+func (r *resolver) useToplevel(use use) (bind *Binding) {
 	id := use.id
-	if prev, ok := r.globals[id.Name]; ok {
+
+	if prev, ok := r.file.bindings[id.Name]; ok {
+		// use of load-defined name in file block
+		bind = prev
+	} else if prev, ok := r.globals[id.Name]; ok {
 		// use of global declared by module
 		bind = prev
 	} else if prev, ok := r.predeclared[id.Name]; ok {
@@ -525,7 +548,16 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			if from.Name[0] == '_' {
 				r.errorf(from.NamePos, "load: names with leading underscores are not exported: %s", from.Name)
 			}
-			r.bind(stmt.To[i])
+
+			id := stmt.To[i]
+			if LoadBindsGlobally {
+				r.bind(id)
+			} else if r.bindLocal(id) && !AllowGlobalReassign {
+				// "Global" in AllowGlobalReassign is a misnomer for "toplevel".
+				// Sadly we can't report the previous declaration
+				// as id.Binding may not be set yet.
+				r.errorf(id.NamePos, "cannot reassign top-level %s", id.Name)
+			}
 		}
 
 	default:
@@ -885,9 +917,9 @@ func (r *resolver) lookupLexical(use use, env *block) (bind *Binding) {
 		defer func() { fmt.Printf("= %v\n", bind) }()
 	}
 
-	// Is this the module block?
-	if env.isModule() {
-		return r.useGlobal(use) // global, predeclared, or not found
+	// Is this the file block?
+	if env == r.file {
+		return r.useToplevel(use) // file-local, global, predeclared, or not found
 	}
 
 	// Defined in this block?

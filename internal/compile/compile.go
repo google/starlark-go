@@ -41,7 +41,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 8
+const Version = 9
 
 type Opcode uint8
 
@@ -1146,7 +1146,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		fcomp.setPos(stmt.Load)
 		fcomp.emit1(LOAD, uint32(len(stmt.From)))
 		for i := range stmt.To {
-			fcomp.emit1(SETGLOBAL, uint32(stmt.To[len(stmt.To)-1-i].Binding.Index))
+			fcomp.set(stmt.To[len(stmt.To)-1-i])
 		}
 
 	default:

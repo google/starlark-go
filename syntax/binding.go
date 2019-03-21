@@ -27,8 +27,8 @@ type Scope uint8
 
 const (
 	UndefinedScope   Scope = iota // name is not defined
-	LocalScope                    // name is local to its function
-	CellScope                     // name is local but shared with a nested function
+	LocalScope                    // name is local to its function or file
+	CellScope                     // name is function-local but shared with a nested function
 	FreeScope                     // name is cell of some enclosing function
 	GlobalScope                   // name is global to module
 	PredeclaredScope              // name is predeclared for this module (e.g. glob)
@@ -38,8 +38,8 @@ const (
 var scopeNames = [...]string{
 	UndefinedScope:   "undefined",
 	LocalScope:       "local",
-	FreeScope:        "free",
 	CellScope:        "cell",
+	FreeScope:        "free",
 	GlobalScope:      "global",
 	PredeclaredScope: "predeclared",
 	UniversalScope:   "universal",
