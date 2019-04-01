@@ -21,7 +21,8 @@ import (
 
 // flags
 var (
-	cpuprofile = flag.String("cpuprofile", "", "gather CPU profile in this file")
+	cpuprofile = flag.String("cpuprofile", "", "gather Go CPU profile in this file")
+	profile    = flag.String("profile", "", "gather Starlark time profile in this file")
 	showenv    = flag.Bool("showenv", false, "on success, print final global environment")
 	execprog   = flag.String("c", "", "execute program `prog`")
 )
@@ -37,6 +38,10 @@ func init() {
 }
 
 func main() {
+	os.Exit(doMain())
+}
+
+func doMain() int {
 	log.SetPrefix("starlark: ")
 	log.SetFlags(0)
 	flag.Parse()
@@ -50,6 +55,21 @@ func main() {
 			log.Fatal(err)
 		}
 		defer pprof.StopCPUProfile()
+	}
+
+	if *profile != "" {
+		f, err := os.Create(*profile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := starlark.StartProfile(f); err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			if err := starlark.StopProfile(); err != nil {
+				log.Fatal(err)
+			}
+		}()
 	}
 
 	thread := &starlark.Thread{Load: repl.MakeLoad()}
@@ -74,14 +94,16 @@ func main() {
 		globals, err = starlark.ExecFile(thread, filename, src, nil)
 		if err != nil {
 			repl.PrintError(err)
-			os.Exit(1)
+			return 1
 		}
 	case flag.NArg() == 0:
 		fmt.Println("Welcome to Starlark (go.starlark.net)")
 		thread.Name = "REPL"
 		repl.REPL(thread, globals)
+		return 0
 	default:
-		log.Fatal("want at most one Starlark file name")
+		log.Print("want at most one Starlark file name")
+		return 1
 	}
 
 	// Print the global environment.
@@ -92,4 +114,6 @@ func main() {
 			}
 		}
 	}
+
+	return 0
 }

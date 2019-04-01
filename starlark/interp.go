@@ -66,12 +66,12 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	var iterstack []Iterator // stack of active iterators
 
 	sp := 0
-	var pc, savedpc uint32
+	var pc uint32
 	var result Value
 	code := f.Code
 loop:
 	for {
-		savedpc = pc
+		fr.pc = pc
 
 		op := compile.Opcode(code[pc])
 		pc++
@@ -90,7 +90,7 @@ loop:
 		}
 		if vmdebug {
 			fmt.Fprintln(os.Stderr, stack[:sp]) // very verbose!
-			compile.PrintOp(f, savedpc, op, arg)
+			compile.PrintOp(f, fr.pc, op, arg)
 		}
 
 		switch op {
@@ -287,11 +287,12 @@ loop:
 
 			if vmdebug {
 				fmt.Printf("VM call %s args=%s kwargs=%s @%s\n",
-					function, positional, kvpairs, f.Position(fr.callpc))
+					function, positional, kvpairs, f.Position(fr.pc))
 			}
 
-			fr.callpc = savedpc
+			thread.endProfSpan()
 			z, err2 := Call(thread, function, positional, kvpairs)
+			thread.beginProfSpan()
 			if err2 != nil {
 				err = err2
 				break loop
@@ -489,7 +490,9 @@ loop:
 				break loop
 			}
 
+			thread.endProfSpan()
 			dict, err2 := thread.Load(thread, module)
+			thread.beginProfSpan()
 			if err2 != nil {
 				err = fmt.Errorf("cannot load %s: %v", module, err2)
 				break loop
@@ -575,7 +578,7 @@ loop:
 
 	if err != nil {
 		if _, ok := err.(*EvalError); !ok {
-			err = fr.errorf(f.Position(savedpc), "%s", err.Error())
+			err = fr.errorf(f.Position(fr.pc), "%s", err.Error())
 		}
 	}
 

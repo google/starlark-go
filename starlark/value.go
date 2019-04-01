@@ -150,9 +150,15 @@ type Callable interface {
 	CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
 }
 
+type callableWithPosition interface {
+	Callable
+	Position() syntax.Position
+}
+
 var (
-	_ Callable = (*Builtin)(nil)
-	_ Callable = (*Function)(nil)
+	_ Callable             = (*Builtin)(nil)
+	_ Callable             = (*Function)(nil)
+	_ callableWithPosition = (*Function)(nil)
 )
 
 // An Iterable abstracts a sequence of values.
