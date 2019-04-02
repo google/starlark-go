@@ -659,8 +659,19 @@ func (b *Builtin) BindReceiver(recv Value) *Builtin {
 }
 
 // A *Dict represents a Starlark dictionary.
+// The zero value of Dict is a valid empty dictionary.
+// If you know the exact final number of entries,
+// it is more efficient to call NewDict.
 type Dict struct {
 	ht hashtable
+}
+
+// NewDict returns a set with initial space for
+// at least size insertions before rehashing.
+func NewDict(size int) *Dict {
+	dict := new(Dict)
+	dict.ht.init(size)
+	return dict
 }
 
 func (d *Dict) Clear() error                                    { return d.ht.clear() }
@@ -916,8 +927,19 @@ func (it *tupleIterator) Next(p *Value) bool {
 func (it *tupleIterator) Done() {}
 
 // A Set represents a Starlark set value.
+// The zero value of Set is a valid empty set.
+// If you know the exact final number of elements,
+// it is more efficient to call NewSet.
 type Set struct {
 	ht hashtable // values are all None
+}
+
+// NewSet returns a dictionary with initial space for
+// at least size insertions before rehashing.
+func NewSet(size int) *Set {
+	set := new(Set)
+	set.ht.init(size)
+	return set
 }
 
 func (s *Set) Delete(k Value) (found bool, err error) { _, found, err = s.ht.delete(k); return }
