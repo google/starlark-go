@@ -448,6 +448,7 @@ func dir(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	if x, ok := args[0].(HasAttrs); ok {
 		names = x.AttrNames()
 	}
+	sort.Strings(names)
 	elems := make([]Value, len(names))
 	for i, name := range names {
 		elems[i] = String(name)

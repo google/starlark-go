@@ -186,6 +186,11 @@ assert.eq(str(getattr(myset, "union")), "<built-in method union of set value>")
 assert.fails(lambda: getattr(myset, "onion"), "no .onion field or method")
 assert.eq(getattr(myset, "onion", 42), 42)
 
+# dir returns a new, sorted, mutable list
+assert.eq(sorted(dir("")), dir("")) # sorted
+dir("").append("!") # mutable
+assert.true("!" not in dir("")) # new
+
 # error messages should suggest spelling corrections
 hf.one = 1
 hf.two = 2
