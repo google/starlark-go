@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -48,6 +49,9 @@ type Thread struct {
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
 	locals map[string]interface{}
+
+	// proftime holds the accumulated execution time since the last profile event.
+	proftime time.Duration
 }
 
 // SetLocal sets the thread-local value associated with the specified key.
@@ -113,11 +117,12 @@ func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 // A Frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
 type Frame struct {
-	parent   *Frame          // caller's frame (or nil)
-	callable Callable        // current function (or toplevel) or built-in
-	posn     syntax.Position // source position of PC, set during error
-	callpc   uint32          // PC of position of active call, set during call
-	locals   []Value         // local variables, for debugger
+	parent    *Frame          // caller's frame (or nil)
+	callable  Callable        // current function (or toplevel) or built-in
+	posn      syntax.Position // source position of PC, set during error
+	pc        uint32          // program counter (Starlark frames only)
+	locals    []Value         // local variables, for debugger
+	spanStart int64           // start time of current profiler span
 }
 
 // NewFrame returns a new frame with the specified parent and callable.
@@ -146,8 +151,8 @@ func (fr *Frame) Position() syntax.Position {
 	switch c := fr.callable.(type) {
 	case *Function:
 		// Starlark function
-		return c.funcode.Position(fr.callpc) // position of active call
-	case interface{ Position() syntax.Position }:
+		return c.funcode.Position(fr.pc)
+	case callableWithPosition:
 		// If a built-in Callable defines
 		// a Position method, use it.
 		return c.Position()
@@ -987,7 +992,9 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	}
 
 	thread.frame = NewFrame(thread.frame, c)
+	thread.beginProfSpan()
 	result, err := c.CallInternal(thread, args, kwargs)
+	thread.endProfSpan()
 	thread.frame = thread.frame.parent
 
 	// Sanity check: nil is not a valid Starlark value.
