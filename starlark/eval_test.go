@@ -24,6 +24,7 @@ import (
 func setOptions(src string) {
 	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")
+	resolve.LoadBindsGlobally = option(src, "loadbindsglobally")
 	resolve.AllowLambda = option(src, "lambda")
 	resolve.AllowNestedDef = option(src, "nesteddef")
 	resolve.AllowRecursion = option(src, "recursion")
@@ -181,7 +182,7 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	}
 
 	// TODO(adonovan): test load() using this execution path.
-	filename := filepath.Join(filepath.Dir(thread.Caller().Position().Filename()), module)
+	filename := filepath.Join(filepath.Dir(thread.TopFrame().Position().Filename()), module)
 	return starlark.ExecFile(thread, filename, nil, nil)
 }
 

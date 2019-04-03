@@ -21,6 +21,7 @@ func setOptions(src string) {
 	resolve.AllowNestedDef = option(src, "nesteddef")
 	resolve.AllowRecursion = option(src, "recursion")
 	resolve.AllowSet = option(src, "set")
+	resolve.LoadBindsGlobally = option(src, "loadbindsglobally")
 }
 
 func option(chunk, name string) bool {
