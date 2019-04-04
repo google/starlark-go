@@ -327,11 +327,12 @@ func profile(w io.Writer) {
 	wnenc.int(ValueType_unit, str("nanoseconds"))
 
 	// informational fields of Profile
-	enc.bytes(Profile_sample_type, wallNanos.Bytes()) // type of samples
-	enc.int(Profile_period, quantum.Nanoseconds())    // magnitude of sampling period
-	enc.bytes(Profile_period_type, wallNanos.Bytes()) // dimension and unit of period
+	enc.bytes(Profile_sample_type, wallNanos.Bytes())
+	enc.int(Profile_period, quantum.Nanoseconds())     // magnitude of sampling period
+	enc.bytes(Profile_period_type, wallNanos.Bytes())  // dimension and unit of period
+	enc.int(Profile_time_nanos, time.Now().UnixNano()) // start (real) time of profile
 
-	start := nanotime()
+	startNano := nanotime()
 
 	// Read profile events from the channel
 	// until it is closed by StopProfiler.
@@ -345,9 +346,8 @@ func profile(w io.Writer) {
 		enc.bytes(Profile_sample, sample.Bytes())
 	}
 
-	end := nanotime()
-	enc.int(Profile_time_nanos, start)         // start time of profile
-	enc.int(Profile_duration_nanos, end-start) // duration of profile
+	endNano := nanotime()
+	enc.int(Profile_duration_nanos, endNano-startNano)
 
 	err := gz.Close() // Close reports any prior write error
 	if flushErr := bufw.Flush(); err == nil {
@@ -359,10 +359,8 @@ func profile(w io.Writer) {
 // nanotime returns the time in nanoseconds since epoch.
 // It is implemented by runtime.nanotime using the linkname hack;
 // runtime.nanotime is defined for all OSs/ARCHS and uses the
-// monotonic system clock, which there is otherwise no way to access.
-//
-// Should that function ever go away, here are two inferior but more
-// portable implementations:
+// monotonic system clock, which there is no portable way to access.
+// Should that function ever go away, these alternatives exist:
 //
 // 	// POSIX only. REALTIME not MONOTONIC. 17ns.
 // 	var tv syscall.Timeval
@@ -371,6 +369,12 @@ func profile(w io.Writer) {
 //
 // 	// Portable. REALTIME not MONOTONIC. 46ns.
 // 	return time.Now().Nanoseconds()
+//
+//      // POSIX only. Adds a dependency.
+//	import "golang.org/x/sys/unix"
+//	var ts unix.Timespec
+// 	unix.ClockGettime(CLOCK_MONOTONIC, &ts) // can't fail
+//	return unix.TimespecToNsec(ts)
 //
 //go:linkname nanotime runtime.nanotime
 func nanotime() int64
