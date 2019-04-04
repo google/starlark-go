@@ -482,6 +482,18 @@ func TestInt(t *testing.T) {
 }
 
 func TestBacktrace(t *testing.T) {
+	getBacktrace := func(err error) string {
+		switch err := err.(type) {
+		case *starlark.EvalError:
+			return err.Backtrace()
+		case nil:
+			t.Fatalf("ExecFile succeeded unexpectedly")
+		default:
+			t.Fatalf("ExecFile failed with %v, wanted *EvalError", err)
+		}
+		panic("unreachable")
+	}
+
 	// This test ensures continuity of the stack of active Starlark
 	// functions, including propagation through built-ins such as 'min'.
 	const src = `
@@ -493,25 +505,44 @@ i()
 `
 	thread := new(starlark.Thread)
 	_, err := starlark.ExecFile(thread, "crash.star", src, nil)
-	switch err := err.(type) {
-	case *starlark.EvalError:
-		got := err.Backtrace()
-		// Compiled code currently has no column information.
-		const want = `Traceback (most recent call last):
+	// Compiled code currently has no column information.
+	const want = `Traceback (most recent call last):
   crash.star:6: in <toplevel>
   crash.star:5: in i
   crash.star:4: in h
-  <builtin>:1: in min
+  <builtin>: in min
   crash.star:3: in g
   crash.star:2: in f
 Error: floored division by zero`
-		if got != want {
+	if got := getBacktrace(err); got != want {
+		t.Errorf("error was %s, want %s", got, want)
+	}
+
+	// Additionally, ensure that errors originating in
+	// Starlark and/or Go each have an accurate frame.
+	//
+	// This program fails in Starlark (f) if x==0,
+	// or in Go (string.join) if x is non-zero.
+	const src2 = `
+def f(): ''.join([1//i])
+f()
+`
+	for i, want := range []string{
+		0: `Traceback (most recent call last):
+  crash.star:3: in <toplevel>
+  crash.star:2: in f
+Error: floored division by zero`,
+		1: `Traceback (most recent call last):
+  crash.star:3: in <toplevel>
+  crash.star:2: in f
+  <builtin>: in join
+Error: join: in list, want string, got int`,
+	} {
+		globals := starlark.StringDict{"i": starlark.MakeInt(i)}
+		_, err := starlark.ExecFile(thread, "crash.star", src2, globals)
+		if got := getBacktrace(err); got != want {
 			t.Errorf("error was %s, want %s", got, want)
 		}
-	case nil:
-		t.Error("ExecFile succeeded unexpectedly")
-	default:
-		t.Errorf("ExecFile failed with %v, wanted *EvalError", err)
 	}
 }
 

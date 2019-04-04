@@ -157,7 +157,7 @@ func (fr *Frame) Position() syntax.Position {
 		// a Position method, use it.
 		return c.Position()
 	}
-	return syntax.MakePosition(&builtinFilename, 1, 0)
+	return syntax.MakePosition(&builtinFilename, 0, 0)
 }
 
 var builtinFilename = "<builtin>"
@@ -991,7 +991,8 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
-	thread.frame = NewFrame(thread.frame, c)
+	fr := NewFrame(thread.frame, c)
+	thread.frame = fr
 	thread.beginProfSpan()
 	result, err := c.CallInternal(thread, args, kwargs)
 	thread.endProfSpan()
@@ -999,7 +1000,14 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
-		return nil, fmt.Errorf("internal error: nil (not None) returned from %s", fn)
+		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
+	}
+
+	// Always return an EvalError with an accurate frame.
+	if err != nil {
+		if _, ok := err.(*EvalError); !ok {
+			err = fr.errorf(fr.Position(), "%s", err.Error())
+		}
 	}
 
 	return result, err

@@ -576,12 +576,6 @@ loop:
 		iter.Done()
 	}
 
-	if err != nil {
-		if _, ok := err.(*EvalError); !ok {
-			err = fr.errorf(f.Position(fr.pc), "%s", err.Error())
-		}
-	}
-
 	fr.locals = nil
 
 	return result, err
