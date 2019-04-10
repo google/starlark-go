@@ -93,6 +93,8 @@ When you have finished, type `Ctrl-D` to close the REPL's input stream.
 Embed the interpreter in your Go program:
 
 ```
+import "go.starlark.net/starlark"
+
 // Execute Starlark program in a file.
 thread := &starlark.Thread{Name: "my thread"}
 globals, err := starlark.ExecFile(thread, "fibonacci.star", nil, nil)
