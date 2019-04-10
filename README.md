@@ -107,7 +107,7 @@ if err != nil { ... }
 fmt.Printf("fibonacci(10) = %v\n", v) // fibonacci(10) = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
 ```
 
-See [starlark/example_test.go](blob/master/starlark/example_test.go) for more examples.
+See [starlark/example_test.go](starlark/example_test.go) for more examples.
 
 ### Contributing
 
