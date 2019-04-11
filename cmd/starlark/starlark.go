@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 
@@ -22,6 +23,7 @@ import (
 // flags
 var (
 	cpuprofile = flag.String("cpuprofile", "", "gather Go CPU profile in this file")
+	memprofile = flag.String("memprofile", "", "gather Go memory profile in this file")
 	profile    = flag.String("profile", "", "gather Starlark time profile in this file")
 	showenv    = flag.Bool("showenv", false, "on success, print final global environment")
 	execprog   = flag.String("c", "", "execute program `prog`")
@@ -48,27 +50,35 @@ func doMain() int {
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal(err)
-		}
-		defer pprof.StopCPUProfile()
+		check(err)
+		err = pprof.StartCPUProfile(f)
+		check(err)
+		defer func() {
+			pprof.StopCPUProfile()
+			err := f.Close()
+			check(err)
+		}()
+	}
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		check(err)
+		defer func() {
+			runtime.GC()
+			err := pprof.Lookup("heap").WriteTo(f, 0)
+			check(err)
+			err = f.Close()
+			check(err)
+		}()
 	}
 
 	if *profile != "" {
 		f, err := os.Create(*profile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := starlark.StartProfile(f); err != nil {
-			log.Fatal(err)
-		}
+		check(err)
+		err = starlark.StartProfile(f)
+		check(err)
 		defer func() {
-			if err := starlark.StopProfile(); err != nil {
-				log.Fatal(err)
-			}
+			err := starlark.StopProfile()
+			check(err)
 		}()
 	}
 
@@ -116,4 +126,10 @@ func doMain() int {
 	}
 
 	return 0
+}
+
+func check(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
 }
