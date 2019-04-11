@@ -50,37 +50,35 @@ func doMain() int {
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal(err)
-		}
-		defer pprof.StopCPUProfile()
+		check(err)
+		err = pprof.StartCPUProfile(f)
+		check(err)
+		defer func() {
+			pprof.StopCPUProfile()
+			err := f.Close()
+			check(err)
+		}()
 	}
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
+		check(err)
 		defer func() {
 			runtime.GC()
-			pprof.Lookup("heap").WriteTo(f, 0)
+			err := pprof.Lookup("heap").WriteTo(f, 0)
+			check(err)
+			err = f.Close()
+			check(err)
 		}()
 	}
 
 	if *profile != "" {
 		f, err := os.Create(*profile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := starlark.StartProfile(f); err != nil {
-			log.Fatal(err)
-		}
+		check(err)
+		err = starlark.StartProfile(f)
+		check(err)
 		defer func() {
-			if err := starlark.StopProfile(); err != nil {
-				log.Fatal(err)
-			}
+			err := starlark.StopProfile()
+			check(err)
 		}()
 	}
 
@@ -128,4 +126,10 @@ func doMain() int {
 	}
 
 	return 0
+}
+
+func check(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
 }
