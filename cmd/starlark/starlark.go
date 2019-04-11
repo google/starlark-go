@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 
@@ -22,6 +23,7 @@ import (
 // flags
 var (
 	cpuprofile = flag.String("cpuprofile", "", "gather Go CPU profile in this file")
+	memprofile = flag.String("memprofile", "", "gather Go memory profile in this file")
 	profile    = flag.String("profile", "", "gather Starlark time profile in this file")
 	showenv    = flag.Bool("showenv", false, "on success, print final global environment")
 	execprog   = flag.String("c", "", "execute program `prog`")
@@ -55,6 +57,16 @@ func doMain() int {
 			log.Fatal(err)
 		}
 		defer pprof.StopCPUProfile()
+	}
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			runtime.GC()
+			pprof.Lookup("heap").WriteTo(f, 0)
+		}()
 	}
 
 	if *profile != "" {
