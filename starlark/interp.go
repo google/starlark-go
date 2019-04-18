@@ -23,7 +23,7 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	if !resolve.AllowRecursion {
 		// detect recursion
-		for fr := thread.frame.parent; fr != nil; fr = fr.parent {
+		for _, fr := range thread.stack[:len(thread.stack)-1] {
 			// We look for the same function code,
 			// not function value, otherwise the user could
 			// defeat the check by writing the Y combinator.
@@ -34,7 +34,7 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	}
 
 	f := fn.funcode
-	fr := thread.frame
+	fr := thread.frameAt(0)
 	nlocals := len(f.Locals)
 	stack := make([]Value, nlocals+f.MaxStack)
 	locals := stack[:nlocals:nlocals] // local variables, starting with parameters
@@ -42,7 +42,7 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 
 	err := setArgs(locals, fn, args, kwargs)
 	if err != nil {
-		return nil, fr.errorf(fr.Position(), "%v", err)
+		return nil, thread.evalError(err)
 	}
 
 	fr.locals = locals // for debugger

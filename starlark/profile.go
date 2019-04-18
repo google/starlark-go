@@ -130,7 +130,7 @@ func (thread *Thread) beginProfSpan() {
 		return // profiling not enabled
 	}
 
-	thread.frame.spanStart = nanotime()
+	thread.frameAt(0).spanStart = nanotime()
 }
 
 // TODO(adonovan): experiment with smaller values,
@@ -143,7 +143,7 @@ func (thread *Thread) endProfSpan() {
 	}
 
 	// Add the span to the thread's accumulator.
-	thread.proftime += time.Duration(nanotime() - thread.frame.spanStart)
+	thread.proftime += time.Duration(nanotime() - thread.frameAt(0).spanStart)
 	if thread.proftime < quantum {
 		return
 	}
@@ -159,7 +159,8 @@ func (thread *Thread) endProfSpan() {
 		time:   n * quantum,
 	}
 	ev.stack = ev.stackSpace[:0]
-	for fr := thread.frame; fr != nil; fr = fr.parent {
+	for i := range thread.stack {
+		fr := thread.frameAt(i)
 		ev.stack = append(ev.stack, profFrame{
 			pos: fr.Position(),
 			fn:  fr.Callable(),

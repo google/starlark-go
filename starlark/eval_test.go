@@ -135,8 +135,8 @@ func TestExecFile(t *testing.T) {
 			switch err := err.(type) {
 			case *starlark.EvalError:
 				found := false
-				for _, fr := range err.Stack() {
-					posn := fr.Position()
+				for i := range err.CallStack {
+					posn := err.CallStack.At(i).Pos
 					if posn.Filename() == filename {
 						chunk.GotError(int(posn.Line), err.Error())
 						found = true
@@ -182,7 +182,7 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	}
 
 	// TODO(adonovan): test load() using this execution path.
-	filename := filepath.Join(filepath.Dir(thread.TopFrame().Position().Filename()), module)
+	filename := filepath.Join(filepath.Dir(thread.CallFrame(0).Pos.Filename()), module)
 	return starlark.ExecFile(thread, filename, nil, nil)
 }
 
@@ -424,9 +424,8 @@ f()
 `
 	buf := new(bytes.Buffer)
 	print := func(thread *starlark.Thread, msg string) {
-		caller := thread.Caller()
-		fmt.Fprintf(buf, "%s: %s: %s\n",
-			caller.Position(), caller.Callable().Name(), msg)
+		caller := thread.CallFrame(1)
+		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Pos, caller.Name, msg)
 	}
 	thread := &starlark.Thread{Print: print}
 	if _, err := starlark.ExecFile(thread, "foo.star", src, nil); err != nil {
@@ -626,7 +625,8 @@ func TestFrameLocals(t *testing.T) {
 	// values of calls to Starlark functions.
 	trace := func(thread *starlark.Thread) string {
 		buf := new(bytes.Buffer)
-		for fr := thread.TopFrame(); fr != nil; fr = fr.Parent() {
+		for i := 0; i < thread.CallStackDepth(); i++ {
+			fr := thread.DebugFrame(i)
 			fmt.Fprintf(buf, "%s(", fr.Callable().Name())
 			if fn, ok := fr.Callable().(*starlark.Function); ok {
 				for i := 0; i < fn.NumParams(); i++ {

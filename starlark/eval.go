@@ -30,8 +30,8 @@ type Thread struct {
 	// Name is an optional name that describes the thread, for debugging.
 	Name string
 
-	// frame is the current Starlark execution frame.
-	frame *Frame
+	// stack is the stack of (internal) call frames.
+	stack []*Frame
 
 	// Print is the client-supplied implementation of the Starlark
 	// 'print' function. If nil, fmt.Fprintln(os.Stderr, msg) is
@@ -70,10 +70,39 @@ func (thread *Thread) Local(key string) interface{} {
 
 // Caller returns the frame of the caller of the current function.
 // It should only be used in built-ins called from Starlark code.
-func (thread *Thread) Caller() *Frame { return thread.frame.parent }
+//
+// Deprecated: use CallFrame(1), or CallStack().At(1) if you also need the rest of the stack.
+func (thread *Thread) Caller() *Frame { return thread.frameAt(1) }
+
+// CallFrame returns a copy of the specified frame of the callstack.
+// It should only be used in built-ins called from Starlark code.
+// Depth 0 means the frame of the built-in itself, 1 is its caller, and so on.
+//
+// It is equivalent to CallStack().At(depth), but more efficient.
+func (thread *Thread) CallFrame(depth int) CallFrame {
+	return thread.frameAt(depth).CallFrame()
+}
 
 // TopFrame returns the topmost stack frame.
-func (thread *Thread) TopFrame() *Frame { return thread.frame }
+//
+// Deprecated: use the Thread.CallStack method to return a copy of the current call stack.
+func (thread *Thread) TopFrame() *Frame { return thread.frameAt(0) }
+
+func (thread *Thread) frameAt(depth int) *Frame {
+	return thread.stack[len(thread.stack)-1-depth]
+}
+
+// CallStack returns a new slice containing the thread's stack of call frames.
+func (thread *Thread) CallStack() CallStack {
+	frames := make([]CallFrame, len(thread.stack))
+	for i, fr := range thread.stack {
+		frames[i] = fr.CallFrame()
+	}
+	return frames
+}
+
+// CallStackDepth returns the number of frames in the current call stack.
+func (thread *Thread) CallStackDepth() int { return len(thread.stack) }
 
 // A StringDict is a mapping from names to values, and represents
 // an environment such as the global variables of a module.
@@ -116,19 +145,19 @@ func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
 // A Frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
+//
+// Deprecated: use CallFrame instead. If you really must, use DebugFrame.
 type Frame struct {
-	parent    *Frame          // caller's frame (or nil)
-	callable  Callable        // current function (or toplevel) or built-in
-	posn      syntax.Position // source position of PC, set during error
-	pc        uint32          // program counter (Starlark frames only)
-	locals    []Value         // local variables, for debugger
-	spanStart int64           // start time of current profiler span
+	parent    *Frame   // deprecated: use CallStack instead
+	callable  Callable // current function (or toplevel) or built-in
+	pc        uint32   // program counter (Starlark frames only)
+	locals    []Value  // local variables (Starlark frames only), for debugger
+	spanStart int64    // start time of current profiler span
 }
 
 // NewFrame returns a new frame with the specified parent and callable.
 //
-// It may be used to synthesize stack frames for error messages.
-// Few clients should need to use this function.
+// Deprecated: clients should have no need for this function.
 func NewFrame(parent *Frame, callable Callable) *Frame {
 	return &Frame{parent: parent, callable: callable}
 }
@@ -137,17 +166,8 @@ func NewFrame(parent *Frame, callable Callable) *Frame {
 // slice, so that an EvalError can copy a stack efficiently and immutably.
 // In hindsight using a slice would have led to a more convenient API.
 
-func (fr *Frame) errorf(posn syntax.Position, format string, args ...interface{}) *EvalError {
-	fr.posn = posn
-	msg := fmt.Sprintf(format, args...)
-	return &EvalError{Msg: msg, Frame: fr}
-}
-
 // Position returns the source position of the current point of execution in this frame.
 func (fr *Frame) Position() syntax.Position {
-	if fr.posn.IsValid() {
-		return fr.posn // leaf frame only (the error)
-	}
 	switch c := fr.callable.(type) {
 	case *Function:
 		// Starlark function
@@ -166,12 +186,63 @@ var builtinFilename = "<builtin>"
 func (fr *Frame) Callable() Callable { return fr.callable }
 
 // Parent returns the frame of the enclosing function call, if any.
+//
+// Deprecated: use Thread.CallStack instead of Frame.
 func (fr *Frame) Parent() *Frame { return fr.parent }
 
-// An EvalError is a Starlark evaluation error and its associated call stack.
+// A CallStack is a stack of call frames, outermost first.
+type CallStack []CallFrame
+
+// At returns a copy of the frame at depth i.
+// At(0) returns the topmost frame.
+func (stack CallStack) At(i int) CallFrame { return stack[len(stack)-1-i] }
+
+// Pop removes and returns the topmost frame.
+func (stack *CallStack) Pop() CallFrame {
+	last := len(*stack) - 1
+	top := (*stack)[last]
+	*stack = (*stack)[:last]
+	return top
+}
+
+// String returns a user-friendly description of the stack.
+func (stack CallStack) String() string {
+	out := new(strings.Builder)
+	fmt.Fprintf(out, "Traceback (most recent call last):\n")
+	for _, fr := range stack {
+		fmt.Fprintf(out, "  %s: in %s\n", fr.Pos, fr.Name)
+	}
+	return out.String()
+}
+
+// An EvalError is a Starlark evaluation error and
+// a copy of the thread's stack at the moment of the error.
 type EvalError struct {
-	Msg   string
-	Frame *Frame
+	Msg       string
+	CallStack CallStack
+	Frame     *Frame // Deprecated: use CallStack instead
+}
+
+// A CallFrame represents the function name and current
+// position of execution of an enclosing call frame.
+type CallFrame struct {
+	Name string
+	Pos  syntax.Position
+}
+
+func (fr *Frame) CallFrame() CallFrame {
+	return CallFrame{
+		Name: fr.Callable().Name(),
+		Pos:  fr.Position(),
+	}
+}
+
+func (thread *Thread) evalError(err error) *EvalError {
+	return &EvalError{
+		Msg:       err.Error(),
+		CallStack: thread.CallStack(),
+		Frame:     thread.frameAt(0), // legacy
+	}
 }
 
 func (e *EvalError) Error() string { return e.Msg }
@@ -179,26 +250,28 @@ func (e *EvalError) Error() string { return e.Msg }
 // Backtrace returns a user-friendly error message describing the stack
 // of calls that led to this error.
 func (e *EvalError) Backtrace() string {
-	buf := new(strings.Builder)
-	e.Frame.WriteBacktrace(buf)
-	fmt.Fprintf(buf, "Error: %s", e.Msg)
-	return buf.String()
+	return fmt.Sprintf("%sError: %s", e.CallStack, e.Msg)
 }
 
 // WriteBacktrace writes a user-friendly description of the stack to buf.
+//
+// Deprecated: use CallStack instead.
 func (fr *Frame) WriteBacktrace(out *strings.Builder) {
-	fmt.Fprintf(out, "Traceback (most recent call last):\n")
-	var print func(fr *Frame)
-	print = func(fr *Frame) {
+	var stack CallStack
+	var visit func(fr *Frame)
+	visit = func(fr *Frame) {
 		if fr != nil {
-			print(fr.parent)
-			fmt.Fprintf(out, "  %s: in %s\n", fr.Position(), fr.Callable().Name())
+			visit(fr.parent)
+			stack = append(stack, fr.CallFrame())
 		}
 	}
-	print(fr)
+	visit(fr)
+	out.WriteString(stack.String())
 }
 
 // Stack returns the stack of frames, innermost first.
+//
+// Deprecated: use CallStack instead.
 func (e *EvalError) Stack() []*Frame {
 	var stack []*Frame
 	for fr := e.Frame; fr != nil; fr = fr.parent {
@@ -991,12 +1064,15 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
-	fr := NewFrame(thread.frame, c)
-	thread.frame = fr
+	var parent *Frame
+	if len(thread.stack) > 0 {
+		parent = thread.frameAt(0)
+	}
+	fr := NewFrame(parent, c)
+	thread.stack = append(thread.stack, fr) // push
 	thread.beginProfSpan()
 	result, err := c.CallInternal(thread, args, kwargs)
 	thread.endProfSpan()
-	thread.frame = thread.frame.parent
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
@@ -1006,9 +1082,12 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	// Always return an EvalError with an accurate frame.
 	if err != nil {
 		if _, ok := err.(*EvalError); !ok {
-			err = fr.errorf(fr.Position(), "%s", err.Error())
+			err = thread.evalError(err)
 		}
 	}
+
+	thread.stack[len(thread.stack)-1] = nil           // aid GC
+	thread.stack = thread.stack[:len(thread.stack)-1] // pop
 
 	return result, err
 }
