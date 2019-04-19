@@ -31,7 +31,7 @@ type Thread struct {
 	Name string
 
 	// stack is the stack of (internal) call frames.
-	stack []*Frame
+	stack []*frame
 
 	// Print is the client-supplied implementation of the Starlark
 	// 'print' function. If nil, fmt.Fprintln(os.Stderr, msg) is
@@ -68,27 +68,16 @@ func (thread *Thread) Local(key string) interface{} {
 	return thread.locals[key]
 }
 
-// Caller returns the frame of the caller of the current function.
-// It should only be used in built-ins called from Starlark code.
-//
-// Deprecated: use CallFrame(1), or CallStack().At(1) if you also need the rest of the stack.
-func (thread *Thread) Caller() *Frame { return thread.frameAt(1) }
-
 // CallFrame returns a copy of the specified frame of the callstack.
 // It should only be used in built-ins called from Starlark code.
 // Depth 0 means the frame of the built-in itself, 1 is its caller, and so on.
 //
 // It is equivalent to CallStack().At(depth), but more efficient.
 func (thread *Thread) CallFrame(depth int) CallFrame {
-	return thread.frameAt(depth).CallFrame()
+	return thread.frameAt(depth).asCallFrame()
 }
 
-// TopFrame returns the topmost stack frame.
-//
-// Deprecated: use the Thread.CallStack method to return a copy of the current call stack.
-func (thread *Thread) TopFrame() *Frame { return thread.frameAt(0) }
-
-func (thread *Thread) frameAt(depth int) *Frame {
+func (thread *Thread) frameAt(depth int) *frame {
 	return thread.stack[len(thread.stack)-1-depth]
 }
 
@@ -96,7 +85,7 @@ func (thread *Thread) frameAt(depth int) *Frame {
 func (thread *Thread) CallStack() CallStack {
 	frames := make([]CallFrame, len(thread.stack))
 	for i, fr := range thread.stack {
-		frames[i] = fr.CallFrame()
+		frames[i] = fr.asCallFrame()
 	}
 	return frames
 }
@@ -143,31 +132,17 @@ func (d StringDict) Freeze() {
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 
-// A Frame records a call to a Starlark function (including module toplevel)
+// A frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
-//
-// Deprecated: use CallFrame instead. If you really must, use DebugFrame.
-type Frame struct {
-	parent    *Frame   // deprecated: use CallStack instead
+type frame struct {
 	callable  Callable // current function (or toplevel) or built-in
 	pc        uint32   // program counter (Starlark frames only)
-	locals    []Value  // local variables (Starlark frames only), for debugger
+	locals    []Value  // local variables (Starlark frames only)
 	spanStart int64    // start time of current profiler span
 }
 
-// NewFrame returns a new frame with the specified parent and callable.
-//
-// Deprecated: clients should have no need for this function.
-func NewFrame(parent *Frame, callable Callable) *Frame {
-	return &Frame{parent: parent, callable: callable}
-}
-
-// The Frames of a thread are structured as a spaghetti stack, not a
-// slice, so that an EvalError can copy a stack efficiently and immutably.
-// In hindsight using a slice would have led to a more convenient API.
-
 // Position returns the source position of the current point of execution in this frame.
-func (fr *Frame) Position() syntax.Position {
+func (fr *frame) Position() syntax.Position {
 	switch c := fr.callable.(type) {
 	case *Function:
 		// Starlark function
@@ -183,12 +158,7 @@ func (fr *Frame) Position() syntax.Position {
 var builtinFilename = "<builtin>"
 
 // Function returns the frame's function or built-in.
-func (fr *Frame) Callable() Callable { return fr.callable }
-
-// Parent returns the frame of the enclosing function call, if any.
-//
-// Deprecated: use Thread.CallStack instead of Frame.
-func (fr *Frame) Parent() *Frame { return fr.parent }
+func (fr *frame) Callable() Callable { return fr.callable }
 
 // A CallStack is a stack of call frames, outermost first.
 type CallStack []CallFrame
@@ -220,7 +190,6 @@ func (stack CallStack) String() string {
 type EvalError struct {
 	Msg       string
 	CallStack CallStack
-	Frame     *Frame // Deprecated: use CallStack instead
 }
 
 // A CallFrame represents the function name and current
@@ -230,7 +199,7 @@ type CallFrame struct {
 	Pos  syntax.Position
 }
 
-func (fr *Frame) CallFrame() CallFrame {
+func (fr *frame) asCallFrame() CallFrame {
 	return CallFrame{
 		Name: fr.Callable().Name(),
 		Pos:  fr.Position(),
@@ -241,7 +210,6 @@ func (thread *Thread) evalError(err error) *EvalError {
 	return &EvalError{
 		Msg:       err.Error(),
 		CallStack: thread.CallStack(),
-		Frame:     thread.frameAt(0), // legacy
 	}
 }
 
@@ -251,33 +219,6 @@ func (e *EvalError) Error() string { return e.Msg }
 // of calls that led to this error.
 func (e *EvalError) Backtrace() string {
 	return fmt.Sprintf("%sError: %s", e.CallStack, e.Msg)
-}
-
-// WriteBacktrace writes a user-friendly description of the stack to buf.
-//
-// Deprecated: use CallStack instead.
-func (fr *Frame) WriteBacktrace(out *strings.Builder) {
-	var stack CallStack
-	var visit func(fr *Frame)
-	visit = func(fr *Frame) {
-		if fr != nil {
-			visit(fr.parent)
-			stack = append(stack, fr.CallFrame())
-		}
-	}
-	visit(fr)
-	out.WriteString(stack.String())
-}
-
-// Stack returns the stack of frames, innermost first.
-//
-// Deprecated: use CallStack instead.
-func (e *EvalError) Stack() []*Frame {
-	var stack []*Frame
-	for fr := e.Frame; fr != nil; fr = fr.parent {
-		stack = append(stack, fr)
-	}
-	return stack
 }
 
 // A Program is a compiled Starlark program.
@@ -1064,12 +1005,20 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
-	var parent *Frame
-	if len(thread.stack) > 0 {
-		parent = thread.frameAt(0)
+	// Allocate and push a new frame.
+	var fr *frame
+	// Optimization: use slack portion of thread.stack
+	// slice as a freelist of empty frames.
+	if n := len(thread.stack); n < cap(thread.stack) {
+		fr = thread.stack[n : n+1][0]
 	}
-	fr := NewFrame(parent, c)
+	if fr == nil {
+		fr = new(frame)
+	}
 	thread.stack = append(thread.stack, fr) // push
+
+	fr.callable = c
+
 	thread.beginProfSpan()
 	result, err := c.CallInternal(thread, args, kwargs)
 	thread.endProfSpan()
@@ -1086,7 +1035,7 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		}
 	}
 
-	thread.stack[len(thread.stack)-1] = nil           // aid GC
+	*fr = frame{}                                     // clear out any references
 	thread.stack = thread.stack[:len(thread.stack)-1] // pop
 
 	return result, err

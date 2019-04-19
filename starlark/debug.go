@@ -17,7 +17,7 @@ import "go.starlark.net/syntax"
 // This function is provided only for debugging tools.
 //
 // THIS API IS EXPERIMENTAL AND MAY CHANGE WITHOUT NOTICE.
-func (fr *Frame) Local(i int) Value { return fr.locals[i] }
+func (fr *frame) Local(i int) Value { return fr.locals[i] }
 
 // DebugFrame is the debugger API for a frame of the interpreter's call stack.
 //
