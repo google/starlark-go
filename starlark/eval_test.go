@@ -163,7 +163,7 @@ func (t fib) Freeze()                    {}
 func (t fib) String() string             { return "fib" }
 func (t fib) Type() string               { return "fib" }
 func (t fib) Truth() starlark.Bool       { return true }
-func (t fib) Hash() (uint32, error)      { return 0, fmt.Errorf("fib is unhashable") }
+func (t fib) Hash() (uint32, error)      { return 0, starlark.Unhashable("fib is unhashable") }
 func (t fib) Iterate() starlark.Iterator { return &fibIterator{0, 1} }
 
 type fibIterator struct{ x, y int }
