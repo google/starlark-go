@@ -56,6 +56,7 @@ assert.eq(sorted(pairs, key=lambda x: x[0]),
            (2, 3), (2, 6),
            (3, 1), (3, 4), (3, 7),
            (4, 0), (4, 2)])
+assert.fails(lambda: sorted(1), 'sorted: for parameter iterable: got int, want iterable')
 
 # reversed
 assert.eq(reversed([1, 144, 81, 16]), [16, 81, 144, 1])

@@ -603,7 +603,7 @@ func TestUnpackUserDefined(t *testing.T) {
 
 	// failure
 	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "x", &x)
-	if want := "unpack: for parameter 1: got int, want hasfields"; fmt.Sprint(err) != want {
+	if want := "unpack: for parameter x: got int, want hasfields"; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)
 	}
 }

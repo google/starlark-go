@@ -181,6 +181,14 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 	var defined intset
 	defined.init(nparams)
 
+	paramName := func(x interface{}) string { // (no free variables)
+		name := x.(string)
+		if name[len(name)-1] == '?' {
+			name = name[:len(name)-1]
+		}
+		return name
+	}
+
 	// positional arguments
 	if len(args) > nparams {
 		return fmt.Errorf("%s: got %d arguments, want at most %d",
@@ -189,7 +197,8 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 	for i, arg := range args {
 		defined.set(i)
 		if err := unpackOneArg(arg, pairs[2*i+1]); err != nil {
-			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
+			name := paramName(pairs[2*i])
+			return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 		}
 	}
 
@@ -198,11 +207,7 @@ kwloop:
 	for _, item := range kwargs {
 		name, arg := item[0].(String), item[1]
 		for i := 0; i < nparams; i++ {
-			paramName := pairs[2*i].(string)
-			if paramName[len(paramName)-1] == '?' {
-				paramName = paramName[:len(paramName)-1]
-			}
-			if paramName == string(name) {
+			if paramName(pairs[2*i]) == string(name) {
 				// found it
 				if defined.set(i) {
 					return fmt.Errorf("%s: got multiple values for keyword argument %s",
@@ -1044,6 +1049,7 @@ func set(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#sorted
 func sorted(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	// Oddly, Python's sorted permits all arguments to be positional, thus so do we.
 	var iterable Iterable
 	var key Callable
 	var reverse bool
