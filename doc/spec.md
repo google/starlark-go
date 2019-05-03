@@ -3831,8 +3831,12 @@ are strings.
 
 `S.lstrip()` returns a copy of the string S with leading whitespace removed.
 
+Like `strip`, it accepts an optional string parameter that specifies an
+alternative set of Unicode code points to remove.
+
 ```python
 "  hello  ".lstrip()                    # "  hello"
+"  hello  ".lstrip("h o")               # "ell  "
 ```
 
 <a id='string·partition'></a>
@@ -3916,8 +3920,13 @@ rightmost splits.
 
 `S.rstrip()` returns a copy of the string S with trailing whitespace removed.
 
+Like `strip`, it accepts an optional string parameter that specifies an
+alternative set of Unicode code points to remove.
+
 ```python
 "  hello  ".rstrip()                    # "hello  "
+"  hello  ".rstrip()                    # "hello  "
+"  hello  ".rstrip("h o")               # "  hell"
 ```
 
 <a id='string·split'></a>
@@ -4035,8 +4044,13 @@ function reports whether any one of them is a prefix.
 
 `S.strip()` returns a copy of the string S with leading and trailing whitespace removed.
 
+It accepts an optional string argument:
+`S.strip(cutset)` instead removes all leading
+and trailing Unicode code points contained in `cutset`.
+
 ```python
 "  hello  ".strip()                     # "hello"
+"  hello  ".strip("h o")                # "ell"
 ```
 
 <a id='string·title'></a>
