@@ -36,16 +36,17 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	f := fn.funcode
 	fr := thread.frameAt(0)
 	nlocals := len(f.Locals)
-	stack := make([]Value, nlocals+f.MaxStack)
-	locals := stack[:nlocals:nlocals] // local variables, starting with parameters
-	stack = stack[nlocals:]
+	nspace := nlocals + f.MaxStack
+	space := make([]Value, nspace)
+	locals := space[:nlocals:nlocals] // local variables, starting with parameters
+	stack := space[nlocals:]          // operand stack
 
 	err := setArgs(locals, fn, args, kwargs)
 	if err != nil {
 		return nil, thread.evalError(err)
 	}
 
-	fr.locals = locals // for debugger
+	fr.locals = locals
 
 	if vmdebug {
 		fmt.Printf("Entering %s @ %s\n", f.Name, f.Position(0))
