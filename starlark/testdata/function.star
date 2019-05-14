@@ -110,11 +110,9 @@ yang(True)
 assert.eq(calls, ["yang", "yin"])
 
 
-# hash(builtin_function_or_method) should be deterministic.
+# builtin_function_or_method use identity equivalence.
 closures = set(["".count for _ in range(10)])
 assert.eq(len(closures), 10)
-hashes = set([hash("".count) for _ in range(10)])
-assert.eq(len(hashes), 1)
 
 ---
 # Default values of function parameters are mutable.

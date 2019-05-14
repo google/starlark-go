@@ -101,7 +101,8 @@ type Value interface {
 
 	// Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y).
 	// Hash may fail if the value's type is not hashable, or if the value
-	// contains a non-hashable value.
+	// contains a non-hashable value. The hash is used only by dictionaries and
+	// is not exposed to the Starlark program.
 	Hash() (uint32, error)
 }
 
