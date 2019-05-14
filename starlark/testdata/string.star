@@ -142,6 +142,17 @@ assert.fails(lambda: "" in 1, "unknown binary op: string in int")
 assert.eq("hello", "he"+"llo")
 assert.ne("hello", "Hello")
 
+# hash must follow java.lang.String.hashCode.
+wanthash = {
+    "": 0,
+    "\0" * 100: 0,
+    "hello": 99162322,
+    "world": 113318802,
+    "Hello, 世界!": 417292677,
+}
+gothash = {s: hash(s) for s in wanthash}
+assert.eq(gothash, wanthash)
+
 # TODO(adonovan): ordered comparisons
 
 # string % tuple formatting

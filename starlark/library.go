@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"go.starlark.net/syntax"
@@ -588,12 +589,36 @@ func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hash
 func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	if err := UnpackPositionalArgs("hash", args, kwargs, 1, &x); err != nil {
+	var s string
+	if err := UnpackPositionalArgs("hash", args, kwargs, 1, &s); err != nil {
 		return nil, err
 	}
-	h, err := x.Hash()
-	return MakeUint(uint(h)), err
+
+	// The Starlark spec requires that the hash function be
+	// deterministic across all runs, motivated by the need
+	// for reproducibility of builds. Thus we cannot call
+	// String.Hash, which uses the fastest implementation
+	// available, because as varies across process restarts,
+	// and may evolve with the implementation.
+
+	return MakeInt(int(javaStringHash(s))), nil
+}
+
+// javaStringHash returns the same hash as would be produced by
+// java.lang.String.hashCode. This requires transcoding the string to
+// UTF-16; transcoding may introduce Unicode replacement characters
+// U+FFFD if s does not contain valid UTF-8.
+func javaStringHash(s string) (h int32) {
+	for _, r := range s {
+		if utf16.IsSurrogate(r) {
+			c1, c2 := utf16.EncodeRune(r)
+			h = 31*h + c1
+			h = 31*h + c2
+		} else {
+			h = 31*h + r // r may be U+FFFD
+		}
+	}
+	return h
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#int

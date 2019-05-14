@@ -199,7 +199,7 @@ assert.fails(lambda: float("+NaN"), "invalid syntax")
 assert.fails(lambda: float("-NaN"), "invalid syntax")
 
 # hash
-# Check that equal float and int values have the same hash.
+# Check that equal float and int values have the same internal hash.
 def checkhash():
   for a in [1.23e100, 1.23e10, 1.23e1, 1.23,
             1, 4294967295, 8589934591, 9223372036854775807]:
@@ -207,10 +207,10 @@ def checkhash():
       f = float(b)
       i = int(b)
       if f == i:
-        fh = hash(f)
-        ih = hash(i)
+        fh = {f: None}
+        ih = {i: None}
         if fh != ih:
-          assert.true(False, "hash(%s) = %d, hash(%s) = %s" % (f, fh, i, ih))
+          assert.true(False, "{%v: None} != {%v: None}: hashes vary" % fh, ih)
 checkhash()
 
 # string formatting

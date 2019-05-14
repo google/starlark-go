@@ -715,8 +715,7 @@ values include `None`, Booleans, numbers, and strings, and tuples
 composed from hashable values.  Most mutable values, such as lists,
 dictionaries, and sets, are not hashable, even when frozen.
 Attempting to use a non-hashable value as a key in a dictionary
-results in a dynamic error, as does passing one to the built-in
-`hash` function.
+results in a dynamic error.
 
 A [dictionary expression](#dictionary-expressions) specifies a
 dictionary as a set of key/value pairs enclosed in braces:
@@ -1275,7 +1274,6 @@ application-defined, implement a few basic behaviors:
 str(x)		-- return a string representation of x
 type(x)		-- return a string describing the type of x
 bool(x)		-- convert x to a Boolean truth value
-hash(x)		-- return a hash code for x
 ```
 
 ### Identity and mutation
@@ -1354,8 +1352,7 @@ third without the possibility of a race condition.
 The `dict` and `set` data types are implemented using hash tables, so
 only _hashable_ values are suitable as keys of a `dict` or elements of
 a `set`. Attempting to use a non-hashable value as the key in a hash
-table, or as the operand of the `hash` built-in function, results in a
-dynamic error.
+table results in a dynamic error.
 
 The hash of a value is an unspecified integer chosen so that two equal
 values have the same hash, in other words, `x == y => hash(x) == hash(y)`.
@@ -3019,12 +3016,20 @@ getattr("banana", "split")("a")	       # ["b", "n", "n", ""], equivalent to "ban
 
 ### hash
 
-`hash(x)` returns an integer hash value for x such that `x == y` implies `hash(x) == hash(y)`.
+`hash(x)` returns an integer hash of a string x
+such that two equal strings have the same hash.
+In other words `x == y` implies `hash(x) == hash(y)`.
 
-`hash` fails if x, or any value upon which its hash depends, is unhashable.
+In the interests of reproducibility of Starlark program behavior over time and
+across implementations, the specific hash function is the same as that implemented by
+[java.lang.String.hashCode](https://docs.oracle.com/javase/7/docs/api/java/lang/String.html#hashCode),
+a simple polynomial accumulator over the UTF-16 transcoding of the string:
+ ```
+s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
+```
 
-<b>Implementation note:</b> the Java implementation of the `hash`
-function accepts only strings.
+`hash` fails if given a non-string operand,
+even if the value is hashable and thus suitable as the key of dictionary.
 
 ### int
 
@@ -4105,7 +4110,6 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * The parser accepts unary `+` expressions.
 * A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
-* `hash` accepts operands besides strings.
 * `sorted` accepts the additional parameters `key` and `reverse`.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
 * `if`, `for`, and `while` are permitted at top level (option: `-globalreassign`).
