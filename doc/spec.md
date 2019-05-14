@@ -46,6 +46,11 @@ effects on the host application.
 As a result, Starlark has no need for classes, exceptions, reflection,
 concurrency, and other such features of Python.
 
+Starlark execution is _deterministic_: all functions and operators
+in the core language produce the same execution each time the program
+is run; there are no sources of random numbers, clocks, or unspecified
+iterators. This makes Starlark suitable for use in applications where
+reproducibility is paramount, such as build tools.
 
 ## Contents
 
