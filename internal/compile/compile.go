@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
@@ -325,6 +326,14 @@ type Funcode struct {
 	NumParams             int
 	NumKwonlyParams       int
 	HasVarargs, HasKwargs bool
+
+	lntOnce sync.Once
+	lnt     []pcline // decoded line number table
+}
+
+type pcline struct {
+	pc   uint32
+	line int32
 }
 
 // A Binding is the name and position of a binding identifier.
@@ -378,7 +387,39 @@ type insn struct {
 	line int32
 }
 
+// Position returns the source position for program counter pc.
 func (fn *Funcode) Position(pc uint32) syntax.Position {
+	fn.lntOnce.Do(fn.decodeLNT)
+
+	// Binary search to find last LNT entry not greater than pc.
+	// To avoid dynamic dispatch, this is a specialization of
+	// sort.Search using this predicate:
+	//   !(i < len(fn.lnt)-1 && fn.lnt[i+1].pc <= pc)
+	n := len(fn.lnt)
+	i, j := 0, n
+	for i < j {
+		h := int(uint(i+j) >> 1)
+		if !(h >= n-1 || fn.lnt[h+1].pc > pc) {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+
+	var line int32
+	if i < n {
+		line = fn.lnt[i].line
+	}
+
+	pos := fn.Pos // copy the (annoyingly inaccessible) filename
+	pos.Col = 0
+	pos.Line = line
+	return pos
+}
+
+// decodeLNT decodes the line number table and populates fn.lnt.
+// It is called at most once.
+func (fn *Funcode) decodeLNT() {
 	// Conceptually the table contains rows of the form (pc uint32,
 	// line int32).  Since the pc always increases, usually by a
 	// small amount, and the line number typically also does too
@@ -392,24 +433,15 @@ func (fn *Funcode) Position(pc uint32) syntax.Position {
 	//
 	// TODO(adonovan): opt: improve the encoding; include the column.
 
-	pos := fn.Pos // copy the (annoyingly inaccessible) filename
-	pos.Line = 0
-	pos.Col = 0
-
-	// Position returns the record for the
-	// largest PC value not greater than 'pc'.
-	var prevpc uint32
-	complete := true
+	fn.lnt = make([]pcline, 0, len(fn.pclinetab)) // a minor overapproximation
+	var entry pcline
 	for _, x := range fn.pclinetab {
-		nextpc := prevpc + uint32(x>>8)
-		if complete && nextpc > pc {
-			return pos
+		entry.pc += uint32(x >> 8)
+		entry.line += int32(int8(x) >> 1) // sign extend Δline from 7 to 32 bits
+		if (x & 1) == 0 {
+			fn.lnt = append(fn.lnt, entry)
 		}
-		prevpc = nextpc
-		pos.Line += int32(int8(x) >> 1) // sign extend Δline from 7 to 32 bits
-		complete = (x & 1) == 0
 	}
-	return pos
 }
 
 // bindings converts resolve.Bindings to compiled form.
