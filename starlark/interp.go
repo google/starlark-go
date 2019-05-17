@@ -16,8 +16,6 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 
 // TODO(adonovan):
 // - optimize position table.
-// - opt: reduce allocations by preallocating a large stack, saving it
-//   in the thread, and slicing it.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
@@ -35,12 +33,24 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 
 	f := fn.funcode
 	fr := thread.frameAt(0)
+
+	// Allocate space for stack and locals.
+	// Logically these do not escape from this frame
+	// (See https://github.com/golang/go/issues/20533.)
+	//
+	// This heap allocation looks expensive, but I was unable to get
+	// more than 1% real time improvement in a large alloc-heavy
+	// benchmark (in which this alloc was 8% of alloc-bytes)
+	// by allocating space for 8 Values in each frame, or
+	// by allocating stack by slicing an array held by the Thread
+	// that is expanded in chunks of min(k, nspace), for k=256 or 1024.
 	nlocals := len(f.Locals)
 	nspace := nlocals + f.MaxStack
 	space := make([]Value, nspace)
 	locals := space[:nlocals:nlocals] // local variables, starting with parameters
 	stack := space[nlocals:]          // operand stack
 
+	// Digest arguments and set parameters.
 	err := setArgs(locals, fn, args, kwargs)
 	if err != nil {
 		return nil, thread.evalError(err)
