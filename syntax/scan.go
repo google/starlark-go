@@ -951,13 +951,8 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			} else if c == 'e' || c == 'E' {
 				exponent = true
 			} else if octal && !allzeros {
-				// We must support old octal until the Java
-				// implementation groks the new one.
-				// TODO(adonovan): reenable the check.
-				if false {
-					sc.endToken(val)
-					sc.errorf(sc.pos, "obsolete form of octal literal; use 0o%s", val.raw[1:])
-				}
+				sc.endToken(val)
+				sc.errorf(sc.pos, "obsolete form of octal literal; use 0o%s", val.raw[1:])
 			}
 		}
 	} else {
