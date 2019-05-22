@@ -42,7 +42,7 @@ import (
 const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 9
+const Version = 10
 
 type Opcode uint8
 
@@ -121,7 +121,7 @@ const (
 	CONSTANT    //                 - CONSTANT<constant>  value
 	MAKETUPLE   //         x1 ... xn MAKETUPLE<n>        tuple
 	MAKELIST    //         x1 ... xn MAKELIST<n>         list
-	MAKEFUNC    // defaults freevars MAKEFUNC<func>      fn
+	MAKEFUNC    // defaults+freevars MAKEFUNC<func>      fn
 	LOAD        //   from1 ... fromN module LOAD<n>      v1 ... vN
 	SETLOCAL    //             value SETLOCAL<local>     -
 	SETGLOBAL   //             value SETGLOBAL<global>   -
@@ -253,7 +253,7 @@ var stackEffect = [...]int8{
 	LT:          -1,
 	LTLT:        -1,
 	MAKEDICT:    +1,
-	MAKEFUNC:    -1,
+	MAKEFUNC:    0,
 	MAKELIST:    variableStackEffect,
 	MAKETUPLE:   variableStackEffect,
 	MANDATORY:   +1,
@@ -297,7 +297,7 @@ func (op Opcode) String() string {
 
 // A Program is a Starlark file in executable form.
 //
-// Programs are serialized by the gobProgram function,
+// Programs are serialized by the Program.Encode method,
 // which must be updated whenever this declaration is changed.
 type Program struct {
 	Loads     []Binding     // name (really, string) and position of each load stmt
@@ -310,7 +310,7 @@ type Program struct {
 
 // A Funcode is the code of a compiled Starlark function.
 //
-// Funcodes are serialized by the gobFunc function,
+// Funcodes are serialized by the encoder.function method,
 // which must be updated whenever this declaration is changed.
 type Funcode struct {
 	Prog                  *Program
@@ -326,6 +326,8 @@ type Funcode struct {
 	NumParams             int
 	NumKwonlyParams       int
 	HasVarargs, HasKwargs bool
+
+	// -- transient state --
 
 	lntOnce sync.Once
 	lnt     []pcline // decoded line number table
@@ -454,11 +456,11 @@ func bindings(bindings []*resolve.Binding) []Binding {
 	return res
 }
 
-// Expr compiles an expression to a program consisting of a single toplevel function.
-func Expr(expr syntax.Expr, name string, locals []*resolve.Binding) *Funcode {
+// Expr compiles an expression to a program whose toplevel function evaluates it.
+func Expr(expr syntax.Expr, name string, locals []*resolve.Binding) *Program {
 	pos := syntax.Start(expr)
 	stmts := []syntax.Stmt{&syntax.ReturnStmt{Result: expr}}
-	return File(stmts, pos, name, locals, nil).Toplevel
+	return File(stmts, pos, name, locals, nil)
 }
 
 // File compiles the statements of a file into a program.
@@ -1741,31 +1743,33 @@ func (fcomp *fcomp) comprehension(comp *syntax.Comprehension, clauseIndex int) {
 }
 
 func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Function) {
-	// Evalution of the elements of both MAKETUPLEs may fail,
-	// so record the position.
+	// Evaluation of the defaults may fail, so record the position.
 	fcomp.setPos(pos)
+
+	// To reduce allocation, we emit a combined tuple
+	// for the defaults and the freevars.
+	// The function knows where to split it at run time.
 
 	// Generate tuple of parameter defaults. For:
 	//  def f(p1, p2=dp2, p3=dp3, *, k1, k2=dk2, k3, **kwargs)
 	// the tuple is:
 	//  (dp2, dp3, MANDATORY, dk2, MANDATORY).
-	n := 0
+	ndefaults := 0
 	seenStar := false
 	for _, param := range f.Params {
 		switch param := param.(type) {
 		case *syntax.BinaryExpr:
 			fcomp.expr(param.Y)
-			n++
+			ndefaults++
 		case *syntax.UnaryExpr:
 			seenStar = true // * or *args (also **kwargs)
 		case *syntax.Ident:
 			if seenStar {
 				fcomp.emit(MANDATORY)
-				n++
+				ndefaults++
 			}
 		}
 	}
-	fcomp.emit1(MAKETUPLE, uint32(n))
 
 	// Capture the cells of the function's
 	// free variables from the lexical environment.
@@ -1779,7 +1783,8 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		}
 	}
-	fcomp.emit1(MAKETUPLE, uint32(len(f.FreeVars)))
+
+	fcomp.emit1(MAKETUPLE, uint32(ndefaults+len(f.FreeVars)))
 
 	funcode := fcomp.pcomp.function(name, pos, f.Body, f.Locals, f.FreeVars)
 

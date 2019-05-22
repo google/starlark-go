@@ -447,7 +447,7 @@ loop:
 			sp--
 
 		case compile.CONSTANT:
-			stack[sp] = fn.constants[arg]
+			stack[sp] = fn.module.constants[arg]
 			sp++
 
 		case compile.MAKETUPLE:
@@ -468,18 +468,16 @@ loop:
 
 		case compile.MAKEFUNC:
 			funcode := f.Prog.Functions[arg]
-			freevars := stack[sp-1].(Tuple)
-			defaults := stack[sp-2].(Tuple)
-			sp -= 2
-			stack[sp] = &Function{
-				funcode:     funcode,
-				predeclared: fn.predeclared,
-				globals:     fn.globals,
-				constants:   fn.constants,
-				defaults:    defaults,
-				freevars:    freevars,
+			tuple := stack[sp-1].(Tuple)
+			n := len(tuple) - len(funcode.Freevars)
+			defaults := tuple[:n:n]
+			freevars := tuple[n:]
+			stack[sp-1] = &Function{
+				funcode:  funcode,
+				module:   fn.module,
+				defaults: defaults,
+				freevars: freevars,
 			}
-			sp++
 
 		case compile.LOAD:
 			n := int(arg)
@@ -523,7 +521,7 @@ loop:
 			y.(*cell).v = x
 
 		case compile.SETGLOBAL:
-			fn.globals[arg] = stack[sp-1]
+			fn.module.globals[arg] = stack[sp-1]
 			sp--
 
 		case compile.LOCAL:
@@ -544,7 +542,7 @@ loop:
 			stack[sp-1] = x.(*cell).v
 
 		case compile.GLOBAL:
-			x := fn.globals[arg]
+			x := fn.module.globals[arg]
 			if x == nil {
 				err = fmt.Errorf("global variable %s referenced before assignment", f.Prog.Globals[arg].Name)
 				break loop
@@ -554,7 +552,7 @@ loop:
 
 		case compile.PREDECLARED:
 			name := f.Prog.Names[arg]
-			x := fn.predeclared[name]
+			x := fn.module.predeclared[name]
 			if x == nil {
 				err = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name)
 				break loop
