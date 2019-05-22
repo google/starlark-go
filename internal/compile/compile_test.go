@@ -54,8 +54,8 @@ y = mul(x, n)
 		t.Fatalf("newProg.Init call returned err %v, want *EvalError", err)
 	}
 	const want = `Traceback (most recent call last):
-  mul.star:5: in <toplevel>
-  mul.star:3: in mul
+  mul.star:5:8: in <toplevel>
+  mul.star:3:14: in mul
 Error: unknown binary op: string * NoneType`
 	if got := evalErr.Backtrace(); got != want {
 		t.Fatalf("got <<%s>>, want <<%s>>", got, want)
