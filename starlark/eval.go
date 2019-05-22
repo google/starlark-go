@@ -413,6 +413,7 @@ func Eval(thread *Thread, filename string, src interface{}, env StringDict) (Val
 
 // EvalExpr resolves and evaluates an expression within the
 // specified (predeclared) environment.
+// Evaluating a comma-separated list of expressions yields a tuple value.
 //
 // Resolving an expression mutates it.
 // Do not call EvalExpr more than once for the same expression.
