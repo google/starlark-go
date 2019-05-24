@@ -44,6 +44,7 @@ func init() {
 		"bool":      NewBuiltin("bool", bool_),
 		"chr":       NewBuiltin("chr", chr),
 		"dict":      NewBuiltin("dict", dict),
+		"fail":      NewBuiltin("fail", fail),
 		"dir":       NewBuiltin("dir", dir),
 		"enumerate": NewBuiltin("enumerate", enumerate),
 		"float":     NewBuiltin("float", float), // requires resolve.AllowFloat
@@ -886,6 +887,32 @@ func print(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 		fmt.Fprintln(os.Stderr, s)
 	}
 	return None, nil
+}
+
+// TODO: add link to spec.md
+func fail(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("fail does not accept keyword arguments")
+	}
+	if len(args) == 0 {
+		return None, fmt.Errorf("none")
+	}
+	attr := ""
+	if err := UnpackPositionalArgs("fail", args, kwargs, 0, &args[0], &attr); err != nil {
+		return nil, err
+	}
+	buf := new(strings.Builder)
+	if len(attr) > 0 {
+		buf.WriteString(fmt.Sprintf("attribute %s: ", attr))
+	}
+
+	if s, ok := AsString(args[0]); ok {
+		buf.WriteString(s)
+	} else {
+		writeValue(buf, args[0], nil)
+	}
+
+	return None, fmt.Errorf(buf.String())
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#range
