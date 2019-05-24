@@ -15,6 +15,7 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"go.starlark.net/internal/compile"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -29,8 +30,10 @@ var (
 	execprog   = flag.String("c", "", "execute program `prog`")
 )
 
-// non-standard dialect flags
 func init() {
+	flag.BoolVar(&compile.Disassemble, "disassemble", compile.Disassemble, "show disassembly during compilation of each function")
+
+	// non-standard dialect flags
 	flag.BoolVar(&resolve.AllowFloat, "float", resolve.AllowFloat, "allow floating-point numbers")
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
 	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
