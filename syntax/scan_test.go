@@ -183,9 +183,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"0o12934e1", `10 9.340000e+03 EOF`},
 		{"0o123.", `83 . EOF`},
 		{"0o123.1", `83 1.000000e-01 EOF`},
-		// TODO(adonovan): reenable later.
-		// {"0123", `obsolete form of octal literal; use 0o123`},
-		{"0123", `83 EOF`},
+		{"0123", `foo.star:1:5: obsolete form of octal literal; use 0o123`},
 		{"012834", `foo.star:1:1: invalid int literal`},
 		{"012934", `foo.star:1:1: invalid int literal`},
 		{"i = 012934", `foo.star:1:5: invalid int literal`},
