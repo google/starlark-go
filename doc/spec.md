@@ -115,6 +115,7 @@ reproducibility is paramount, such as build tools.
     * [dict](#dict)
     * [dir](#dir)
     * [enumerate](#enumerate)
+    * [fail](#fail)
     * [float](#float)
     * [getattr](#getattr)
     * [hasattr](#hasattr)
@@ -2979,6 +2980,19 @@ add to each index.
 ```python
 enumerate(["zero", "one", "two"])               # [(0, "zero"), (1, "one"), (2, "two")]
 enumerate(["one", "two"], 1)                    # [(1, "one"), (2, "two")]
+```
+
+### fail
+
+The `fail(*args, sep=" ")` function causes execution to fail
+with the specified error message.
+Like `print`, arguments are formatted as if by `str(x)` and
+separated by a space, unless an alternative separator is
+specified by a `sep` named argument.
+
+```python
+fail("oops")				# "fail: oops"
+fail("oops", 1, False, sep='/')		# "fail: oops/1/False"
 ```
 
 ### float

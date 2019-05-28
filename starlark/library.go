@@ -10,6 +10,7 @@ package starlark
 // mutable types such as lists and dicts.
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -46,6 +47,7 @@ func init() {
 		"dict":      NewBuiltin("dict", dict),
 		"dir":       NewBuiltin("dir", dir),
 		"enumerate": NewBuiltin("enumerate", enumerate),
+		"fail":      NewBuiltin("fail", fail),
 		"float":     NewBuiltin("float", float), // requires resolve.AllowFloat
 		"getattr":   NewBuiltin("getattr", getattr),
 		"hasattr":   NewBuiltin("hasattr", hasattr),
@@ -499,6 +501,28 @@ func enumerate(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, e
 	}
 
 	return NewList(pairs), nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#fail
+func fail(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	sep := " "
+	if err := UnpackArgs("fail", nil, kwargs, "sep?", &sep); err != nil {
+		return nil, err
+	}
+	buf := new(strings.Builder)
+	buf.WriteString("fail: ")
+	for i, v := range args {
+		if i > 0 {
+			buf.WriteString(sep)
+		}
+		if s, ok := AsString(v); ok {
+			buf.WriteString(s)
+		} else {
+			writeValue(buf, v, nil)
+		}
+	}
+
+	return nil, errors.New(buf.String())
 }
 
 func float(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {

@@ -1,6 +1,7 @@
 # Predeclared built-ins for this module:
 #
 # error(msg): report an error in Go's test framework without halting execution.
+#  This is distinct from the built-in fail function, which halts execution.
 # catch(f): evaluate f() and returns its evaluation error message, if any
 # matches(str, pattern): report whether str matches regular expression pattern.
 # module(**kwargs): a constructor for a module.
