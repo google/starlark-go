@@ -570,13 +570,30 @@ func (*stringIterator) Done() {}
 // The initialization behavior of a Starlark module is also represented by a Function.
 type Function struct {
 	funcode  *compile.Funcode
+	module   *module
 	defaults Tuple
 	freevars Tuple
+}
 
-	// These fields are shared by all functions in a module.
+// A module is the dynamic counterpart to a Program.
+// All functions in the same program share a module.
+type module struct {
+	program     *compile.Program
 	predeclared StringDict
 	globals     []Value
 	constants   []Value
+}
+
+// makeGlobalDict returns a new, unfrozen StringDict containing all global
+// variables so far defined in the module.
+func (m *module) makeGlobalDict() StringDict {
+	r := make(StringDict, len(m.program.Globals))
+	for i, id := range m.program.Globals {
+		if v := m.globals[i]; v != nil {
+			r[id.Name] = v
+		}
+	}
+	return r
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
@@ -589,15 +606,7 @@ func (fn *Function) Truth() Bool           { return true }
 
 // Globals returns a new, unfrozen StringDict containing all global
 // variables so far defined in the function's module.
-func (fn *Function) Globals() StringDict {
-	m := make(StringDict, len(fn.funcode.Prog.Globals))
-	for i, id := range fn.funcode.Prog.Globals {
-		if v := fn.globals[i]; v != nil {
-			m[id.Name] = v
-		}
-	}
-	return m
-}
+func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }

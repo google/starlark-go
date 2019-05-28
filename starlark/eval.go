@@ -352,7 +352,7 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
-	toplevel := makeToplevelFunction(prog.compiled.Toplevel, predeclared)
+	toplevel := makeToplevelFunction(prog.compiled, predeclared)
 
 	_, err := Call(thread, toplevel, nil, nil)
 
@@ -361,10 +361,10 @@ func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, e
 	return toplevel.Globals(), err
 }
 
-func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Function {
+func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Function {
 	// Create the Starlark value denoted by each program constant c.
-	constants := make([]Value, len(funcode.Prog.Constants))
-	for i, c := range funcode.Prog.Constants {
+	constants := make([]Value, len(prog.Constants))
+	for i, c := range prog.Constants {
 		var v Value
 		switch c := c.(type) {
 		case int64:
@@ -382,10 +382,13 @@ func makeToplevelFunction(funcode *compile.Funcode, predeclared StringDict) *Fun
 	}
 
 	return &Function{
-		funcode:     funcode,
-		predeclared: predeclared,
-		globals:     make([]Value, len(funcode.Prog.Globals)),
-		constants:   constants,
+		funcode: prog.Toplevel,
+		module: &module{
+			program:     prog,
+			predeclared: predeclared,
+			globals:     make([]Value, len(prog.Globals)),
+			constants:   constants,
+		},
 	}
 }
 
