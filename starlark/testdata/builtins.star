@@ -211,3 +211,14 @@ assert.fails(setfield, 'no .noForty_Five field.*did you mean .forty_five')
 assert.eq(repr(1), "1")
 assert.eq(repr("x"), '"x"')
 assert.eq(repr(["x", 1]), '["x", 1]')
+
+# fail
+---
+fail() ### `fail: $`
+x = 1//0 # unreachable
+---
+fail(1) ### `fail: 1`
+---
+fail(1, 2, 3) ### `fail: 1 2 3`
+---
+fail(1, 2, 3, sep="/") ### `fail: 1/2/3`
