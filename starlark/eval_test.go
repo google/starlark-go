@@ -432,8 +432,8 @@ f()
 	if _, err := starlark.ExecFile(thread, "foo.star", src, nil); err != nil {
 		t.Fatal(err)
 	}
-	want := "foo.star:2: <toplevel>: hello\n" +
-		"foo.star:3: f: hello, world\n"
+	want := "foo.star:2:6: <toplevel>: hello\n" +
+		"foo.star:3:15: f: hello, world\n"
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
@@ -507,12 +507,12 @@ i()
 	_, err := starlark.ExecFile(thread, "crash.star", src, nil)
 	// Compiled code currently has no column information.
 	const want = `Traceback (most recent call last):
-  crash.star:6: in <toplevel>
-  crash.star:5: in i
-  crash.star:4: in h
+  crash.star:6:2: in <toplevel>
+  crash.star:5:18: in i
+  crash.star:4:20: in h
   <builtin>: in min
-  crash.star:3: in g
-  crash.star:2: in f
+  crash.star:3:12: in g
+  crash.star:2:19: in f
 Error: floored division by zero`
 	if got := getBacktrace(err); got != want {
 		t.Errorf("error was %s, want %s", got, want)
@@ -529,12 +529,12 @@ f()
 `
 	for i, want := range []string{
 		0: `Traceback (most recent call last):
-  crash.star:3: in <toplevel>
-  crash.star:2: in f
+  crash.star:3:2: in <toplevel>
+  crash.star:2:20: in f
 Error: floored division by zero`,
 		1: `Traceback (most recent call last):
-  crash.star:3: in <toplevel>
-  crash.star:2: in f
+  crash.star:3:2: in <toplevel>
+  crash.star:2:17: in f
   <builtin>: in join
 Error: join: in list, want string, got int`,
 	} {

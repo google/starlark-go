@@ -18,8 +18,8 @@
 //     All elements are initially nil.
 //   - two maps of predeclared and universal identifiers.
 //
-// A line number table maps each program counter value to a source position;
-// these source positions do not currently record column information.
+// Each function has a line number table that maps each program counter
+// offset to a source position, including the column number.
 //
 // Operands, logically uint32s, are encoded using little-endian 7-bit
 // varints, the top bit indicating that more bytes follow.
@@ -330,12 +330,12 @@ type Funcode struct {
 	// -- transient state --
 
 	lntOnce sync.Once
-	lnt     []pcline // decoded line number table
+	lnt     []pclinecol // decoded line number table
 }
 
-type pcline struct {
-	pc   uint32
-	line int32
+type pclinecol struct {
+	pc        uint32
+	line, col int32
 }
 
 // A Binding is the name and position of a binding identifier.
@@ -384,9 +384,9 @@ type block struct {
 }
 
 type insn struct {
-	op   Opcode
-	arg  uint32
-	line int32
+	op        Opcode
+	arg       uint32
+	line, col int32
 }
 
 // Position returns the source position for program counter pc.
@@ -408,13 +408,14 @@ func (fn *Funcode) Position(pc uint32) syntax.Position {
 		}
 	}
 
-	var line int32
+	var line, col int32
 	if i < n {
 		line = fn.lnt[i].line
+		col = fn.lnt[i].col
 	}
 
 	pos := fn.Pos // copy the (annoyingly inaccessible) filename
-	pos.Col = 0
+	pos.Col = col
 	pos.Line = line
 	return pos
 }
@@ -422,24 +423,38 @@ func (fn *Funcode) Position(pc uint32) syntax.Position {
 // decodeLNT decodes the line number table and populates fn.lnt.
 // It is called at most once.
 func (fn *Funcode) decodeLNT() {
-	// Conceptually the table contains rows of the form (pc uint32,
-	// line int32).  Since the pc always increases, usually by a
-	// small amount, and the line number typically also does too
-	// although it may decrease, again typically by a small amount,
-	// we use delta encoding, starting from {pc: 0, line: 0}.
+	// Conceptually the table contains rows of the form
+	// (pc uint32, line int32, col int32), sorted by pc.
+	// We use a delta encoding, since the differences
+	// between successive pc, line, and column values
+	// are typically small and positive (though line and
+	// especially column differences may be negative).
+	// The delta encoding starts from
+	// {pc: 0, line: fn.Pos.Line, col: fn.Pos.Col}.
 	//
-	// Each entry is encoded in 16 bits.
-	// The top 8 bits are the unsigned delta pc; the next 7 bits are
-	// the signed line number delta; and the bottom bit indicates
-	// that more rows follow because one of the deltas was maxed out.
-	//
-	// TODO(adonovan): opt: improve the encoding; include the column.
+	// Each entry is packed into one or more 16-bit values:
+	//    Δpc        uint4
+	//    Δline      int5
+	//    Δcol       int6
+	//    incomplete uint1
+	// The top 4 bits are the unsigned delta pc.
+	// The next 5 bits are the signed line number delta.
+	// The next 6 bits are the signed column number delta.
+	// The bottom bit indicates that more rows follow because
+	// one of the deltas was maxed out.
+	// These field widths were chosen from a sample of real programs,
+	// and allow >97% of rows to be encoded in a single uint16.
 
-	fn.lnt = make([]pcline, 0, len(fn.pclinetab)) // a minor overapproximation
-	var entry pcline
+	fn.lnt = make([]pclinecol, 0, len(fn.pclinetab)) // a minor overapproximation
+	entry := pclinecol{
+		pc:   0,
+		line: fn.Pos.Line,
+		col:  fn.Pos.Col,
+	}
 	for _, x := range fn.pclinetab {
-		entry.pc += uint32(x >> 8)
-		entry.line += int32(int8(x) >> 1) // sign extend Δline from 7 to 32 bits
+		entry.pc += uint32(x) >> 12
+		entry.line += int32((int16(x) << 4) >> (16 - 5)) // sign extend Δline
+		entry.col += int32((int16(x) << 9) >> (16 - 6))  // sign extend Δcol
 		if (x & 1) == 0 {
 			fn.lnt = append(fn.lnt, entry)
 		}
@@ -704,9 +719,10 @@ func (insn *insn) stackeffect() int {
 func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 	code := make([]byte, 0, codelen)
 	var pclinetab []uint16
-	var prev struct {
-		pc   uint32
-		line int32
+	prev := pclinecol{
+		pc:   0,
+		line: fcomp.fn.Pos.Line,
+		col:  fcomp.fn.Pos.Col,
 	}
 
 	for _, b := range blocks {
@@ -721,24 +737,29 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 				for {
 					var incomplete uint16
 
+					// Δpc, uint4
 					deltapc := pc - prev.pc
-					if deltapc > 0xff {
-						deltapc = 0xff
+					if deltapc > 0x0f {
+						deltapc = 0x0f
 						incomplete = 1
 					}
 					prev.pc += deltapc
 
-					deltaline := insn.line - prev.line
-					if deltaline > 0x3f {
-						deltaline = 0x3f
-						incomplete = 1
-					} else if deltaline < -0x40 {
-						deltaline = -0x40
+					// Δline, int5
+					deltaline, ok := clip(insn.line-prev.line, -0x10, 0x0f)
+					if !ok {
 						incomplete = 1
 					}
 					prev.line += deltaline
 
-					entry := uint16(deltapc<<8) | uint16(uint8(deltaline<<1)) | incomplete
+					// Δcol, int6
+					deltacol, ok := clip(insn.col-prev.col, -0x20, 0x1f)
+					if !ok {
+						incomplete = 1
+					}
+					prev.col += deltacol
+
+					entry := uint16(deltapc<<12) | uint16(deltaline&0x1f)<<7 | uint16(deltacol&0x3f)<<1 | incomplete
 					pclinetab = append(pclinetab, entry)
 					if incomplete == 0 {
 						break
@@ -781,6 +802,18 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 
 	fcomp.fn.pclinetab = pclinetab
 	fcomp.fn.Code = code
+}
+
+// clip returns the value nearest x in the range [min...max],
+// and whether it equals x.
+func clip(x, min, max int32) (int32, bool) {
+	if x > max {
+		return max, false
+	} else if x < min {
+		return min, false
+	} else {
+		return x, true
+	}
 }
 
 // addUint32 encodes x as 7-bit little-endian varint.
@@ -861,9 +894,10 @@ func (fcomp *fcomp) emit(op Opcode) {
 	if op >= OpcodeArgMin {
 		panic("missing arg: " + op.String())
 	}
-	insn := insn{op: op, line: fcomp.pos.Line}
+	insn := insn{op: op, line: fcomp.pos.Line, col: fcomp.pos.Col}
 	fcomp.block.insns = append(fcomp.block.insns, insn)
 	fcomp.pos.Line = 0
+	fcomp.pos.Col = 0
 }
 
 // emit1 emits an instruction with an immediate operand.
@@ -871,9 +905,10 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 	if op < OpcodeArgMin {
 		panic("unwanted arg: " + op.String())
 	}
-	insn := insn{op: op, arg: arg, line: fcomp.pos.Line}
+	insn := insn{op: op, arg: arg, line: fcomp.pos.Line, col: fcomp.pos.Col}
 	fcomp.block.insns = append(fcomp.block.insns, insn)
 	fcomp.pos.Line = 0
+	fcomp.pos.Col = 0
 }
 
 // jump emits a jump to the specified block.
