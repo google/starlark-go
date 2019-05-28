@@ -74,6 +74,10 @@ func TestExprParseTrees(t *testing.T) {
 			`(ParenExpr X=4)`},
 		{`(4, 5)`,
 			`(ParenExpr X=(TupleExpr List=(4 5)))`},
+		{`1, 2, 3`,
+			`(TupleExpr List=(1 2 3))`},
+		{`1, 2,`,
+			`unparenthesized tuple with trailing comma`},
 		{`{}`,
 			`(DictExpr)`},
 		{`{"a": 1}`,
@@ -116,12 +120,13 @@ func TestExprParseTrees(t *testing.T) {
 			`(Comprehension Body=e Clauses=((ForClause Vars=x X=y) (IfClause Cond=cond1) (IfClause Cond=cond2)))`}, // github.com/google/skylark/issues/53
 	} {
 		e, err := syntax.ParseExpr("foo.star", test.input, 0)
+		var got string
 		if err != nil {
-			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
-			continue
+			got = stripPos(err)
+		} else {
+			got = treeString(e)
 		}
-		if got := treeString(e); test.want != got {
-
+		if test.want != got {
 			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.want)
 		}
 	}
