@@ -70,9 +70,7 @@ type File struct {
 	Path  string
 	Stmts []Stmt
 
-	// set by resolver:
-	Locals  []*Binding // this file's (comprehension-)local variables
-	Globals []*Binding // this file's global variables
+	Module interface{} // a *resolve.Module, set by resolver
 }
 
 func (x *File) Span() (start, end Position) {
@@ -118,36 +116,19 @@ func (x *AssignStmt) Span() (start, end Position) {
 	return
 }
 
-// A Function represents the common parts of LambdaExpr and DefStmt.
-type Function struct {
-	commentsRef
-	StartPos Position // position of DEF or LAMBDA token
-	Params   []Expr   // param = ident | ident=expr | * | *ident | **ident
-	Body     []Stmt
-
-	// set by resolver:
-	HasVarargs      bool       // whether params includes *args (convenience)
-	HasKwargs       bool       // whether params includes **kwargs (convenience)
-	NumKwonlyParams int        // number of keyword-only optional parameters
-	Locals          []*Binding // this function's local/cell variables, parameters first
-	FreeVars        []*Binding // enclosing cells to capture in closure
-}
-
-func (x *Function) Span() (start, end Position) {
-	_, end = x.Body[len(x.Body)-1].Span()
-	return x.StartPos, end
-}
-
 // A DefStmt represents a function definition.
 type DefStmt struct {
 	commentsRef
-	Def  Position
-	Name *Ident
-	Function
+	Def    Position
+	Name   *Ident
+	Params []Expr // param = ident | ident=expr | * | *ident | **ident
+	Body   []Stmt
+
+	Function interface{} // a *resolve.Function, set by resolver
 }
 
 func (x *DefStmt) Span() (start, end Position) {
-	_, end = x.Function.Body[len(x.Body)-1].Span()
+	_, end = x.Body[len(x.Body)-1].Span()
 	return x.Def, end
 }
 
@@ -260,8 +241,7 @@ type Ident struct {
 	NamePos Position
 	Name    string
 
-	// set by resolver
-	Binding *Binding
+	Binding interface{} // a *resolver.Binding, set by resolver
 }
 
 func (x *Ident) Span() (start, end Position) {
@@ -425,11 +405,14 @@ func (x *DictEntry) Span() (start, end Position) {
 type LambdaExpr struct {
 	commentsRef
 	Lambda Position
-	Function
+	Params []Expr // param = ident | ident=expr | * | *ident | **ident
+	Body   Expr
+
+	Function interface{} // a *resolve.Function, set by resolver
 }
 
 func (x *LambdaExpr) Span() (start, end Position) {
-	_, end = x.Function.Body[len(x.Body)-1].Span()
+	_, end = x.Body.Span()
 	return x.Lambda, end
 }
 

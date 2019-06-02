@@ -985,7 +985,7 @@ func (fcomp *fcomp) setPos(pos syntax.Position) {
 // set emits code to store the top-of-stack value
 // to the specified local, cell, or global variable.
 func (fcomp *fcomp) set(id *syntax.Ident) {
-	bind := id.Binding
+	bind := id.Binding.(*resolve.Binding)
 	switch bind.Scope {
 	case resolve.Local:
 		fcomp.emit1(SETLOCAL, uint32(bind.Index))
@@ -1002,7 +1002,7 @@ func (fcomp *fcomp) set(id *syntax.Ident) {
 
 // lookup emits code to push the value of the specified variable.
 func (fcomp *fcomp) lookup(id *syntax.Ident) {
-	bind := id.Binding
+	bind := id.Binding.(*resolve.Binding)
 	if bind.Scope != resolve.Universal { // (universal lookup can't fail)
 		fcomp.setPos(id.NamePos)
 	}
@@ -1149,7 +1149,7 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		}
 
 	case *syntax.DefStmt:
-		fcomp.function(stmt.Def, stmt.Name.Name, &stmt.Function)
+		fcomp.function(stmt.Function.(*resolve.Function))
 		fcomp.set(stmt.Name)
 
 	case *syntax.ForStmt:
@@ -1428,7 +1428,7 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		fcomp.call(e)
 
 	case *syntax.LambdaExpr:
-		fcomp.function(e.Lambda, "lambda", &e.Function)
+		fcomp.function(e.Function.(*resolve.Function))
 
 	default:
 		start, _ := e.Span()
@@ -1777,9 +1777,9 @@ func (fcomp *fcomp) comprehension(comp *syntax.Comprehension, clauseIndex int) {
 	log.Fatalf("%s: unexpected comprehension clause %T", start, clause)
 }
 
-func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Function) {
+func (fcomp *fcomp) function(f *resolve.Function) {
 	// Evaluation of the defaults may fail, so record the position.
-	fcomp.setPos(pos)
+	fcomp.setPos(f.Pos)
 
 	// To reduce allocation, we emit a combined tuple
 	// for the defaults and the freevars.
@@ -1821,7 +1821,7 @@ func (fcomp *fcomp) function(pos syntax.Position, name string, f *syntax.Functio
 
 	fcomp.emit1(MAKETUPLE, uint32(ndefaults+len(f.FreeVars)))
 
-	funcode := fcomp.pcomp.function(name, pos, f.Body, f.Locals, f.FreeVars)
+	funcode := fcomp.pcomp.function(f.Name, f.Pos, f.Body, f.Locals, f.FreeVars)
 
 	if debug {
 		// TODO(adonovan): do compilations sequentially not as a tree,

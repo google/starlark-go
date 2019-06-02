@@ -329,7 +329,8 @@ func FileProgram(f *syntax.File, isPredeclared func(string) bool) (*Program, err
 		pos = syntax.MakePosition(&f.Path, 1, 1)
 	}
 
-	compiled := compile.File(f.Stmts, pos, "<toplevel>", f.Locals, f.Globals)
+	module := f.Module.(*resolve.Module)
+	compiled := compile.File(f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
 
 	return &Program{compiled}, nil
 }
