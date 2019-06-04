@@ -164,13 +164,10 @@ func (p *parser) parseDefStmt() Stmt {
 	p.consume(COLON)
 	body := p.parseSuite()
 	return &DefStmt{
-		Def:  defpos,
-		Name: id,
-		Function: Function{
-			StartPos: defpos,
-			Params:   params,
-			Body:     body,
-		},
+		Def:    defpos,
+		Name:   id,
+		Params: params,
+		Body:   body,
 	}
 }
 
@@ -569,11 +566,8 @@ func (p *parser) parseLambda(allowCond bool) Expr {
 
 	return &LambdaExpr{
 		Lambda: lambda,
-		Function: Function{
-			StartPos: lambda,
-			Params:   params,
-			Body:     []Stmt{&ReturnStmt{Result: body}},
-		},
+		Params: params,
+		Body:   body,
 	}
 }
 

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.starlark.net/starlark"
 	"go.starlark.net/resolve"
+	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 )
@@ -67,7 +67,7 @@ func (sym *symbol) Name() string          { return sym.name }
 func (sym *symbol) String() string        { return sym.name }
 func (sym *symbol) Type() string          { return "symbol" }
 func (sym *symbol) Freeze()               {} // immutable
-func (sym *symbol) Truth() starlark.Bool   { return starlark.True }
+func (sym *symbol) Truth() starlark.Bool  { return starlark.True }
 func (sym *symbol) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", sym.Type()) }
 
 func (sym *symbol) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

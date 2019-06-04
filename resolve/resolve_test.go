@@ -59,7 +59,7 @@ func TestDefVarargsAndKwargsSet(t *testing.T) {
 	if err := resolve.File(file, isPredeclared, isUniversal); err != nil {
 		t.Fatal(err)
 	}
-	fn := file.Stmts[0].(*syntax.DefStmt)
+	fn := file.Stmts[0].(*syntax.DefStmt).Function.(*resolve.Function)
 	if !fn.HasVarargs {
 		t.Error("HasVarargs not set")
 	}
@@ -78,7 +78,7 @@ func TestLambdaVarargsAndKwargsSet(t *testing.T) {
 	if err := resolve.File(file, isPredeclared, isUniversal); err != nil {
 		t.Fatal(err)
 	}
-	lam := file.Stmts[0].(*syntax.AssignStmt).RHS.(*syntax.LambdaExpr)
+	lam := file.Stmts[0].(*syntax.AssignStmt).RHS.(*syntax.LambdaExpr).Function.(*resolve.Function)
 	if !lam.HasVarargs {
 		t.Error("HasVarargs not set")
 	}

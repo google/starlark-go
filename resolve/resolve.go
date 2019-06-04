@@ -108,7 +108,8 @@ var (
 	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
 )
 
-// File resolves the specified file.
+// File resolves the specified file and records information about the
+// module in file.Module.
 //
 // The isPredeclared and isUniversal predicates report whether a name is
 // a pre-declared identifier (visible in the current module) or a
@@ -131,8 +132,10 @@ func File(file *syntax.File, isPredeclared, isUniversal func(name string) bool) 
 	// Function bodies may contain forward references to later global declarations.
 	r.resolveNonLocalUses(r.env)
 
-	file.Locals = r.moduleLocals
-	file.Globals = r.moduleGlobals
+	file.Module = &Module{
+		Locals:  r.moduleLocals,
+		Globals: r.moduleGlobals,
+	}
 
 	if len(r.errors) > 0 {
 		return r.errors
@@ -179,20 +182,6 @@ func newResolver(isPredeclared, isUniversal func(name string) bool) *resolver {
 		predeclared:   make(map[string]*Binding),
 	}
 }
-
-// Declare aliases for types and constants that logically belong here.
-
-type Binding = syntax.Binding
-
-const (
-	Undefined   = syntax.UndefinedScope
-	Local       = syntax.LocalScope
-	Cell        = syntax.CellScope
-	Free        = syntax.FreeScope
-	Global      = syntax.GlobalScope
-	Predeclared = syntax.PredeclaredScope
-	Universal   = syntax.UniversalScope
-)
 
 type resolver struct {
 	// env is the current local environment:
@@ -244,7 +233,7 @@ type block struct {
 	parent *block // nil for file block
 
 	// In the file (root) block, both these fields are nil.
-	function *syntax.Function      // only for function blocks
+	function *Function             // only for function blocks
 	comp     *syntax.Comprehension // only for comprehension blocks
 
 	// bindings maps a name to its binding.
@@ -272,7 +261,7 @@ func (b *block) bind(name string, bind *Binding) {
 
 func (b *block) String() string {
 	if b.function != nil {
-		return "function block at " + fmt.Sprint(b.function.Span())
+		return "function block at " + fmt.Sprint(b.function.Pos)
 	}
 	if b.comp != nil {
 		return "comprehension block at " + fmt.Sprint(b.comp.Span())
@@ -502,7 +491,14 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			r.errorf(stmt.Def, doesnt+"support nested def")
 		}
 		r.bind(stmt.Name)
-		r.function(stmt.Def, stmt.Name.Name, &stmt.Function)
+		fn := &Function{
+			Name:   stmt.Name.Name,
+			Pos:    stmt.Def,
+			Params: stmt.Params,
+			Body:   stmt.Body,
+		}
+		stmt.Function = fn
+		r.function(fn, stmt.Def)
 
 	case *syntax.ForStmt:
 		if !AllowGlobalReassign && r.container().function == nil {
@@ -773,7 +769,14 @@ func (r *resolver) expr(e syntax.Expr) {
 		if !AllowLambda {
 			r.errorf(e.Lambda, doesnt+"support lambda")
 		}
-		r.function(e.Lambda, "lambda", &e.Function)
+		fn := &Function{
+			Name:   "lambda",
+			Pos:    e.Lambda,
+			Params: e.Params,
+			Body:   []syntax.Stmt{&syntax.ReturnStmt{Result: e.Body}},
+		}
+		e.Function = fn
+		r.function(fn, e.Lambda)
 
 	case *syntax.ParenExpr:
 		r.expr(e.X)
@@ -783,7 +786,7 @@ func (r *resolver) expr(e syntax.Expr) {
 	}
 }
 
-func (r *resolver) function(pos syntax.Position, name string, function *syntax.Function) {
+func (r *resolver) function(function *Function, pos syntax.Position) {
 	// Resolve defaults in enclosing environment.
 	for _, param := range function.Params {
 		if binary, ok := param.(*syntax.BinaryExpr); ok {
@@ -944,7 +947,7 @@ func (r *resolver) lookupLexical(use use, env *block) (bind *Binding) {
 			}
 			if debug {
 				fmt.Printf("creating freevar %v in function at %s: %s\n",
-					len(env.function.FreeVars), fmt.Sprint(env.function.Span()), use.id.Name)
+					len(env.function.FreeVars), env.function.Pos, use.id.Name)
 			}
 		}
 
