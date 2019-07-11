@@ -307,7 +307,7 @@ Integer and floating-point literal tokens are defined by the following grammar:
 
 ```grammar {.good}
 int         = decimal_lit | octal_lit | hex_lit | binary_lit .
-decimal_lit = ('1' … '9') {decimal_digit} .
+decimal_lit = ('1' … '9') {decimal_digit} | '0' .
 octal_lit   = '0' ('o'|'O') octal_digit {octal_digit} .
 hex_lit     = '0' ('x'|'X') hex_digit {hex_digit} .
 binary_lit  = '0' ('b'|'B') binary_digit {binary_digit} .
