@@ -30,6 +30,7 @@ import (
 	"os/signal"
 
 	"github.com/chzyer/readline"
+	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -112,6 +113,13 @@ func rep(rl *readline.Instance, thread *starlark.Thread, globals starlark.String
 		PrintError(err)
 		return nil
 	}
+
+	// Treat load bindings as global (like they used to be) in the REPL.
+	// This is a workaround for github.com/google/starlark-go/issues/224.
+	// TODO(adonovan): not safe wrt concurrent interpreters.
+	// Come up with a more principled solution (or plumb options everywhere).
+	defer func(prev bool) { resolve.LoadBindsGlobally = prev }(resolve.LoadBindsGlobally)
+	resolve.LoadBindsGlobally = true
 
 	if expr := soleExpr(f); expr != nil {
 		// eval
