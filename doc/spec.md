@@ -331,7 +331,7 @@ TODO: define string_lit, indent, outdent, semicolon, newline, eof
 
 These are the main data types built in to the interpreter:
 
-```shell
+```python
 NoneType                     # the type of None
 bool                         # True or False
 int                          # a signed integer of arbitrary magnitude
