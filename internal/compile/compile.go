@@ -39,7 +39,11 @@ import (
 	"go.starlark.net/syntax"
 )
 
-const debug = false // TODO(adonovan): use a bitmap of options; and regexp to match files
+// Disassemble causes the assembly code for each function
+// to be printed to stderr as it is generated.
+var Disassemble = false
+
+const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
 const Version = 10
@@ -645,7 +649,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 	fn.MaxStack = maxstack
 
 	// Emit bytecode (and position table).
-	if debug {
+	if Disassemble {
 		fmt.Fprintf(os.Stderr, "Function %s: (%d blocks, %d bytes)\n", name, len(blocks), pc)
 	}
 	fcomp.generate(blocks, pc)
@@ -726,7 +730,7 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 	}
 
 	for _, b := range blocks {
-		if debug {
+		if Disassemble {
 			fmt.Fprintf(os.Stderr, "%d:\n", b.index)
 		}
 		pc := b.addr
@@ -766,12 +770,12 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 					}
 				}
 
-				if debug {
-					fmt.Fprintf(os.Stderr, "\t\t\t\t\t; %s %d\n",
-						filepath.Base(fcomp.fn.Pos.Filename()), insn.line)
+				if Disassemble {
+					fmt.Fprintf(os.Stderr, "\t\t\t\t\t; %s:%d:%d\n",
+						filepath.Base(fcomp.fn.Pos.Filename()), insn.line, insn.col)
 				}
 			}
-			if debug {
+			if Disassemble {
 				PrintOp(fcomp.fn, pc, insn.op, insn.arg)
 			}
 			code = append(code, byte(insn.op))
@@ -788,7 +792,7 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 
 		if b.jmp != nil && b.jmp.index != b.index+1 {
 			addr := b.jmp.addr
-			if debug {
+			if Disassemble {
 				fmt.Fprintf(os.Stderr, "\t%d\tjmp\t\t%d\t; block %d\n",
 					pc, addr, b.jmp.index)
 			}
