@@ -617,6 +617,9 @@ func (fn *Function) NumKwonlyParams() int      { return fn.funcode.NumKwonlyPara
 // The *args and **kwargs parameters are at the end
 // even if there were optional parameters after *args.
 func (fn *Function) Param(i int) (string, syntax.Position) {
+	if i >= fn.NumParams() {
+		panic(i)
+	}
 	id := fn.funcode.Locals[i]
 	return id.Name, id.Pos
 }
