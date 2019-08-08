@@ -269,10 +269,6 @@ except         is             yield
 The Go implementation permits `assert` to be used as an identifier,
 and this feature is widely used in its tests.
 
-<b>Implementation note:</b>
-The Java implementation does not recognize the following tokens:
-`&`, `&=`, `|=`, `<<`, `>>`, `<<=`, `>>=`, `^`, `^=`, `~`.
-
 *Identifiers*: an identifier is a sequence of Unicode letters, decimal
  digits, and underscores (`_`), not starting with a digit.
 Identifiers are used as names for values.
@@ -425,7 +421,6 @@ The `|`, `&`, and `^` operators implement bitwise OR, AND, and XOR,
 respectively. The unary `~` operator yields the bitwise inversion of its
 integer argument. The `<<` and `>>` operators shift the first argument
 to the left or right by the number of bits given by the second argument.
-(These features are not part of the Java implementation.)
 
 Any bool, number, or string may be interpreted as an integer by using
 the `int` built-in function.
@@ -448,7 +443,6 @@ arithmetic is exact, motivated by the need for lossless manipulation
 of protocol messages which may contain signed and unsigned 64-bit
 integers.
 The Java implementation currently supports only signed 32-bit integers.
-The Java implementation does not support `^`, `~`, `<<`, and `>>` operations.
 
 
 ### Floating-point numbers
@@ -1709,9 +1703,6 @@ The bitwise inversion of x is defined as -(x+1).
 ~0                              # -1
 ```
 
-<b>Implementation note:</b>
-The parser in the Java implementation of Starlark does not accept unary
-`+` and `~` expressions.
 
 ### Binary operators
 
@@ -1933,8 +1924,7 @@ set([1, 2]) ^ set([2, 3])       # set([1, 3])
 <b>Implementation note:</b>
 The Go implementation of Starlark requires the `-set` flag to
 enable support for sets.
-The Java implementation does not support sets, nor recognize `&` as a
-token, nor support `int | int`.
+The Java implementation does not support sets.
 
 
 #### Membership tests
@@ -2223,11 +2213,6 @@ f                                               # <built-in method count of stri
 f("a")                                          # 3
 f("n")                                          # 2
 ```
-
-<b>Implementation note:</b>
-The Java implementation does not currently allow a method to be
-selected but not immediately called.
-See Google Issue b/21392896.
 
 ### Index expressions
 
@@ -3247,8 +3232,6 @@ sorted(["two", "three", "four"], key=len)                       # ["two", "four"
 sorted(["two", "three", "four"], key=len, reverse=True)         # ["three", "four", "two"], longest to shortest
 ```
 
-<b>Implementation note:</b>
-The Java implementation does not support the `key`, and `reverse` parameters.
 
 ### str
 
@@ -4116,10 +4099,7 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * The `set` built-in function is provided (option: `-set`).
 * `set & set` and `set | set` compute set intersection and union, respectively.
 * `assert` is a valid identifier.
-* The parser accepts unary `+` expressions.
-* A method call `x.f()` may be separated into two steps: `y = x.f; y()`.
 * Dot expressions may appear on the left side of an assignment: `x.f = 1`.
-* `sorted` accepts the additional parameters `key` and `reverse`.
 * `type(x)` returns `"builtin_function_or_method"` for built-in functions.
 * `if`, `for`, and `while` are permitted at top level (option: `-globalreassign`).
 * top-level rebindings are permitted (option: `-globalreassign`).
