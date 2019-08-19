@@ -377,7 +377,7 @@ func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Functi
 		case float64:
 			v = Float(c)
 		default:
-			log.Fatalf("unexpected constant %T: %v", c, c)
+			log.Panicf("unexpected constant %T: %v", c, c)
 		}
 		constants[i] = v
 	}

@@ -557,7 +557,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		}
 
 	default:
-		log.Fatalf("unexpected stmt %T", stmt)
+		log.Panicf("unexpected stmt %T", stmt)
 	}
 }
 
@@ -782,7 +782,7 @@ func (r *resolver) expr(e syntax.Expr) {
 		r.expr(e.X)
 
 	default:
-		log.Fatalf("unexpected expr %T", e)
+		log.Panicf("unexpected expr %T", e)
 	}
 }
 
@@ -901,7 +901,7 @@ func lookupLocal(use use) *Binding {
 		if bind, ok := env.bindings[use.id.Name]; ok {
 			if bind.Scope == Free {
 				// shouldn't exist till later
-				log.Fatalf("%s: internal error: %s, %v", use.id.NamePos, use.id.Name, bind)
+				log.Panicf("%s: internal error: %s, %v", use.id.NamePos, use.id.Name, bind)
 			}
 			return bind // found
 		}
