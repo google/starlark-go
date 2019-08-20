@@ -212,6 +212,10 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{`while cond: pass`, "while cond : pass EOF"},
 		// github.com/google/starlark-go/issues/107
 		{"~= ~= 5", "~ = ~ = 5 EOF"},
+		{"0in", "0 in EOF"},
+		{"0or", "foo.star:1:3: invalid octal literal"},
+		{"6in", "6 in EOF"},
+		{"6or", "6 or EOF"},
 	} {
 		got, err := scan(test.input)
 		if err != nil {
