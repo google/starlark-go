@@ -13,6 +13,7 @@ import (
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 func Benchmark(b *testing.B) {
@@ -58,10 +59,11 @@ func Benchmark(b *testing.B) {
 }
 
 // BenchmarkProgram measures operations relevant to compiled programs.
-// TODO(adonovan): use a bigger testdata program.
 func BenchmarkProgram(b *testing.B) {
-	// Measure time to read a source file (approx 600us but depends on hardware and file system).
+	// TODO(adonovan): use a bigger testdata program.
 	filename := starlarktest.DataFile("starlark", "testdata/paths.star")
+
+	// Measure time to read a source file (approx 600us but depends on hardware and file system).
 	var src []byte
 	b.Run("read", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -73,7 +75,26 @@ func BenchmarkProgram(b *testing.B) {
 		}
 	})
 
-	// Measure time to turn a source filename into a compiled program (approx 450us).
+	// Measure time to scan (approx 170us).
+	b.Run("scan", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if err := syntax.ScanAndDiscard(filename, src, 0); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	// Measure time to parse (approx 300us).
+	b.Run("parse", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if _, err := syntax.Parse(filename, src, 0); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	// Measure time to turn a source filename into a compiled program,
+	// that is, read + scan + parse + resolve + compile (approx 450us).
 	var prog *starlark.Program
 	b.Run("compile", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
