@@ -2500,7 +2500,7 @@ Example:
 def twice(x):
     return x * 2
 
-str(twice)              # "<function f>"
+str(twice)              # "<function twice>"
 twice(2)                # 4
 twice("two")            # "twotwo"
 ```
