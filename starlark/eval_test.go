@@ -35,6 +35,11 @@ func option(chunk, name string) bool {
 	return strings.Contains(chunk, "option:"+name)
 }
 
+// Wrapper is the type of errors with an Unwrap method; see https://golang.org/pkg/errors.
+type Wrapper interface {
+	Unwrap() error
+}
+
 func TestEvalExpr(t *testing.T) {
 	// This is mostly redundant with the new *.star tests.
 	// TODO(adonovan): move checks into *.star files and
@@ -481,19 +486,19 @@ func TestInt(t *testing.T) {
 	}
 }
 
-func TestBacktrace(t *testing.T) {
-	getBacktrace := func(err error) string {
-		switch err := err.(type) {
-		case *starlark.EvalError:
-			return err.Backtrace()
-		case nil:
-			t.Fatalf("ExecFile succeeded unexpectedly")
-		default:
-			t.Fatalf("ExecFile failed with %v, wanted *EvalError", err)
-		}
-		panic("unreachable")
+func backtrace(t *testing.T, err error) string {
+	switch err := err.(type) {
+	case *starlark.EvalError:
+		return err.Backtrace()
+	case nil:
+		t.Fatalf("ExecFile succeeded unexpectedly")
+	default:
+		t.Fatalf("ExecFile failed with %v, wanted *EvalError", err)
 	}
+	panic("unreachable")
+}
 
+func TestBacktrace(t *testing.T) {
 	// This test ensures continuity of the stack of active Starlark
 	// functions, including propagation through built-ins such as 'min'.
 	const src = `
@@ -514,7 +519,7 @@ i()
   crash.star:3:12: in g
   crash.star:2:19: in f
 Error: floored division by zero`
-	if got := getBacktrace(err); got != want {
+	if got := backtrace(t, err); got != want {
 		t.Errorf("error was %s, want %s", got, want)
 	}
 
@@ -540,10 +545,65 @@ Error: join: in list, want string, got int`,
 	} {
 		globals := starlark.StringDict{"i": starlark.MakeInt(i)}
 		_, err := starlark.ExecFile(thread, "crash.star", src2, globals)
-		if got := getBacktrace(err); got != want {
+		if got := backtrace(t, err); got != want {
 			t.Errorf("error was %s, want %s", got, want)
 		}
 	}
+}
+
+func TestLoadBacktrace(t *testing.T) {
+	// This test ensures that load() does NOT preserve stack traces,
+	// but that API callers can get them with Unwrap().
+	// For discussion, see:
+	// https://github.com/google/starlark-go/pull/244
+	const src = `
+load('crash.star', 'x')
+`
+	const loadedSrc = `
+def f(x):
+  return 1 // x
+
+f(0)
+`
+	thread := new(starlark.Thread)
+	thread.Load = func(t *starlark.Thread, module string) (starlark.StringDict, error) {
+		return starlark.ExecFile(new(starlark.Thread), module, loadedSrc, nil)
+	}
+	_, err := starlark.ExecFile(thread, "root.star", src, nil)
+
+	const want = `Traceback (most recent call last):
+  root.star:2:1: in <toplevel>
+Error: cannot load crash.star: floored division by zero`
+	if got := backtrace(t, err); got != want {
+		t.Errorf("error was %s, want %s", got, want)
+	}
+
+	unwrapEvalError := func(err error) *starlark.EvalError {
+		var result *starlark.EvalError
+		for {
+			if evalErr, ok := err.(*starlark.EvalError); ok {
+				result = evalErr
+			}
+
+			// TODO: use errors.Unwrap when go >=1.13 is everywhere.
+			wrapper, isWrapper := err.(Wrapper)
+			if !isWrapper {
+				break
+			}
+			err = wrapper.Unwrap()
+		}
+		return result
+	}
+
+	unwrappedErr := unwrapEvalError(err)
+	const wantUnwrapped = `Traceback (most recent call last):
+  crash.star:5:2: in <toplevel>
+  crash.star:3:12: in f
+Error: floored division by zero`
+	if got := backtrace(t, unwrappedErr); got != wantUnwrapped {
+		t.Errorf("error was %s, want %s", got, wantUnwrapped)
+	}
+
 }
 
 // TestRepeatedExec parses and resolves a file syntax tree once then
