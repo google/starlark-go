@@ -1257,7 +1257,7 @@ The [dot expression](#dot-expressions) `.split` is a dynamic operation
 on the value returned by `get_filename()`.
 
 
-## Value concepts {#value-concepts}
+## Value concepts
 
 Starlark has eleven core [data types](#data-types).  An application
 that embeds the Starlark intepreter may define additional types that
