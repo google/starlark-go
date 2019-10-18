@@ -190,6 +190,7 @@ func (stack CallStack) String() string {
 type EvalError struct {
 	Msg       string
 	CallStack CallStack
+	cause     error
 }
 
 // A CallFrame represents the function name and current
@@ -210,6 +211,7 @@ func (thread *Thread) evalError(err error) *EvalError {
 	return &EvalError{
 		Msg:       err.Error(),
 		CallStack: thread.CallStack(),
+		cause:     err,
 	}
 }
 
@@ -220,6 +222,8 @@ func (e *EvalError) Error() string { return e.Msg }
 func (e *EvalError) Backtrace() string {
 	return fmt.Sprintf("%sError: %s", e.CallStack, e.Msg)
 }
+
+func (e *EvalError) Unwrap() error { return e.cause }
 
 // A Program is a compiled Starlark program.
 //
