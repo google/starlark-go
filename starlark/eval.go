@@ -366,6 +366,57 @@ func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, e
 	return toplevel.Globals(), err
 }
 
+// ExecREPLChunk compiles and executes file f in the specified thread
+// and global environment. This is a variant of ExecFile specialized to
+// the needs of a REPL, in which a sequence of input chunks, each
+// syntactically a File, manipulates the same set of module globals,
+// which are not frozen after execution.
+//
+// This function is intended to support only go.starlark.net/repl.
+// Its API stability is not guaranteed.
+func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
+	var predeclared StringDict
+
+	// -- variant of FileProgram --
+
+	if err := resolve.REPLChunk(f, globals.Has, predeclared.Has, Universe.Has); err != nil {
+		return err
+	}
+
+	var pos syntax.Position
+	if len(f.Stmts) > 0 {
+		pos = syntax.Start(f.Stmts[0])
+	} else {
+		pos = syntax.MakePosition(&f.Path, 1, 1)
+	}
+
+	module := f.Module.(*resolve.Module)
+	compiled := compile.File(f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+	prog := &Program{compiled}
+
+	// -- variant of Program.Init --
+
+	toplevel := makeToplevelFunction(prog.compiled, predeclared)
+
+	// Initialize module globals from parameter.
+	for i, id := range prog.compiled.Globals {
+		if v := globals[id.Name]; v != nil {
+			toplevel.module.globals[i] = v
+		}
+	}
+
+	_, err := Call(thread, toplevel, nil, nil)
+
+	// Reflect changes to globals back to parameter, even after an error.
+	for i, id := range prog.compiled.Globals {
+		if v := toplevel.module.globals[i]; v != nil {
+			globals[id.Name] = v
+		}
+	}
+
+	return err
+}
+
 func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Function {
 	// Create the Starlark value denoted by each program constant c.
 	constants := make([]Value, len(prog.Constants))

@@ -763,3 +763,28 @@ func TestUnpackErrorBadType(t *testing.T) {
 		}
 	}
 }
+
+// Regression test for github.com/google/starlark-go/issues/233.
+func TestREPLChunk(t *testing.T) {
+	thread := new(starlark.Thread)
+	globals := make(starlark.StringDict)
+	exec := func(src string) {
+		f, err := syntax.Parse("<repl>", src, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := starlark.ExecREPLChunk(f, thread, globals); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	exec("x = 0; y = 0")
+	if got, want := fmt.Sprintf("%v %v", globals["x"], globals["y"]), "0 0"; got != want {
+		t.Fatalf("chunk1: got %s, want %s", got, want)
+	}
+
+	exec("x += 1; y = y + 1")
+	if got, want := fmt.Sprintf("%v %v", globals["x"], globals["y"]), "1 1"; got != want {
+		t.Fatalf("chunk2: got %s, want %s", got, want)
+	}
+}
