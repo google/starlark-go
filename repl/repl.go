@@ -133,26 +133,9 @@ func rep(rl *readline.Instance, thread *starlark.Thread, globals starlark.String
 		if v != starlark.None {
 			fmt.Println(v)
 		}
-	} else {
-		// compile
-		prog, err := starlark.FileProgram(f, globals.Has)
-		if err != nil {
-			PrintError(err)
-			return nil
-		}
-
-		// execute (but do not freeze)
-		res, err := prog.Init(thread, globals)
-		if err != nil {
-			PrintError(err)
-		}
-
-		// The global names from the previous call become
-		// the predeclared names of this call.
-		// If execution failed, some globals may be undefined.
-		for k, v := range res {
-			globals[k] = v
-		}
+	} else if err := starlark.ExecREPLChunk(f, thread, globals); err != nil {
+		PrintError(err)
+		return nil
 	}
 
 	return nil
