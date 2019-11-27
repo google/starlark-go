@@ -1543,7 +1543,7 @@ Lookup of locals and globals may fail if not yet defined.
 
 ### Literals
 
-Starlark supports string literals of three different kinds:
+Starlark supports literals of three different kinds:
 
 ```grammar {.good}
 Primary = int | float | string
@@ -2349,9 +2349,9 @@ the global dictionary of the current module.
 
 The name of a function created by a lambda expression is `"lambda"`.
 
-The two statements below are essentially equivalent, but that the
+The two statements below are essentially equivalent, but the
 function created by the `def` statement is named `twice` and the
-function created by the lambda expression is called `lambda`.
+function created by the lambda expression is named `lambda`.
 
 ```python
 def twice(x):
@@ -2439,7 +2439,8 @@ pi, e = 3.141, 2.718
 (x, y) = f()
 [zero, one, two] = range(3)
 
-[(a, b), (c, d)] = ("ab", "cd")
+[(a, b), (c, d)] = {"a": "b", "c": "d"}.items()
+a, b = {"a": 1, "b": 2}
 ```
 
 The same process for assigning a value to a target expression is used
