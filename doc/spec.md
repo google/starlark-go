@@ -3007,6 +3007,9 @@ It is a dynamic error if x has no such attribute.
 getattr("banana", "split")("a")	       # ["b", "n", "n", ""], equivalent to "banana".split("a")
 ```
 
+The three-argument form `getattr(x, name, default)` returns the
+provided `default` value instead of failing.
+
 ### hasattr
 
 `hasattr(x, name)` reports whether x has an attribute (field or method) named `name`.
