@@ -1,9 +1,18 @@
-sudo: false
-
 language: go
 
 go_import_path: go.starlark.net
 
 go:
-    - 1.10.x
-    - master
+    - "1.11.x"
+    - "master"
+
+env:
+    - "GO111MODULE=on"
+
+script:
+    - "go test -mod=readonly ./..."
+    - "cp go.mod go.mod.orig"
+    - "cp go.sum go.sum.orig"
+    - "go mod tidy"
+    - "diff go.mod.orig go.mod"
+    - "diff go.sum.orig go.sum"
