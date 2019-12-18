@@ -4094,6 +4094,7 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * Floating-point literals are supported (option: `-float`).
 * The `float` built-in function is provided (option: `-float`).
 * Real division using `float / float` is supported (option: `-float`).
+* String interpolation supports the `[ioxXeEfFgGc]` conversions.
 * `def` statements may be nested (option: `-nesteddef`).
 * `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
