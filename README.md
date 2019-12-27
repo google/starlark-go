@@ -57,7 +57,7 @@ $ go get -u go.starlark.net/cmd/starlark
 
 Run the interpreter:
 
-```
+```console
 $ cat coins.star
 coins = {
   'dime': 10,
@@ -75,7 +75,7 @@ By value:	penny, nickel, dime, quarter
 
 Interact with the read-eval-print loop (REPL):
 
-```
+```pycon
 $ starlark
 >>> def fibonacci(n):
 ...    res = list(range(n))
@@ -92,7 +92,7 @@ When you have finished, type `Ctrl-D` to close the REPL's input stream.
 
 Embed the interpreter in your Go program:
 
-```
+```go
 import "go.starlark.net/starlark"
 
 // Execute Starlark program in a file.
