@@ -3,6 +3,8 @@
 
 # Starlark in Go
 
+[![Travis CI](https://travis-ci.org/google/starlark-go.svg)](https://travis-ci.org/google/starlark-go)
+
 This is the home of the _Starlark in Go_ project.
 Starlark in Go is an interpreter for Starlark, implemented in Go.
 Starlark was formerly known as Skylark.
@@ -42,8 +44,6 @@ languages and compilers.
 * Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
 * Issue tracker: [https://github.com/google/starlark-go/issues](https://github.com/google/starlark-go/issues)
-
-* Travis CI: [![Travis CI](https://travis-ci.org/google/starlark-go.svg) https://travis-ci.org/google/starlark-go](https://travis-ci.org/google/starlark-go)
 
 ### Getting started
 
