@@ -276,6 +276,7 @@ func readSource(filename string, src interface{}) ([]byte, error) {
 		data, err := ioutil.ReadAll(src)
 		if err != nil {
 			err = &os.PathError{Op: "read", Path: filename, Err: err}
+			return nil, err
 		}
 		return data, nil
 	case nil:
@@ -1018,7 +1019,7 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			val.int, err = strconv.ParseInt(s, 0, 64)
 			if err != nil {
 				num := new(big.Int)
-				var ok bool = true
+				var ok bool
 				val.bigInt, ok = num.SetString(s, 0)
 				if ok {
 					err = nil
