@@ -4,6 +4,7 @@
 # Starlark in Go
 
 [![Travis CI](https://travis-ci.org/google/starlark-go.svg)](https://travis-ci.org/google/starlark-go)
+[![GoDoc](https://godoc.org/go.starlark.net/starlark?status.svg)](https://godoc.org/go.starlark.net/starlark)
 
 This is the home of the _Starlark in Go_ project.
 Starlark in Go is an interpreter for Starlark, implemented in Go.
