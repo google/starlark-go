@@ -42,9 +42,10 @@
 // implementation of the Go function may use UnpackArgs to make sense of
 // the positional and keyword arguments provided by the caller.
 //
-// Starlark's None value is not equal to Go's nil, but nil may be
-// assigned to a Starlark Value.  Be careful to avoid allowing Go nil
-// values to leak into Starlark data structures.
+// Starlark's None value is not equal to Go's nil. Go's nil is not a legal
+// Starlark value, but the compiler will not stop you from converting nil
+// to Value. Be careful to avoid allowing Go nil values to leak into
+// Starlark data structures.
 //
 // The Compare operation requires two arguments of the same
 // type, but this constraint cannot be expressed in Go's type system.
