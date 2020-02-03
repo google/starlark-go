@@ -59,7 +59,7 @@
 // function evaluates a single expression.  All evaluator functions
 // require a Thread parameter which defines the "thread-local storage"
 // of a Starlark thread and may be used to plumb application state
-// through Sklyark code and into callbacks.  When evaluation fails it
+// through Starlark code and into callbacks.  When evaluation fails it
 // returns an EvalError from which the application may obtain a
 // backtrace of active Starlark calls.
 //
