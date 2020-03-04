@@ -287,3 +287,21 @@ def e():
     f()
 
 assert.fails(e, "local variable x referenced before assignment")
+
+
+---
+# A trailing comma is allowed in any function definition or call.
+# This reduces the need to edit neighboring lines when editing defs
+# or calls splayed across multiple lines.
+
+def a(x,): pass
+def b(x, y=None, ): pass
+def c(x, y=None, *args, ): pass
+def d(x, y=None, *args, z=None, ): pass
+def e(x, y=None, *args, z=None, **kwargs, ): pass
+
+a(1,)
+b(1, y=2, )
+#c(1, *[], )
+#d(1, *[], z=None, )
+#e(1, *[], z=None, *{}, )

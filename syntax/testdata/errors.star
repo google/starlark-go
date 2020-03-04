@@ -11,19 +11,11 @@ x = 1 +
 _ = *x ### `got '\*', want primary`
 
 ---
+# trailing comma is ok
 
-def f(a, ):  # trailing comma is ok
-  pass
-
----
-
-def f(*args, ):  ### `got '\)', want parameter`
-  pass
-
----
-
-def f(**kwargs, ): ### `got '\)', want parameter`
-  pass
+def f(a, ): pass
+def f(*args, ): pass
+def f(**kwargs, ): pass
 
 ---
 
@@ -51,16 +43,11 @@ def pass(): ### "not an identifier"
 def f : ### `got ':', want '\('`
 
 ---
+# trailing comma is ok
 
-f(a, ) # trailing comma is ok
-
----
-
-f(*args, ) ### `got '\)', want argument`
-
----
-
-f(**kwargs, ) ### `got '\)', want argument`
+f(a, )
+f(*args, )
+f(**kwargs, )
 
 ---
 

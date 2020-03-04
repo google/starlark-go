@@ -991,6 +991,8 @@ Unlike Python, Starlark does not allow more than one `*args` argument in a
 call, and if a `*args` argument is present it must appear after all
 positional and named arguments.
 
+The final argument to a function call may be followed by a trailing comma.
+
 A function call completes normally after the execution of either a
 `return` statement, or of the last statement in the function body.
 The result of the function call is the value of the return statement's
@@ -1524,9 +1526,6 @@ Operand = identifier
 DotSuffix   = '.' identifier .
 CallSuffix  = '(' [Arguments [',']] ')' .
 SliceSuffix = '[' [Expression] [':' Test [':' Test]] ']' .
-
-# A CallSuffix does not allow a trailing comma
-# if the last argument is '*' Test or '**' Test.
 ```
 
 TODO: resolve position of +x, -x, and 'not x' in grammar: Operand or UnaryExpr?
@@ -2152,7 +2151,7 @@ x = ([1, 2], [3, 4], [5, 6])
 ### Function and method calls
 
 ```grammar {.good}
-CallSuffix = '(' [Arguments] ')' .
+CallSuffix = '(' [Arguments [',']] ')' .
 
 Arguments = Argument {',' Argument} .
 Argument  = Test | identifier '=' Test | '*' Test | '**' Test .
@@ -2557,6 +2556,8 @@ This is called the _keyword arguments_ parameter, and accumulates in a
 dictionary any surplus `name=value` arguments that do not match a
 prior parameter. It is conventionally named `**kwargs`.
 
+The final parameter may be followed by a trailing comma.
+
 Here are some example parameter lists:
 
 ```python
@@ -2567,6 +2568,12 @@ def f(a, b, c=1, *args): pass
 def f(a, b, c=1, *args, **kwargs): pass
 def f(**kwargs): pass
 def f(a, b, c=1, *, d=1): pass
+
+def f(
+  a,
+  *args,
+  **kwargs,
+)
 ```
 
 Execution of a `def` statement creates a new function object.  The
