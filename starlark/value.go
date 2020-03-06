@@ -489,8 +489,8 @@ func (s String) Slice(start, end, step int) Value {
 	return String(str)
 }
 
-func (s String) Attr(name string) (Value, error) { return stringMethods.bindAttr(s, name) }
-func (s String) AttrNames() []string             { return stringMethods.attrNames() }
+func (s String) Attr(name string) (Value, error) { return builtinAttr(s, name, stringMethods) }
+func (s String) AttrNames() []string             { return builtinAttrNames(stringMethods) }
 
 func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(String)
@@ -708,8 +708,8 @@ func (d *Dict) Freeze()                                         { d.ht.freeze() 
 func (d *Dict) Truth() Bool                                     { return d.Len() > 0 }
 func (d *Dict) Hash() (uint32, error)                           { return 0, fmt.Errorf("unhashable type: dict") }
 
-func (d *Dict) Attr(name string) (Value, error) { return dictMethods.bindAttr(d, name) }
-func (d *Dict) AttrNames() []string             { return dictMethods.attrNames() }
+func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, dictMethods) }
+func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
 
 func (x *Dict) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Dict)
@@ -796,8 +796,8 @@ func (l *List) Slice(start, end, step int) Value {
 	return NewList(list)
 }
 
-func (l *List) Attr(name string) (Value, error) { return listMethods.bindAttr(l, name) }
-func (l *List) AttrNames() []string             { return listMethods.attrNames() }
+func (l *List) Attr(name string) (Value, error) { return builtinAttr(l, name, listMethods) }
+func (l *List) AttrNames() []string             { return builtinAttrNames(listMethods) }
 
 func (l *List) Iterate() Iterator {
 	if !l.frozen {
@@ -975,8 +975,8 @@ func (s *Set) Freeze()                                { s.ht.freeze() }
 func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
 
-func (s *Set) Attr(name string) (Value, error) { return setMethods.bindAttr(s, name) }
-func (s *Set) AttrNames() []string             { return setMethods.attrNames() }
+func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
+func (s *Set) AttrNames() []string             { return builtinAttrNames(setMethods) }
 
 func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Set)

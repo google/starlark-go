@@ -69,102 +69,88 @@ func init() {
 	}
 }
 
-type builtinMethod func(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
+// methods of built-in types
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#built-in-methods
+var (
+	dictMethods = map[string]*Builtin{
+		"clear":      NewBuiltin("clear", dict_clear),
+		"get":        NewBuiltin("get", dict_get),
+		"items":      NewBuiltin("items", dict_items),
+		"keys":       NewBuiltin("keys", dict_keys),
+		"pop":        NewBuiltin("pop", dict_pop),
+		"popitem":    NewBuiltin("popitem", dict_popitem),
+		"setdefault": NewBuiltin("setdefault", dict_setdefault),
+		"update":     NewBuiltin("update", dict_update),
+		"values":     NewBuiltin("values", dict_values),
+	}
 
-type builtins struct {
-	attrs map[string]*Builtin
-	names []string
-}
+	listMethods = map[string]*Builtin{
+		"append": NewBuiltin("append", list_append),
+		"clear":  NewBuiltin("clear", list_clear),
+		"extend": NewBuiltin("extend", list_extend),
+		"index":  NewBuiltin("index", list_index),
+		"insert": NewBuiltin("insert", list_insert),
+		"pop":    NewBuiltin("pop", list_pop),
+		"remove": NewBuiltin("remove", list_remove),
+	}
 
-func (bs *builtins) bindAttr(recv Value, name string) (Value, error) {
-	b := bs.attrs[name]
+	stringMethods = map[string]*Builtin{
+		"capitalize":     NewBuiltin("capitalize", string_capitalize),
+		"codepoint_ords": NewBuiltin("codepoint_ords", string_iterable),
+		"codepoints":     NewBuiltin("codepoints", string_iterable), // sic
+		"count":          NewBuiltin("count", string_count),
+		"elem_ords":      NewBuiltin("elem_ords", string_iterable),
+		"elems":          NewBuiltin("elems", string_iterable),      // sic
+		"endswith":       NewBuiltin("endswith", string_startswith), // sic
+		"find":           NewBuiltin("find", string_find),
+		"format":         NewBuiltin("format", string_format),
+		"index":          NewBuiltin("index", string_index),
+		"isalnum":        NewBuiltin("isalnum", string_isalnum),
+		"isalpha":        NewBuiltin("isalpha", string_isalpha),
+		"isdigit":        NewBuiltin("isdigit", string_isdigit),
+		"islower":        NewBuiltin("islower", string_islower),
+		"isspace":        NewBuiltin("isspace", string_isspace),
+		"istitle":        NewBuiltin("istitle", string_istitle),
+		"isupper":        NewBuiltin("isupper", string_isupper),
+		"join":           NewBuiltin("join", string_join),
+		"lower":          NewBuiltin("lower", string_lower),
+		"lstrip":         NewBuiltin("lstrip", string_strip), // sic
+		"partition":      NewBuiltin("partition", string_partition),
+		"replace":        NewBuiltin("replace", string_replace),
+		"rfind":          NewBuiltin("rfind", string_rfind),
+		"rindex":         NewBuiltin("rindex", string_rindex),
+		"rpartition":     NewBuiltin("rpartition", string_partition), // sic
+		"rsplit":         NewBuiltin("rsplit", string_split),         // sic
+		"rstrip":         NewBuiltin("rstrip", string_strip),         // sic
+		"split":          NewBuiltin("split", string_split),
+		"splitlines":     NewBuiltin("splitlines", string_splitlines),
+		"startswith":     NewBuiltin("startswith", string_startswith),
+		"strip":          NewBuiltin("strip", string_strip),
+		"title":          NewBuiltin("title", string_title),
+		"upper":          NewBuiltin("upper", string_upper),
+	}
+
+	setMethods = map[string]*Builtin{
+		"union": NewBuiltin("union", set_union),
+	}
+)
+
+func builtinAttr(recv Value, name string, methods map[string]*Builtin) (Value, error) {
+	b := methods[name]
 	if b == nil {
 		return nil, nil // no such method
 	}
 	return b.BindReceiver(recv), nil
 }
-func (bs *builtins) attrNames() []string {
-	names := make([]string, len(bs.names))
-	copy(names, bs.names)
-	return names
-}
 
-func newBuiltins(methods map[string]builtinMethod) *builtins {
-	attrs := make(map[string]*Builtin, len(methods))
+func builtinAttrNames(methods map[string]*Builtin) []string {
 	names := make([]string, 0, len(methods))
-	for k, m := range methods {
-		attrs[k] = NewBuiltin(k, m)
-		names = append(names, k)
+	for name := range methods {
+		names = append(names, name)
 	}
 	sort.Strings(names)
-	return &builtins{attrs: attrs, names: names}
+	return names
 }
-
-// methods of built-in types
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#built-in-methods
-var (
-	dictMethods = newBuiltins(map[string]builtinMethod{
-		"clear":      dict_clear,
-		"get":        dict_get,
-		"items":      dict_items,
-		"keys":       dict_keys,
-		"pop":        dict_pop,
-		"popitem":    dict_popitem,
-		"setdefault": dict_setdefault,
-		"update":     dict_update,
-		"values":     dict_values,
-	})
-
-	listMethods = newBuiltins(map[string]builtinMethod{
-		"append": list_append,
-		"clear":  list_clear,
-		"extend": list_extend,
-		"index":  list_index,
-		"insert": list_insert,
-		"pop":    list_pop,
-		"remove": list_remove,
-	})
-
-	stringMethods = newBuiltins(map[string]builtinMethod{
-		"capitalize":     string_capitalize,
-		"codepoint_ords": string_iterable,
-		"codepoints":     string_iterable, // sic
-		"count":          string_count,
-		"elem_ords":      string_iterable,
-		"elems":          string_iterable,   // sic
-		"endswith":       string_startswith, // sic
-		"find":           string_find,
-		"format":         string_format,
-		"index":          string_index,
-		"isalnum":        string_isalnum,
-		"isalpha":        string_isalpha,
-		"isdigit":        string_isdigit,
-		"islower":        string_islower,
-		"isspace":        string_isspace,
-		"istitle":        string_istitle,
-		"isupper":        string_isupper,
-		"join":           string_join,
-		"lower":          string_lower,
-		"lstrip":         string_strip, // sic
-		"partition":      string_partition,
-		"replace":        string_replace,
-		"rfind":          string_rfind,
-		"rindex":         string_rindex,
-		"rpartition":     string_partition, // sic
-		"rsplit":         string_split,     // sic
-		"rstrip":         string_strip,     // sic
-		"split":          string_split,
-		"splitlines":     string_splitlines,
-		"startswith":     string_startswith,
-		"strip":          string_strip,
-		"title":          string_title,
-		"upper":          string_upper,
-	})
-
-	setMethods = newBuiltins(map[string]builtinMethod{
-		"union": set_union,
-	})
-)
 
 // ---- built-in functions ----
 
