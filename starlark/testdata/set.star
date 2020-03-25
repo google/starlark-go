@@ -33,9 +33,9 @@ assert.eq(list(set([1, 3, 2, 3])), [1, 3, 2])
 assert.eq(type(set("hello".elems())), "set")
 assert.eq(list(set("hello".elems())), ["h", "e", "l", "o"])
 assert.eq(list(set(range(3))), [0, 1, 2])
-assert.fails(lambda: set(1), "got int, want iterable")
-assert.fails(lambda: set(1, 2, 3), "got 3 arguments")
-assert.fails(lambda: set([1, 2, {}]), "unhashable type: dict")
+assert.fails(lambda : set(1), "got int, want iterable")
+assert.fails(lambda : set(1, 2, 3), "got 3 arguments")
+assert.fails(lambda : set([1, 2, {}]), "unhashable type: dict")
 
 # truth
 assert.true(not set())
@@ -46,12 +46,12 @@ x = set([1, 2, 3])
 y = set([3, 4, 5])
 
 # set + any is not defined
-assert.fails(lambda: x + y, "unknown.*: set \+ set")
+assert.fails(lambda : x + y, "unknown.*: set \\+ set")
 
 # set | set (use resolve.AllowBitwise to enable it)
 assert.eq(list(set("a".elems()) | set("b".elems())), ["a", "b"])
 assert.eq(list(set("ab".elems()) | set("bc".elems())), ["a", "b", "c"])
-assert.fails(lambda: set() | [], "unknown binary op: set | list")
+assert.fails(lambda : set() | [], "unknown binary op: set | list")
 assert.eq(type(x | y), "set")
 assert.eq(list(x | y), [1, 2, 3, 4, 5])
 assert.eq(list(x | set([5, 1])), [1, 2, 3, 5])
@@ -65,7 +65,7 @@ assert.eq(type(x.union(y)), "set")
 assert.eq(list(x.union(y)), [1, 2, 3, 4, 5])
 assert.eq(list(x.union([5, 1])), [1, 2, 3, 5])
 assert.eq(list(x.union((6, 5, 4))), [1, 2, 3, 6, 5, 4])
-assert.fails(lambda: x.union([1, 2, {}]), "unhashable type: dict")
+assert.fails(lambda : x.union([1, 2, {}]), "unhashable type: dict")
 
 # intersection, set & set (use resolve.AllowBitwise to enable it)
 assert.eq(list(set("a".elems()) & set("b".elems())), [])
@@ -75,13 +75,14 @@ assert.eq(list(set("ab".elems()) & set("bc".elems())), ["b"])
 assert.eq(set([1, 2, 3]) ^ set([4, 5, 3]), set([1, 2, 4, 5]))
 
 def test_set_augmented_assign():
-  x = set([1, 2, 3])
-  x &= set([2, 3])
-  assert.eq(x, set([2, 3]))
-  x |= set([1])
-  assert.eq(x, set([1, 2, 3]))
-  x ^= set([4, 5, 3])
-  assert.eq(x, set([1, 2, 4, 5]))
+    x = set([1, 2, 3])
+    x &= set([2, 3])
+    assert.eq(x, set([2, 3]))
+    x |= set([1])
+    assert.eq(x, set([1, 2, 3]))
+    x ^= set([4, 5, 3])
+    assert.eq(x, set([1, 2, 4, 5]))
+
 test_set_augmented_assign()
 
 # len
@@ -99,17 +100,19 @@ assert.eq(x, x)
 assert.eq(y, y)
 assert.true(x != y)
 assert.eq(set([1, 2, 3]), set([3, 2, 1]))
-assert.fails(lambda: x < y, "set < set not implemented")
+assert.fails(lambda : x < y, "set < set not implemented")
 
 # iteration
 assert.true(type([elem for elem in x]), "list")
 assert.true(list([elem for elem in x]), [1, 2, 3])
+
 def iter():
-  list = []
-  for elem in x:
-    list.append(elem)
-  return list
+    list = []
+    for elem in x:
+        list.append(elem)
+    return list
+
 assert.eq(iter(), [1, 2, 3])
 
 # sets are not indexable
-assert.fails(lambda: x[0], "unhandled.*operation")
+assert.fails(lambda : x[0], "unhandled.*operation")

@@ -118,7 +118,6 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{`x = 1 + \
 2`, `x = 1 + 2 EOF`},
 		{`x = 'a\nb'`, `x = "a\nb" EOF`},
-		{`x = 'a\zb'`, `x = "a\\zb" EOF`},
 		{`x = r'a\nb'`, `x = "a\\nb" EOF`},
 		{`x = '\''`, `x = "'" EOF`},
 		{`x = "\""`, `x = "\"" EOF`},
@@ -192,10 +191,32 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{`"\377"`, `"\xff" EOF`},
 		{`"\378"`, `"\x1f8" EOF`},                                // = '\37' + '8'
 		{`"\400"`, `foo.star:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
-		// Backslashes that are not part of escapes are treated literally,
-		// but this behavior will change; see b/34519173.
-		{`"\+"`, `"\\+" EOF`},
-		{`"\o123"`, `"\\o123" EOF`},
+
+		// backslash escapes
+		// As in Go, a backslash must escape something.
+		// (Python started issuing a deprecation warning in 3.6.)
+		{`"foo\(bar"`, `foo.star:1:1: invalid escape sequence \(`},
+		{`"\+"`, `foo.star:1:1: invalid escape sequence \+`},
+		{`"\w"`, `foo.star:1:1: invalid escape sequence \w`},
+		{`"\""`, `"\"" EOF`},
+		{`"\'"`, `foo.star:1:1: invalid escape sequence \'`},
+		{`'\w'`, `foo.star:1:1: invalid escape sequence \w`},
+		{`'\''`, `"'" EOF`},
+		{`'\"'`, `foo.star:1:1: invalid escape sequence \"`},
+		{`"""\w"""`, `foo.star:1:1: invalid escape sequence \w`},
+		{`"""\""""`, `"\"" EOF`},
+		{`"""\'"""`, `foo.star:1:1: invalid escape sequence \'`},
+		{`'''\w'''`, `foo.star:1:1: invalid escape sequence \w`},
+		{`'''\''''`, `"'" EOF`},
+		{`'''\"'''`, `foo.star:1:1: invalid escape sequence \"`}, // error
+		{`r"\w"`, `"\\w" EOF`},
+		{`r"\""`, `"\\\"" EOF`},
+		{`r"\'"`, `"\\'" EOF`},
+		{`r'\w'`, `"\\w" EOF`},
+		{`r'\''`, `"\\'" EOF`},
+		{`r'\"'`, `"\\\"" EOF`},
+		{`'a\zb'`, `foo.star:1:1: invalid escape sequence \z`},
+		{`"\o123"`, `foo.star:1:1: invalid escape sequence \o`},
 		// floats starting with octal digits
 		{"012934.", `1.293400e+04 EOF`},
 		{"012934.1", `1.293410e+04 EOF`},

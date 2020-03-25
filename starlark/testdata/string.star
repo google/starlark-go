@@ -8,7 +8,7 @@ assert.eq(r'a\bc', "a\\bc")
 
 # truth
 assert.true("abc")
-assert.true("\0")
+assert.true(chr(0))
 assert.true(not "")
 
 # str + str
@@ -200,7 +200,7 @@ assert.eq("a{x!r}c".format(x='b'), r'a"b"c')
 assert.fails(lambda: "{x!}".format(x=1), "unknown conversion")
 assert.fails(lambda: "{x!:}".format(x=1), "unknown conversion")
 assert.fails(lambda: '{a.b}'.format(1), "syntax x.y is not supported")
-assert.fails(lambda: '{a[0]}'.format(1), "syntax a\[i\] is not supported")
+assert.fails(lambda: '{a[0]}'.format(1), "syntax a\\[i\\] is not supported")
 assert.fails(lambda: '{ {} }'.format(1), "nested replacement fields not supported")
 assert.fails(lambda: '{{}'.format(1), "single '}' in format")
 assert.fails(lambda: '{}}'.format(1), "single '}' in format")
