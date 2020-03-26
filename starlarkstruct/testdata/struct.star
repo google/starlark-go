@@ -58,6 +58,6 @@ assert.eq(getattr(alice, "city"), "NYC")
 assert.eq(bob + bob, bob)
 assert.eq(bob + alice, person(age = 50, city = "NYC", name = "alice"))
 assert.eq(alice + bob, person(age = 50, city = "NYC", name = "bob"))  # not commutative! a misfeature
-assert.fails(lambda : alice + 1, "struct \+ int")
+assert.fails(lambda : alice + 1, "struct \\+ int")
 assert.eq(http + http, http)
-assert.fails(lambda : http + bob, "different constructors: hostport \+ person")
+assert.fails(lambda : http + bob, "different constructors: hostport \\+ person")

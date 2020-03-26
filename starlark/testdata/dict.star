@@ -13,7 +13,7 @@ assert.true({False: False})
 assert.true(not {})
 
 # dict + dict is no longer supported.
-assert.fails(lambda: {"a": 1} + {"b": 2}, 'unknown binary op: dict \+ dict')
+assert.fails(lambda: {"a": 1} + {"b": 2}, 'unknown binary op: dict \\+ dict')
 
 # dict comprehension
 assert.eq({x: x*x for x in range(3)}, {0: 0, 1: 1, 2: 4})

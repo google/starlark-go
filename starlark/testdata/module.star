@@ -14,4 +14,4 @@ assert.fails(assignfield, "can't assign to .foo field of module")
 
 # no such field
 assert.fails(lambda : assert.nonesuch, "module has no .nonesuch field or method$")
-assert.fails(lambda : assert.falls, "module has no .falls field or method .did you mean .fails\?")
+assert.fails(lambda : assert.falls, "module has no .falls field or method .did you mean .fails\\?")
