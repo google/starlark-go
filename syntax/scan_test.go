@@ -119,6 +119,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 2`, `x = 1 + 2 EOF`},
 		{`x = 'a\nb'`, `x = "a\nb" EOF`},
 		{`x = r'a\nb'`, `x = "a\\nb" EOF`},
+		{"x = 'a\\\nb'", `x = "ab" EOF`},
 		{`x = '\''`, `x = "'" EOF`},
 		{`x = "\""`, `x = "\"" EOF`},
 		{`x = r'\''`, `x = "\\'" EOF`},
