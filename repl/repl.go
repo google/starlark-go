@@ -12,16 +12,6 @@
 // for side effects.
 package repl // import "go.starlark.net/repl"
 
-// TODO(adonovan):
-//
-// - Unparenthesized tuples are not parsed as a single expression:
-//     >>> (1, 2)
-//     (1, 2)
-//     >>> 1, 2
-//     ...
-//     >>>
-//   This is not necessarily a bug.
-
 import (
 	"context"
 	"fmt"
