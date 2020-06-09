@@ -2945,7 +2945,7 @@ load("module.star", "x", "y", "z")       # assigns x, y, and z
 load("module.star", "x", y2="y", "z")    # assigns x, y2, and z
 ```
 
-A load statement within a function is a static error.
+A load statement may not be nested inside any other statement.
 
 
 ## Module execution
