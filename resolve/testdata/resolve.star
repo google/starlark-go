@@ -143,6 +143,21 @@ load("foo",
      _e="f") # ok
 
 ---
+# option:globalreassign
+if M:
+    load("foo", "bar") ### "load statement within a conditional"
+
+---
+# option:globalreassign
+for x in M:
+    load("foo", "bar") ### "load statement within a loop"
+
+---
+# option:recursion option:globalreassign
+while M:
+    load("foo", "bar") ### "load statement within a loop"
+
+---
 # return statements must be within a function
 
 return ### "return statement not within a function"
