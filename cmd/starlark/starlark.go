@@ -19,6 +19,7 @@ import (
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkjson"
 )
 
 // flags
@@ -88,6 +89,10 @@ func doMain() int {
 	thread := &starlark.Thread{Load: repl.MakeLoad()}
 	globals := make(starlark.StringDict)
 
+	// Ideally this statement would update the predeclared environment.
+	// TODO(adonovan): plumb predeclared env through to the REPL.
+	starlark.Universe["json"] = starlarkjson.Module
+
 	switch {
 	case flag.NArg() == 1 || *execprog != "":
 		var (
@@ -113,7 +118,6 @@ func doMain() int {
 		fmt.Println("Welcome to Starlark (go.starlark.net)")
 		thread.Name = "REPL"
 		repl.REPL(thread, globals)
-		return 0
 	default:
 		log.Print("want at most one Starlark file name")
 		return 1
