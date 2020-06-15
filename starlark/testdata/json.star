@@ -56,9 +56,9 @@ assert.eq(json.decode('[]'), [])
 assert.eq(json.decode('[1]'), [1])
 assert.eq(json.decode('[1,2,3]'), [1, 2, 3])
 assert.eq(json.decode('{"one": 1, "two": 2}'), dict(one=1, two=2))
-assert.eq(json.decode('{"foo\u0000bar": 42}'), {"foo\x00bar": 42})
-assert.eq(json.decode('"\ud83d\ude39\ud83d\udc8d"'), "😹💍")
-assert.eq(json.decode('"\u0123"'), 'ģ')
+assert.eq(json.decode('{"foo\\u0000bar": 42}'), {"foo\x00bar": 42})
+assert.eq(json.decode('"\\ud83d\\ude39\\ud83d\\udc8d"'), "😹💍")
+assert.eq(json.decode('"\\u0123"'), 'ģ')
 assert.eq(json.decode('"\x7f"'), "\x7f")
 
 def decode_error(expr, error):
@@ -68,7 +68,7 @@ decode_error('truefalse',
              "json.decode: at offset 4, unexpected character 'f' after value")
 
 decode_error('"abc', "unclosed string literal")
-decode_error('"ab\gc"', "invalid character 'g' in string escape code")
+decode_error('"ab\\gc"', "invalid character 'g' in string escape code")
 decode_error("'abc'", "unexpected character '\\\\''")
 
 decode_error("1.2.3", "invalid number: 1.2.3")
