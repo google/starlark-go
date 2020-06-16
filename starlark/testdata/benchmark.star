@@ -32,6 +32,12 @@ def bench_int():
         a += 1
 
 def bench_bigint():
-    a = 1 << 31 # maxint32 + 1
+    a = 1 << 31  # maxint32 + 1
     for _ in range1000:
         a += 1
+
+def bench_gauss():
+    # Sum of arithmetic series. All results fit in int32.
+    acc = 0
+    for x in range(92000):
+        acc += x

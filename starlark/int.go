@@ -14,30 +14,9 @@ import (
 )
 
 // Int is the type of a Starlark int.
-type Int struct {
-	// We use only the signed 32 bit range of small to ensure
-	// that small+small and small*small do not overflow.
-	small_ int64    // minint32 <= small <= maxint32
-	big_   *big.Int // big != nil <=> value is not representable as int32
-}
-
-// --- low-level accessors ---
-
-// get returns the small and big components of the Int.
-// small is defined only if big is nil.
-func (i Int) get() (small int64, big *big.Int) {
-	return i.small_, i.big_
-}
-
-// Precondition: math.MinInt32 <= x && x <= math.MaxInt32
-func makeSmallInt(x int64) Int {
-	return Int{small_: x}
-}
-
-// Precondition: x cannot be represented as int32.
-func makeBigInt(x *big.Int) Int {
-	return Int{big_: x}
-}
+//
+// The zero value is not a legal value; use MakeInt(0).
+type Int struct{ impl intImpl }
 
 // --- high-level accessors ---
 
