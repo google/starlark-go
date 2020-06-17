@@ -56,16 +56,17 @@ func TestIntOpts(t *testing.T) {
 		if got := fmt.Sprintf("%x", test.val); got != test.want {
 			t.Errorf("%d equals %s, want %s", i, got, test.want)
 		}
-		if test.val.small < math.MinInt32 || math.MaxInt32 < test.val.small {
+		small, big := test.val.get()
+		if small < math.MinInt32 || math.MaxInt32 < small {
 			t.Errorf("expected big, %d %s", i, test.val)
 		}
-		if test.val.big == nil {
+		if big == nil {
 			continue
 		}
-		if test.val.small != 0 {
-			t.Errorf("expected 0 small, %d %s with %d", i, test.val, test.val.small)
+		if small != 0 {
+			t.Errorf("expected 0 small, %d %s with %d", i, test.val, small)
 		}
-		if b := test.val.big; b.Cmp(left) >= 0 && b.Cmp(right) <= 0 {
+		if big.Cmp(left) >= 0 && big.Cmp(right) <= 0 {
 			t.Errorf("expected small, %d %s", i, test.val)
 		}
 	}
