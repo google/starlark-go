@@ -19,6 +19,9 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
+	// Postcondition: args is not mutated. This is stricter than required by Callable,
+	// but allows CALL to avoid a copy.
+
 	if !resolve.AllowRecursion {
 		// detect recursion
 		for _, fr := range thread.stack[:len(thread.stack)-1] {
@@ -276,9 +279,15 @@ loop:
 			// positional args
 			var positional Tuple
 			if npos := int(arg >> 8); npos > 0 {
-				positional = make(Tuple, npos)
+				positional = stack[sp-npos : sp]
 				sp -= npos
-				copy(positional, stack[sp:])
+
+				// Copy positional arguments into a new array,
+				// unless the callee is another Starlark function,
+				// in which case it can be trusted not to mutate them.
+				if _, ok := stack[sp-1].(*Function); !ok || args != nil {
+					positional = append(Tuple(nil), positional...)
+				}
 			}
 			if args != nil {
 				// Add elements from *args sequence.
