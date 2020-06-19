@@ -19,7 +19,7 @@ type intImpl struct {
 // small is defined only if big is nil.
 // small is sign-extended to 64 bits for ease of subsequent arithmetic.
 func (i Int) get() (small int64, big *big.Int) {
-	return i.small_, i.big_
+	return i.impl.small_, i.impl.big_
 }
 
 // Precondition: math.MinInt32 <= x && x <= math.MaxInt32

@@ -36,7 +36,7 @@ assert.eq(tuple(), ())
 assert.eq(tuple("abc".elems()), ("a", "b", "c"))
 assert.eq(tuple(["a", "b", "c"]), ("a", "b", "c"))
 assert.eq(tuple([1]), (1,))
-assert.fails(lambda : tuple(1), "got int, want iterable")
+assert.fails(lambda: tuple(1), "got int, want iterable")
 
 # tuple * int,  int * tuple
 abc = tuple("abc".elems())
@@ -48,8 +48,8 @@ assert.eq(0 * abc, ())
 assert.eq(-1 * abc, ())
 assert.eq(1 * abc, abc)
 assert.eq(3 * abc, ("a", "b", "c", "a", "b", "c", "a", "b", "c"))
-assert.fails(lambda : abc * (1000000 * 1000000), "repeat count 1000000000000 too large")
-assert.fails(lambda : abc * 1000000 * 1000000, "excessive repeat .3000000000000 elements")
+assert.fails(lambda: abc * (1000000 * 1000000), "repeat count 1000000000000 too large")
+assert.fails(lambda: abc * 1000000 * 1000000, "excessive repeat \\(3000000 \\* 1000000 elements")
 
 # TODO(adonovan): test use of tuple as sequence
 # (for loop, comprehension, library functions).
