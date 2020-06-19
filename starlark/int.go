@@ -16,7 +16,7 @@ import (
 // Int is the type of a Starlark int.
 //
 // The zero value is not a legal value; use MakeInt(0).
-type Int struct{ impl intImpl }
+type Int struct{ intImpl }
 
 // --- high-level accessors ---
 
