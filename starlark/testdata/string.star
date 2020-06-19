@@ -25,7 +25,7 @@ assert.eq(1 * "abc", "abc")
 assert.eq(5 * "abc", "abcabcabcabcabc")
 assert.fails(lambda: 1.0 * "abc", "unknown.*float \\* str")
 assert.fails(lambda : "abc" * (1000000 * 1000000), "repeat count 1000000000000 too large")
-assert.fails(lambda : "abc" * 1000000 * 1000000, "excessive repeat .3000000000000 elements")
+assert.fails(lambda : "abc" * 1000000 * 1000000, "excessive repeat \\(3000000 \\* 1000000 elements")
 
 # len
 assert.eq(len("Hello, 世界!"), 14)
