@@ -1,4 +1,4 @@
-//+build linux darwin
+//+build linux darwin dragonfly freebsd netbsd openbsd solaris
 //+build amd64 arm64,!darwin mips64x ppc64x
 
 package starlark
@@ -22,9 +22,9 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"runtime"
+	"syscall"
 	"unsafe"
-
-	"golang.org/x/sys/unix"
 )
 
 // intImpl represents a union of (int32, *big.Int) in a single pointer,
@@ -59,7 +59,15 @@ func makeBigInt(x *big.Int) Int { return Int{intImpl(x)} }
 var smallints = reserveAddresses(1 << 32)
 
 func reserveAddresses(len int) uintptr {
-	b, err := unix.Mmap(-1, 0, len, unix.PROT_READ, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+	// Use syscall to avoid golang.org/x/sys/unix dependency.
+	MAP_ANON := 0x1000 // darwin (and all BSDs)
+	switch runtime.GOOS {
+	case "linux":
+		MAP_ANON = 0x20
+	case "solaris":
+		MAP_ANON = 0x100
+	}
+	b, err := syscall.Mmap(-1, 0, len, syscall.PROT_READ, syscall.MAP_PRIVATE|MAP_ANON)
 	if err != nil {
 		log.Fatalf("mmap: %v", err)
 	}
