@@ -1,5 +1,5 @@
 //+build linux darwin
-//+build amd64 arm64 mips64x ppc64x
+//+build amd64 arm64,!darwin mips64x ppc64x
 
 package starlark
 
@@ -9,6 +9,14 @@ package starlark
 // disambiguates int32 values from *big.Int pointers, letting all Int
 // values be represented as an unsafe.Pointer, so that Int-to-Value
 // interface conversion need not allocate.
+
+// Although iOS (arm64,darwin) claims to be a POSIX-compliant,
+// it limits each process to about 700MB of virtual address space,
+// which defeats the optimization.
+//
+// TODO(golang.org/issue/38485): darwin,arm64 may refer to macOS in the future.
+// Update this when there are distinct GOOS values for macOS, iOS, and other Apple
+// operating systems on arm64.
 
 import (
 	"log"
