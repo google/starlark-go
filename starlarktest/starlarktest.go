@@ -9,7 +9,7 @@
 // definition.
 //
 // The assert.error function, which reports errors to the current Go
-// testing.T, requires that clients call SetTest(thread, t) before use.
+// testing.T, requires that clients call SetReporter(thread, t) before use.
 package starlarktest // import "go.starlark.net/starlarktest"
 
 import (
