@@ -49,7 +49,7 @@ type Unpacker interface {
 //      if len(args) > 0 {
 //              return fmt.Errorf("f: unexpected positional arguments")
 //      }
-//      err := UnpackArgs("f", args, kwargs, "a", &a, "b?", &b, "c?")
+//      err := UnpackArgs("f", args, kwargs, "a", &a, "b?", &b, "c?", &c)
 //
 //      // 3. positional parameters only, like def f(a, b=42, c=None, /) in Python 3.8.
 //      err := UnpackPositionalArgs("f", args, kwargs, 1, &a, &b, &c)
