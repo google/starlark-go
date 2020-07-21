@@ -5,48 +5,72 @@
 # tuple assignment
 load("assert.star", "assert")
 
+() = () # empty ok
+
 a, b, c = 1, 2, 3
 assert.eq(a, 1)
 assert.eq(b, 2)
 assert.eq(c, 3)
 
-def f1(): (x,) = 1
-assert.fails(f1, "int in sequence assignment")
-def f2(): a, b, c = 1, 2
-assert.fails(f2, "too few values to unpack")
-def f3(): a, b = 1, 2, 3
-assert.fails(f3, "too many values to unpack")
-def f4(): a, b = (1,)
-assert.fails(f4, "too few values to unpack")
-def f5(): (a,) = [1, 2, 3]
-assert.fails(f5, "too many values to unpack")
-
+(d, e, f,) = (1, 2, 3) # trailing comma ok
+---
+(a, b, c) = 1 ### "got int in sequence assignment"
+---
+(a, b) = () ### "too few values to unpack"
+---
+(a, b) = (1,) ### "too few values to unpack"
+---
+(a, b, c) = (1, 2) ### "too few values to unpack"
+---
+(a, b) = (1, 2, 3) ### "too many values to unpack"
+---
+() = 1 ### "got int in sequence assignment"
+---
+() = (1,) ### "too many values to unpack"
+---
+() = (1, 2) ### "too many values to unpack"
 ---
 # list assignment
 load("assert.star", "assert")
+
+[] = [] # empty ok
 
 [a, b, c] = [1, 2, 3]
 assert.eq(a, 1)
 assert.eq(b, 2)
 assert.eq(c, 3)
 
-def f1(): [a, b, c,] = 1
-assert.fails(f1, "got int in sequence assignment")
-def f2(): [a, b, c] = 1, 2
-assert.fails(f2, "too few values to unpack")
-def f3(): [a, b] = 1, 2, 3
-assert.fails(f3, "too many values to unpack")
-def f4(): [a, b] = (1,)
-assert.fails(f4, "too few values to unpack")
-
+[d, e, f,] = [1, 2, 3] # trailing comma ok
+---
+[a, b, c] = 1 ### "got int in sequence assignment"
+---
+[a, b] = [] ### "too few values to unpack"
+---
+[a, b] = [1] ### "too few values to unpack"
+---
+[a, b, c] = [1, 2] ### "too few values to unpack"
+---
+[a, b] = [1, 2, 3] ### "too many values to unpack"
+---
+[] = 1 ### "got int in sequence assignment"
+---
+[] = [1] ### "too many values to unpack"
+---
+[] = [1, 2] ### "too many values to unpack"
 ---
 # list-tuple assignment
 load("assert.star", "assert")
+
+# empty ok
+[] = ()
+() = []
 
 [a, b, c] = (1, 2, 3)
 assert.eq(a, 1)
 assert.eq(b, 2)
 assert.eq(c, 3)
+
+[a2, b2, c2] = 1, 2, 3 # bare tuple ok
 
 (d, e, f) = [1, 2, 3]
 assert.eq(d, 1)
