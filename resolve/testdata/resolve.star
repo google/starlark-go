@@ -214,8 +214,9 @@ f() = 0 ### "can't assign to callexpr"
 [a, b] = 0
 [c, d] += 0 ### "can't use list expression in augmented assignment"
 (e, f) += 0 ### "can't use tuple expression in augmented assignment"
-[] = 0 ### "can't assign to \\[\\]"
-() = 0 ### "can't assign to ()"
+
+[] = 0 # ok
+() = 0 # ok
 
 ---
 # break and continue statements must appear within a loop

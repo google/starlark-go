@@ -605,9 +605,6 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 
 	case *syntax.TupleExpr:
 		// (x, y) = ...
-		if len(lhs.List) == 0 {
-			r.errorf(syntax.Start(lhs), "can't assign to ()")
-		}
 		if isAugmented {
 			r.errorf(syntax.Start(lhs), "can't use tuple expression in augmented assignment")
 		}
@@ -617,9 +614,6 @@ func (r *resolver) assign(lhs syntax.Expr, isAugmented bool) {
 
 	case *syntax.ListExpr:
 		// [x, y, z] = ...
-		if len(lhs.List) == 0 {
-			r.errorf(syntax.Start(lhs), "can't assign to []")
-		}
 		if isAugmented {
 			r.errorf(syntax.Start(lhs), "can't use list expression in augmented assignment")
 		}
