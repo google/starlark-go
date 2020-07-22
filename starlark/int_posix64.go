@@ -63,6 +63,7 @@ func reserveAddresses(len int) uintptr {
 	MAP_ANON := 0x1000 // darwin (and all BSDs)
 	switch runtime.GOOS {
 	case "linux":
+	case "android":
 		MAP_ANON = 0x20
 	case "solaris":
 		MAP_ANON = 0x100
