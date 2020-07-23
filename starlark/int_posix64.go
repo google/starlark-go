@@ -62,8 +62,7 @@ func reserveAddresses(len int) uintptr {
 	// Use syscall to avoid golang.org/x/sys/unix dependency.
 	MAP_ANON := 0x1000 // darwin (and all BSDs)
 	switch runtime.GOOS {
-	case "linux":
-	case "android":
+	case "linux", "android":
 		MAP_ANON = 0x20
 	case "solaris":
 		MAP_ANON = 0x100
