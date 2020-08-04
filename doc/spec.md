@@ -1302,7 +1302,6 @@ def hello():
     if x == 1:
       y = "hello"
 ```
-
 It is a dynamic error to evaluate a reference to a local variable
 before it has been bound:
 
@@ -1318,6 +1317,32 @@ The same is true for global variables:
 print(x)                # dynamic error: global variable x referenced before assignment
 x = "hello"
 ```
+
+and for nested loops in comprehensions.
+In the (unnatural) examples below, the scope of the variables `x`, `y`, 
+and `z` is the entire compehension block, except the operand of the first
+loop (`[]` or `[1]`), which is resolved in the enclosing environment.
+The second loop may thus refer to variables defined by the third (`z`),
+even though such references would fail if actually executed.
+
+```
+[1//0 for x in [] for y in z for z in ()]   # []   (no error)
+[1//0 for x in [1] for y in z for z in ()]  # dynamic error: local variable z referenced before assignment
+```
+
+<!-- This is similar to Python[23]. Presumed rational: it resembles
+     the desugaring to nested loop statements, in which the scope
+     of all three variables is the entire enclosing function,
+     including the portion before the bindings.
+
+      def f():
+        ...
+        for x in []:
+          for y in z:
+            for z in ():
+              1//0
+-->
+
 
 It is a static error to bind a global variable already explicitly bound in the file:
 
