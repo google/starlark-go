@@ -1163,7 +1163,7 @@ func slice(x, lo, hi, step_ Value) (Value, error) {
 		var err error
 		step, err = AsInt32(step_)
 		if err != nil {
-			return nil, fmt.Errorf("got %s for slice step, want int", step_.Type())
+			return nil, fmt.Errorf("invalid slice step: %s", err)
 		}
 		if step == 0 {
 			return nil, fmt.Errorf("zero is not a valid slice step")
@@ -1257,7 +1257,7 @@ func asIndex(v Value, len int, result *int) error {
 		var err error
 		*result, err = AsInt32(v)
 		if err != nil {
-			return fmt.Errorf("got %s, want int", v.Type())
+			return err
 		}
 		if *result < 0 {
 			*result += len
