@@ -128,7 +128,7 @@ assert.eq("banana"[::-1], "ananab")
 assert.eq("banana"[None:None:-2], "aaa")
 assert.fails(lambda: "banana"[1.0::], "invalid start index: got float, want int")
 assert.fails(lambda: "banana"[:"":], "invalid end index: got string, want int")
-assert.fails(lambda: "banana"[:"":True], "got bool for slice step, want int")
+assert.fails(lambda: "banana"[:"":True], "invalid slice step: got bool, want int")
 
 # in, not in
 assert.true("oo" in "food")

@@ -207,7 +207,7 @@ func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	}
 	i, err := AsInt32(args[0])
 	if err != nil {
-		return nil, fmt.Errorf("chr: got %s, want int", args[0].Type())
+		return nil, fmt.Errorf("chr: %s", err)
 	}
 	if i < 0 {
 		return nil, fmt.Errorf("chr: Unicode code point %d out of range (<0)", i)
