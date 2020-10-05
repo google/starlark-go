@@ -440,7 +440,13 @@ func AsFloat(x Value) (f float64, ok bool) {
 	return 0, false
 }
 
-func (x Float) Mod(y Float) Float { return Float(math.Mod(float64(x), float64(y))) }
+func (x Float) Mod(y Float) Float {
+	z := Float(math.Mod(float64(x), float64(y)))
+	if (x < 0) != (y < 0) && z != 0 {
+		z += y
+	}
+	return z
+}
 
 // Unary implements the operations +float and -float.
 func (f Float) Unary(op syntax.Token) (Value, error) {
