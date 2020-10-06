@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -886,7 +885,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				if y == 0.0 {
 					return nil, fmt.Errorf("float modulo by zero")
 				}
-				return Float(math.Mod(float64(x), float64(y))), nil
+				return x.Mod(y), nil
 			case Int:
 				if y.Sign() == 0 {
 					return nil, fmt.Errorf("float modulo by zero")
