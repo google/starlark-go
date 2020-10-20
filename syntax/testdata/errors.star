@@ -140,22 +140,17 @@ print(1, 2, 3
 ---
 _ = a if b ### "conditional expression without else clause"
 ---
-load("") ### "load statement must import at least 1 symbol"
+load("") # ok
 ---
-load("", 1) ### `load operand must be "name" or localname="name" \(got int literal\)`
+load("", 1) ### `load only takes one value, either "name" or localname="name" \(got int literal\)`
 ---
-load("a", "x") # ok
+load("a", "x") ### `load only takes one value, either "name" or localname="name" \(got string literal\)`
 ---
-load(1, 2) ### "first operand of load statement must be a string literal"
----
-load("a", x) ### `load operand must be "x" or x="originalname"`
----
-load("a", x2=x) ### `original name of loaded symbol must be quoted: x2="originalname"`
+load(1) ### "first operand of load statement must be a string literal"
 ---
 # All of these parse.
-load("a", "x")
-load("a", "x", y2="y")
-load("a", x2="x", "y") # => positional-before-named arg check happens later (!)
+load(b="a")
+load("a")
 ---
 # 'load' is not an identifier
 load = 1 ### `got '=', want '\('`
@@ -172,7 +167,7 @@ def f(load): ### `not an identifier`
   pass
 ---
 # A load statement allows a trailing comma.
-load("module", "x",)
+load("module",)
 ---
 x = 1 +
 2 ### "got newline, want primary expression"

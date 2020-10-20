@@ -55,13 +55,10 @@ func Walk(n Node, f func(Node) bool) {
 		}
 
 	case *LoadStmt:
+		if n.Alias != nil {
+			Walk(n.Alias, f)
+		}
 		Walk(n.Module, f)
-		for _, from := range n.From {
-			Walk(from, f)
-		}
-		for _, to := range n.To {
-			Walk(to, f)
-		}
 
 	case *Ident, *Literal:
 		// no-op

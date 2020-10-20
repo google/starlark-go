@@ -315,65 +315,42 @@ func (p *parser) parseSmallStmt() Stmt {
 // stmt = LOAD '(' STRING {',' (IDENT '=')? STRING} [','] ')'
 func (p *parser) parseLoadStmt() *LoadStmt {
 	loadPos := p.nextToken() // consume LOAD
-	lparen := p.consume(LPAREN)
 
-	if p.tok != STRING {
+	lparen := p.consume(LPAREN)
+	_ = lparen // TODO
+
+	var module *Literal
+	var alias *Ident
+	if p.tok == STRING {
+		module = p.parsePrimary().(*Literal)
+	} else if p.tok == IDENT {
+		alias = p.parseIdent()
+		if p.tok != EQ {
+			p.in.errorf(p.in.pos, `load operand must be "%[1]s" or %[1]s="originalname" (want '=' after %[1]s)`, alias.Name)
+		}
+		p.consume(EQ)
+		if p.tok != STRING {
+			p.in.errorf(p.in.pos, `original name of loaded symbol must be quoted: %s="originalname"`, alias.Name)
+		}
+		module = p.parsePrimary().(*Literal)
+	} else {
 		p.in.errorf(p.in.pos, "first operand of load statement must be a string literal")
 	}
-	module := p.parsePrimary().(*Literal)
 
-	var from, to []*Ident
-	for p.tok != RPAREN && p.tok != EOF {
+	if p.tok == COMMA {
 		p.consume(COMMA)
-		if p.tok == RPAREN {
-			break // allow trailing comma
-		}
-		switch p.tok {
-		case STRING:
-			// load("module", "id")
-			// To name is same as original.
-			lit := p.parsePrimary().(*Literal)
-			id := &Ident{
-				NamePos: lit.TokenPos.add(`"`),
-				Name:    lit.Value.(string),
-			}
-			to = append(to, id)
-			from = append(from, id)
-
-		case IDENT:
-			// load("module", to="from")
-			id := p.parseIdent()
-			to = append(to, id)
-			if p.tok != EQ {
-				p.in.errorf(p.in.pos, `load operand must be "%[1]s" or %[1]s="originalname" (want '=' after %[1]s)`, id.Name)
-			}
-			p.consume(EQ)
-			if p.tok != STRING {
-				p.in.errorf(p.in.pos, `original name of loaded symbol must be quoted: %s="originalname"`, id.Name)
-			}
-			lit := p.parsePrimary().(*Literal)
-			from = append(from, &Ident{
-				NamePos: lit.TokenPos.add(`"`),
-				Name:    lit.Value.(string),
-			})
-
-		case RPAREN:
-			p.in.errorf(p.in.pos, "trailing comma in load statement")
-
-		default:
-			p.in.errorf(p.in.pos, `load operand must be "name" or localname="name" (got %#v)`, p.tok)
-		}
 	}
+
+	if p.tok != RPAREN {
+		p.in.errorf(p.in.pos, `load only takes one value, either "name" or localname="name" (got %#v)`, p.tok)
+	}
+
 	rparen := p.consume(RPAREN)
 
-	if len(to) == 0 {
-		p.in.errorf(lparen, "load statement must import at least 1 symbol")
-	}
 	return &LoadStmt{
 		Load:   loadPos,
 		Module: module,
-		To:     to,
-		From:   from,
+		Alias:  alias,
 		Rparen: rparen,
 	}
 }

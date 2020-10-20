@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"go.starlark.net/internal/chunkedfile"
-	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
 
@@ -168,10 +167,12 @@ else:
 			`(AssignStmt Op== LHS=(DotExpr X=x Name=f) RHS=1)`},
 		{`(x, y) = 1`,
 			`(AssignStmt Op== LHS=(ParenExpr X=(TupleExpr List=(x y))) RHS=1)`},
-		{`load("", "a", b="c")`,
-			`(LoadStmt Module="" From=(a c) To=(a b))`},
-		{`if True: load("", "a", b="c")`, // load needn't be at toplevel
-			`(IfStmt Cond=True True=((LoadStmt Module="" From=(a c) To=(a b))))`},
+		{`load("")`,
+			`(LoadStmt Module="")`},
+		{`load(a="b")`,
+			`(LoadStmt Module="b" Alias=a)`},
+		{`if True: load("c")`, // load needn't be at toplevel
+			`(IfStmt Cond=True True=((LoadStmt Module="c")))`},
 		{`def f(x, *args, **kwargs):
 	pass`,
 			`(DefStmt Name=f Params=(x (UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)) Body=((BranchStmt Token=pass)))`},
@@ -424,7 +425,8 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 }
 
 func TestParseErrors(t *testing.T) {
-	filename := starlarktest.DataFile("syntax", "testdata/errors.star")
+	// filename := starlarktest.DataFile("syntax", "testdata/errors.star")
+	filename := "./testdata/errors.star"
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		_, err := syntax.Parse(filename, chunk.Source, 0)
 		switch err := err.(type) {
@@ -442,7 +444,7 @@ func TestParseErrors(t *testing.T) {
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+	return filepath.Join(build.Default.GOPATH, "src/github.com/maxmcd/starlark-go", pkgdir, filename)
 }
 
 func BenchmarkParse(b *testing.B) {

@@ -72,7 +72,7 @@ File
 // containing a nonsense program with varied grammar.
 func ExampleWalk() {
 	const src = `
-load("library", "a")
+load(a="library")
 
 def b(c, *, d=e):
     f += {g: h}
@@ -96,8 +96,6 @@ for o in [p for q, r in s if t]:
 	})
 	fmt.Println(strings.Join(idents, " "))
 
-	// The identifer 'a' appears in both LoadStmt.From[0] and LoadStmt.To[0].
-
 	// Output:
-	// a a b c d e f g h i j k l m n o p q r s t u v w x y z
+	// a b c d e f g h i j k l m n o p q r s t u v w x y z
 }

@@ -174,8 +174,7 @@ type LoadStmt struct {
 	commentsRef
 	Load   Position
 	Module *Literal // a string
-	From   []*Ident // name defined in loading module
-	To     []*Ident // name in loaded module
+	Alias  *Ident
 	Rparen Position
 }
 
