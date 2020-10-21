@@ -80,8 +80,8 @@ squares = [x*x for x in range(10)]
 // implementation of 'load' that works sequentially.
 func ExampleThread_Load_sequential() {
 	fakeFilesystem := map[string]string{
-		"c.star": `load("b.star", "b"); c = b + "!"`,
-		"b.star": `load("a.star", "a"); b = a + ", world"`,
+		"c.star": `load("b.star"); c = b.b + "!"`,
+		"b.star": `load("a.star"); b = a.a + ", world"`,
 		"a.star": `a = "Hello"`,
 	}
 
@@ -133,8 +133,8 @@ func ExampleThread_Load_parallel() {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
-			"c.star": `load("a.star", "a"); c = a * 2`,
-			"b.star": `load("a.star", "a"); b = a * 3`,
+			"c.star": `load("a.star"); c = a.a * 2`,
+			"b.star": `load("a.star"); b = a.a * 3`,
 			"a.star": `a = 1; print("loaded a")`,
 		},
 	}
@@ -170,9 +170,9 @@ func TestThreadLoad_ParallelCycle(t *testing.T) {
 	cache := &cache{
 		cache: make(map[string]*entry),
 		fakeFilesystem: map[string]string{
-			"c.star": `load("b.star", "b"); c = b * 2`,
-			"b.star": `load("a.star", "a"); b = a * 3`,
-			"a.star": `load("c.star", "c"); a = c * 5; print("loaded a")`,
+			"c.star": `load("b.star"); c = b.b * 2`,
+			"b.star": `load("a.star"); b = a.a * 3`,
+			"a.star": `load("c.star"); a = c.c * 5; print("loaded a")`,
 		},
 	}
 

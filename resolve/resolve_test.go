@@ -10,7 +10,6 @@ import (
 
 	"go.starlark.net/internal/chunkedfile"
 	"go.starlark.net/resolve"
-	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
 
@@ -30,7 +29,8 @@ func option(chunk, name string) bool {
 
 func TestResolve(t *testing.T) {
 	defer setOptions("")
-	filename := starlarktest.DataFile("resolve", "testdata/resolve.star")
+	// filename := starlarktest.DataFile("resolve", "testdata/resolve.star")
+	filename := "./testdata/resolve.star"
 	for _, chunk := range chunkedfile.Read(filename, t) {
 		f, err := syntax.Parse(filename, chunk.Source, 0)
 		if err != nil {

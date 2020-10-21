@@ -3,7 +3,8 @@
 # This is a "chunked" file: each "---" effectively starts a new file.
 
 # tuple assignment
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 () = () # empty ok
 
@@ -31,7 +32,8 @@ assert.eq(c, 3)
 () = (1, 2) ### "too many values to unpack"
 ---
 # list assignment
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 [] = [] # empty ok
 
@@ -59,7 +61,9 @@ assert.eq(c, 3)
 [] = [1, 2] ### "too many values to unpack"
 ---
 # list-tuple assignment
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 # empty ok
 [] = ()
@@ -92,7 +96,9 @@ assert.eq(n, 4)
 ---
 # option:nesteddef
 # misc assignment
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 def assignment():
   a = [1, 2, 3]
@@ -113,7 +119,9 @@ assignment()
 ---
 # augmented assignment
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 def f():
   x = 1
@@ -126,7 +134,9 @@ f()
 ---
 # effects of evaluating LHS occur only once
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 count = [0] # count[0] is the number of calls to f
 
@@ -143,7 +153,9 @@ assert.eq(count[0], 1) # f was called only once
 ---
 # Order of evaluation.
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 calls = []
 
@@ -178,7 +190,8 @@ g = 1
 ---
 # option:nesteddef
 # Free variables are captured by reference, so this is ok.
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def f():
    def g():
@@ -189,7 +202,8 @@ def f():
 assert.eq(f(), 1)
 
 ---
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 printok = [False]
 
@@ -219,7 +233,8 @@ f()
 z += 3 ### "global variable z referenced before assignment"
 
 ---
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # It's ok to define a global that shadows a built-in...
 list = []
@@ -235,7 +250,8 @@ tuple = ()
 # option:float option:set
 # Same as above, but set and float are dialect-specific;
 # we shouldn't notice any difference.
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 float = 1.0
 assert.eq(type(float), "float")
@@ -258,7 +274,8 @@ x = [1, 2]
 _ = [x for _ in [3] for x in x] ### "local variable x referenced before assignment"
 
 ---
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # assign singleton sequence to 1-tuple
 (x,) = (1,)
@@ -278,7 +295,9 @@ assert.eq(a, 1)
 
 ---
 # assignment to/from fields.
-load("assert.star", "assert", "freeze")
+load(lib="assert.star")
+assert = lib.assert
+freeze = lib.freeze
 
 hf = hasfields()
 hf.x = 1
@@ -295,8 +314,9 @@ assert.fails(lambda: setX(hf), "cannot set field on a frozen hasfields")
 assert.fails(lambda: setY(hf), "cannot set field on a frozen hasfields")
 
 ---
-# destucturing assignment in a for loop.
-load("assert.star", "assert")
+# destructuring assignment in a for loop.
+load(lib="assert.star")
+assert = lib.assert
 
 def f():
   res = []
@@ -315,7 +335,8 @@ assert.eq(g(), {"one": 1, "two": 2})
 ---
 # parenthesized LHS in augmented assignment (success)
 # option:globalreassign
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 a = 5
 (a) += 3
@@ -328,32 +349,34 @@ assert.eq(a, 8)
 
 ---
 # option:globalreassign
-load("assert.star", "assert")
-assert = 1
-load("assert.star", "assert")
+load(lib="assert.star")
+lib = 1
+load(lib="assert.star")
 
 ---
 # option:globalreassign option:loadbindsglobally
-load("assert.star", "assert")
-assert = 1
-load("assert.star", "assert")
+load(lib="assert.star")
+lib = 1
+load(lib="assert.star")
 
 ---
 # option:loadbindsglobally
 _ = assert ### "global variable assert referenced before assignment"
-load("assert.star", "assert")
+load("assert.star")
 
 ---
 _ = assert ### "local variable assert referenced before assignment"
-load("assert.star", "assert")
+load("assert.star")
 
 ---
 def f(): assert.eq(1, 1) # forward ref OK
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 f()
 
 ---
 # option:loadbindsglobally
 def f(): assert.eq(1, 1) # forward ref OK
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 f()

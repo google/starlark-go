@@ -1207,9 +1207,11 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		fcomp.block = fcomp.newBlock() // dead code
 
 	case *syntax.LoadStmt:
-		for i := range stmt.From {
-			fcomp.string(stmt.From[i].Name)
-		}
+		// TODO: maxmcd
+		// for i := range stmt.From {
+		// 	fcomp.string(stmt.From[i].Name)
+		// }
+		fcomp.string(stmt.Alias.Name)
 		module := stmt.Module.Value.(string)
 		fcomp.pcomp.prog.Loads = append(fcomp.pcomp.prog.Loads, Binding{
 			Name: module,
@@ -1217,10 +1219,12 @@ func (fcomp *fcomp) stmt(stmt syntax.Stmt) {
 		})
 		fcomp.string(module)
 		fcomp.setPos(stmt.Load)
-		fcomp.emit1(LOAD, uint32(len(stmt.From)))
-		for i := range stmt.To {
-			fcomp.set(stmt.To[len(stmt.To)-1-i])
-		}
+		fcomp.emit1(LOAD, uint32(0))
+		fcomp.set(stmt.Alias)
+		// fcomp.emit1(LOAD, uint32(len(stmt.From)))
+		// for i := range stmt.To {
+		// 	fcomp.set(stmt.To[len(stmt.To)-1-i])
+		// }
 
 	default:
 		start, _ := stmt.Span()

@@ -563,26 +563,21 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 			r.errorf(stmt.Load, "load statement within a conditional")
 		}
 
-		for i, from := range stmt.From {
-			if from.Name == "" {
-				r.errorf(from.NamePos, "load: empty identifier")
-				continue
-			}
-			if from.Name[0] == '_' {
-				r.errorf(from.NamePos, "load: names with leading underscores are not exported: %s", from.Name)
-			}
-
-			id := stmt.To[i]
-			if LoadBindsGlobally {
-				r.bind(id)
-			} else if r.bindLocal(id) && !AllowGlobalReassign {
-				// "Global" in AllowGlobalReassign is a misnomer for "toplevel".
-				// Sadly we can't report the previous declaration
-				// as id.Binding may not be set yet.
-				r.errorf(id.NamePos, "cannot reassign top-level %s", id.Name)
-			}
+		if stmt.Alias.Name == "" {
+			r.errorf(stmt.Alias.NamePos, "load: empty identifier")
 		}
-
+		if stmt.Alias.Name[0] == '_' {
+			r.errorf(stmt.Alias.NamePos, "load: names with leading underscores are not exported: %s", stmt.Alias.Name)
+		}
+		if LoadBindsGlobally {
+			r.bind(stmt.Alias)
+		} else if r.bindLocal(stmt.Alias) && !AllowGlobalReassign {
+			// "Global" in AllowGlobalReassign is a misnomer for "toplevel".
+			// Sadly we can't report the previous declaration
+			// as id.Binding may not be set yet.
+			r.errorf(stmt.Alias.NamePos, "cannot reassign top-level %s", stmt.Alias.Name)
+		}
+		// TODO (maxmcd)
 	default:
 		log.Panicf("unexpected stmt %T", stmt)
 	}

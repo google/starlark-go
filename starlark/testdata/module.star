@@ -1,6 +1,8 @@
 # Tests of Module.
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 assert.eq(type(assert), "module")
 assert.eq(str(assert), '<module "assert">')

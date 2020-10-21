@@ -15,7 +15,9 @@
 # - set += iterable, perhaps?
 # Test iterator invalidation.
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 # literals
 # Parser does not currently support {1, 2, 3}.

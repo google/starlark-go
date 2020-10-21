@@ -9,7 +9,6 @@ import (
 	"unsafe"
 
 	"go.starlark.net/internal/compile"
-	"go.starlark.net/internal/spell"
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
@@ -510,7 +509,7 @@ loop:
 			}
 
 		case compile.LOAD:
-			n := int(arg)
+			// hasAlias := int(arg)
 			module := string(stack[sp-1].(String))
 			sp--
 
@@ -529,19 +528,23 @@ loop:
 				}
 				break loop
 			}
-
-			for i := 0; i < n; i++ {
-				from := string(stack[sp-1-i].(String))
-				v, ok := dict[from]
-				if !ok {
-					err = fmt.Errorf("load: name %s not found in module %s", from, module)
-					if n := spell.Nearest(from, dict.Keys()); n != "" {
-						err = fmt.Errorf("%s (did you mean %s?)", err, n)
-					}
-					break loop
-				}
-				stack[sp-1-i] = v
+			stack[sp-1-0] = &Module{
+				Name:    module,
+				Members: dict,
 			}
+
+			// for i := 0; i < n; i++ {
+			// 	from := string(stack[sp-1-i].(String))
+			// 	v, ok := dict[from]
+			// 	if !ok {
+			// 		err = fmt.Errorf("load: name %s not found in module %s", from, module)
+			// 		if n := spell.Nearest(from, dict.Keys()); n != "" {
+			// 			err = fmt.Errorf("%s (did you mean %s?)", err, n)
+			// 		}
+			// 		break loop
+			// 	}
+			// 	stack[sp-1-i] = v
+			// }
 
 		case compile.SETLOCAL:
 			locals[arg] = stack[sp-1]

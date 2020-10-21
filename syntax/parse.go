@@ -11,7 +11,11 @@ package syntax
 // package.  Verify that error positions are correct using the
 // chunkedfile mechanism.
 
-import "log"
+import (
+	"log"
+	"path"
+	"strings"
+)
 
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false
@@ -323,6 +327,17 @@ func (p *parser) parseLoadStmt() *LoadStmt {
 	var alias *Ident
 	if p.tok == STRING {
 		module = p.parsePrimary().(*Literal)
+		_, filename := path.Split(module.Value.(string))
+		parts := strings.Split(filename, ".")
+		if len(parts) > 1 {
+			filename = strings.Join(parts[:len(parts)-1], "")
+		}
+		// TODO: replace characters as needed, eg: max.com/foo-bar module
+		// or just let them error and require an alias???
+		alias = &Ident{
+			NamePos: module.TokenPos.add(`"`),
+			Name:    filename,
+		}
 	} else if p.tok == IDENT {
 		alias = p.parseIdent()
 		if p.tok != EQ {

@@ -6,7 +6,8 @@
 #   and test that functions have correct position, free vars, names of locals, etc.
 # - move the hard-coded tests of parameter passing from eval_test.go to here.
 
-load("assert.star", "assert", "freeze")
+load(lib="assert.star")
+assert = lib.assert
 
 # Test lexical scope and closures:
 def outer(x):
@@ -44,7 +45,7 @@ assert.eq(sq(), 9)
 assert.eq(sq(), 16)
 
 # Freezing a closure
-sq2 = freeze(sq)
+sq2 = lib.freeze(sq)
 assert.fails(sq2, "frozen list")
 
 # recursion detection, simple
@@ -116,7 +117,9 @@ assert.eq(len(closures), 10)
 
 ---
 # Default values of function parameters are mutable.
-load("assert.star", "assert", "freeze")
+load(lib="assert.star")
+assert = lib.assert
+
 
 def f(x=[0]):
   return x
@@ -127,12 +130,13 @@ f().append(1)
 assert.eq(f(), [0, 1])
 
 # Freezing a function value freezes its parameter defaults.
-freeze(f)
+lib.freeze(f)
 assert.fails(lambda: f().append(2), "cannot append to frozen list")
 
 ---
 # This is a well known corner case of parsing in Python.
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 f = lambda x: 1 if x else 0
 assert.eq(f(True), 1)
@@ -152,7 +156,8 @@ assert.true(not tf[1]())
 # (This tests a corner case of the implementation:
 # we avoid a map allocation for <64 parameters)
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def f(a, b, c, d, e, f, g, h,
       i, j, k, l, m, n, o, p,
@@ -192,7 +197,8 @@ assert.fails(lambda: f(
 # Related: https://github.com/bazelbuild/starlark/issues/21,
 # which concerns static checks.
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def f(*args, **kwargs):
   return args, kwargs
@@ -209,7 +215,8 @@ assert.fails(lambda: g(1, y=2, **{'y': 3}), 'multiple values for parameter "y"')
 ---
 # Regression test for a bug in CALL_VAR_KW.
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def f(a, b, x, y):
   return a+b+x+y
@@ -218,7 +225,8 @@ assert.eq(f(*("a", "b"), **dict(y="y", x="x")) + ".", 'abxy.')
 ---
 # Order of evaluation of function arguments.
 # Regression test for github.com/google/skylark/issues/135.
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 r = []
 
@@ -241,7 +249,8 @@ assert.eq(r, [1, 2, 3, 5, 4, 6])
 ---
 # option:nesteddef option:recursion
 # See github.com/bazelbuild/starlark#170
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def a():
     list = []
@@ -277,7 +286,8 @@ assert.eq(e(), 1)
 
 ---
 # option:nesteddef
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 def e():
     x = 1

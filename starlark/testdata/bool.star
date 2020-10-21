@@ -1,7 +1,8 @@
 # Tests of Starlark 'bool'
 # option:float
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # truth
 assert.true(True)

@@ -38,7 +38,8 @@
 
 # option:float
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # Ordered comparisons require values of the same type.
 assert.fails(lambda: None < False, "not impl")
@@ -55,7 +56,8 @@ assert.lt(2.0, 3)
 
 ---
 # cyclic data structures
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 cyclic = [1, 2, 3] # list cycle
 cyclic[1] = cyclic
@@ -83,7 +85,8 @@ assert.fails(lambda: cyclic5 == cyclic6, "maximum recursion")
 
 ---
 # regression
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # was a parse error:
 assert.eq(("ababab"[2:]).replace("b", "c"), "acac")
@@ -102,22 +105,26 @@ _ = {}.get(1, default=2) ### "get: unexpected keyword arguments"
 
 ---
 # Load exposes explicitly declared globals from other modules.
-load('assert.star', 'assert', 'freeze')
-assert.eq(str(freeze), '<built-in function freeze>')
+load(lib="assert.star")
+assert = lib.assert
+assert.eq(str(lib.freeze), '<built-in function freeze>')
 
 ---
 # Load does not expose pre-declared globals from other modules.
 # See github.com/google/skylark/issues/75.
-load('assert.star', 'assert', 'matches') ### "matches not found in module"
+load(lib='assert.star')
+lib.matches ### "module has no .matches field or method"
 
 ---
 # Load does not expose universals accessible in other modules.
-load('assert.star', 'len') ### "len not found in module"
+load('assert.star')
+assert.len ### "module has no .len field or method"
 
 
 ---
 # Test plus folding optimization.
-load('assert.star', 'assert')
+load(lib="assert.star")
+assert = lib.assert
 
 s = "s"
 l = [4]
@@ -137,4 +144,5 @@ assert.fails(lambda: [] + [] + 1 + [], "unknown binary op: list \\+ int")
 
 
 ---
-load('assert.star', 'froze') ### `name froze not found .*did you mean freeze`
+load(lib="assert.star")
+assert = lib.froze ### `module has no \.froze field or method \(did you mean \.freeze\?\)`

@@ -1,7 +1,9 @@
 # Tests of Starlark 'list'
 # option:nesteddef
 
-load("assert.star", "assert", "freeze")
+load(lib="assert.star")
+assert = lib.assert
+freeze = lib.freeze
 
 # literals
 assert.eq([], [])

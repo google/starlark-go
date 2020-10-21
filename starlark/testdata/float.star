@@ -1,7 +1,8 @@
 # Tests of Starlark 'float'
 # option:float option:set
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
 
 # TODO(adonovan): more tests:
 # - precision

@@ -24,7 +24,8 @@ func init() {
 }
 
 func Test(t *testing.T) {
-	testdata := starlarktest.DataFile("starlarkstruct", ".")
+	// testdata := starlarktest.DataFile("starlarkstruct", ".")
+	testdata := "."
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
 	filename := filepath.Join(testdata, "testdata/struct.star")

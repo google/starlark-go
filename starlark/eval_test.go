@@ -109,7 +109,8 @@ func TestEvalExpr(t *testing.T) {
 
 func TestExecFile(t *testing.T) {
 	defer setOptions("")
-	testdata := starlarktest.DataFile("starlark", ".")
+	// testdata := starlarktest.DataFile("starlark", ".")
+	testdata := "."
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
 	for _, file := range []string{
@@ -564,7 +565,7 @@ func TestLoadBacktrace(t *testing.T) {
 	// For discussion, see:
 	// https://github.com/google/starlark-go/pull/244
 	const src = `
-load('crash.star', 'x')
+load('crash.star')
 `
 	const loadedSrc = `
 def f(x):

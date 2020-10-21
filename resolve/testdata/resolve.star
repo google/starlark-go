@@ -130,32 +130,26 @@ def f():
 f()
 
 ---
-load("module", "name") # ok
+load(name="module") # ok
 
 def f():
-  load("foo", "bar") ### "load statement within a function"
+  load("foo") ### "load statement within a function"
 
-load("foo",
-     "",     ### "load: empty identifier"
-     "_a",   ### "load: names with leading underscores are not exported: _a"
-     b="",   ### "load: empty identifier"
-     c="_d", ### "load: names with leading underscores are not exported: _d"
-     _e="f") # ok
 
 ---
 # option:globalreassign
 if M:
-    load("foo", "bar") ### "load statement within a conditional"
+    load("bar") ### "load statement within a conditional"
 
 ---
 # option:globalreassign
 for x in M:
-    load("foo", "bar") ### "load statement within a loop"
+    load("bar") ### "load statement within a loop"
 
 ---
 # option:recursion option:globalreassign
 while M:
-    load("foo", "bar") ### "load statement within a loop"
+    load("bar") ### "load statement within a loop"
 
 ---
 # return statements must be within a function
@@ -361,28 +355,28 @@ def f(abc):
    print(goodbye) ### `undefined: goodbye$`
 
 ---
-load("module", "x") # ok
+load(x="module") # ok
 x = 1 ### `cannot reassign local x`
-load("module", "x") ### `cannot reassign top-level x`
+load(x="module") ### `cannot reassign top-level x`
 
 ---
 # option:loadbindsglobally
-load("module", "x") # ok
+load(x="module") # ok
 x = 1 ### `cannot reassign global x`
-load("module", "x") ### `cannot reassign global x`
+load(x="module") ### `cannot reassign global x`
 
 ---
 # option:globalreassign
-load("module", "x") # ok
+load(x="module") # ok
 x = 1 # ok
-load("module", "x") # ok
+load(x="module") # ok
 
 ---
 # option:globalreassign option:loadbindsglobally
-load("module", "x") # ok
+load(x="module") # ok
 x = 1
-load("module", "x") # ok
+load(x="module") # ok
 
 ---
 _ = x # forward ref to file-local
-load("module", "x") # ok
+load(x="module") # ok

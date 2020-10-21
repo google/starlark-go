@@ -4,7 +4,9 @@
 
 # option:recursion
 
-load("assert.star", "assert")
+load(lib="assert.star")
+assert = lib.assert
+
 
 def sum(n):
 	r = 0

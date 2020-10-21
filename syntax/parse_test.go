@@ -168,11 +168,15 @@ else:
 		{`(x, y) = 1`,
 			`(AssignStmt Op== LHS=(ParenExpr X=(TupleExpr List=(x y))) RHS=1)`},
 		{`load("")`,
-			`(LoadStmt Module="")`},
+			`(LoadStmt Module="" Alias=)`},
+		{`load("hello/there")`,
+			`(LoadStmt Module="hello/there" Alias=there)`},
+		{`load("hello/there.star")`,
+			`(LoadStmt Module="hello/there.star" Alias=there)`},
 		{`load(a="b")`,
 			`(LoadStmt Module="b" Alias=a)`},
 		{`if True: load("c")`, // load needn't be at toplevel
-			`(IfStmt Cond=True True=((LoadStmt Module="c")))`},
+			`(IfStmt Cond=True True=((LoadStmt Module="c" Alias=c)))`},
 		{`def f(x, *args, **kwargs):
 	pass`,
 			`(DefStmt Name=f Params=(x (UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)) Body=((BranchStmt Token=pass)))`},
