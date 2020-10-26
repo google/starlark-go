@@ -50,8 +50,8 @@ var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
 		"parse": starlark.NewBuiltin("time.parse", parse),
-		"now": starlark.NewBuiltin("time.now", now),
-		"time": starlark.NewBuiltin("time.time", new),
+		"now":   starlark.NewBuiltin("time.now", now),
+		"time":  starlark.NewBuiltin("time.time", new),
 	},
 }
 
@@ -103,53 +103,53 @@ func now(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 }
 
 func new(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
- y := starlark.MakeInt(0)
- m := starlark.MakeInt(0)
- d := starlark.MakeInt(0)
- h := starlark.MakeInt(0)
- min := starlark.MakeInt(0)
- s := starlark.MakeInt(0)
- ns := starlark.MakeInt(0)
- tz := starlark.String("UTC")
- if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0, &y, &m, &d, &h, &min, &s, &ns, &tz); err != nil {
-	 return nil, err
- }
+	y := starlark.MakeInt(0)
+	m := starlark.MakeInt(0)
+	d := starlark.MakeInt(0)
+	h := starlark.MakeInt(0)
+	min := starlark.MakeInt(0)
+	s := starlark.MakeInt(0)
+	ns := starlark.MakeInt(0)
+	tz := starlark.String("UTC")
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0, &y, &m, &d, &h, &min, &s, &ns, &tz); err != nil {
+		return nil, err
+	}
 
- loc, err := time.LoadLocation(string(tz))
- if err != nil {
-	 return starlark.None, err
- }
+	loc, err := time.LoadLocation(string(tz))
+	if err != nil {
+		return starlark.None, err
+	}
 
- year, err := starlark.AsInt32(y)
- if err != nil {
-	 return starlark.None, fmt.Errorf("year: %v", err)
- }
- month,err := starlark.AsInt32(m)
- if err != nil {
-	 return starlark.None, fmt.Errorf("month: %v", err)
- }
- day,err := starlark.AsInt32(d)
- if err != nil {
-	 return starlark.None, fmt.Errorf("day: %v", err)
- }
- hour,err := starlark.AsInt32(h)
- if err != nil {
-	 return starlark.None, fmt.Errorf("hour: %v", err)
- }
- minute,err := starlark.AsInt32(min)
- if err != nil {
-	 return starlark.None, fmt.Errorf("minute: %v", err)
- }
- second,err := starlark.AsInt32(s)
- if err != nil {
-	 return starlark.None, fmt.Errorf("second: %v", err)
- }
- nanosecond,err := starlark.AsInt32(ns)
- if err != nil {
-	 return starlark.None, fmt.Errorf("nanosecond: %v", err)
- }
+	year, err := starlark.AsInt32(y)
+	if err != nil {
+		return starlark.None, fmt.Errorf("year: %v", err)
+	}
+	month, err := starlark.AsInt32(m)
+	if err != nil {
+		return starlark.None, fmt.Errorf("month: %v", err)
+	}
+	day, err := starlark.AsInt32(d)
+	if err != nil {
+		return starlark.None, fmt.Errorf("day: %v", err)
+	}
+	hour, err := starlark.AsInt32(h)
+	if err != nil {
+		return starlark.None, fmt.Errorf("hour: %v", err)
+	}
+	minute, err := starlark.AsInt32(min)
+	if err != nil {
+		return starlark.None, fmt.Errorf("minute: %v", err)
+	}
+	second, err := starlark.AsInt32(s)
+	if err != nil {
+		return starlark.None, fmt.Errorf("second: %v", err)
+	}
+	nanosecond, err := starlark.AsInt32(ns)
+	if err != nil {
+		return starlark.None, fmt.Errorf("nanosecond: %v", err)
+	}
 
- t := time.Date(year, time.Month(month), day, hour, minute, second, nanosecond, loc)
+	t := time.Date(year, time.Month(month), day, hour, minute, second, nanosecond, loc)
 
- return &StarlarkTime{Time: t}, nil
+	return &StarlarkTime{Time: t}, nil
 }

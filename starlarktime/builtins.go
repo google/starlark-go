@@ -13,7 +13,7 @@ import (
 
 var starlarkTimeBuiltins = map[string]*starlark.Builtin{
 	"timestamp": starlark.NewBuiltin("timestamp", getTimestamp),
-	"weekday": starlark.NewBuiltin("weekday", getWeekday),
+	"weekday":   starlark.NewBuiltin("weekday", getWeekday),
 }
 
 func getTimestamp(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -22,7 +22,7 @@ func getTimestamp(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	}
 
 	t, ok := b.Receiver().(*StarlarkTime)
-	if ! ok {
+	if !ok {
 		return starlark.None, fmt.Errorf("%v is not a time", b.Name())
 	}
 
@@ -35,7 +35,7 @@ func getWeekday(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 	}
 
 	t, ok := b.Receiver().(*StarlarkTime)
-	if ! ok {
+	if !ok {
 		return starlark.None, fmt.Errorf("%v is not a time", b.Name())
 	}
 

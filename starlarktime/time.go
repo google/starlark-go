@@ -13,8 +13,8 @@ import (
 )
 
 type StarlarkTime struct {
-	Time           time.Time
-	frozen         bool
+	Time   time.Time
+	frozen bool
 }
 
 // >>> Implementation of starlark Value interface
@@ -37,6 +37,7 @@ func (t *StarlarkTime) Truth() starlark.Bool {
 func (t *StarlarkTime) Hash() (uint32, error) {
 	return 0, errors.New("not hashable")
 }
+
 // <<< Implementation of starlark Value interface
 
 // >>> Implementation of starlark.HasAttrs interface.
@@ -65,7 +66,7 @@ func (t *StarlarkTime) Attr(name string) (starlark.Value, error) {
 	case "second":
 		return starlark.MakeInt(t.Time.Second()), nil
 	case "microsecond":
-		return starlark.Float(float64(t.Time.Nanosecond())/1E3), nil
+		return starlark.Float(float64(t.Time.Nanosecond()) / 1e3), nil
 	default:
 		if builtin, ok := starlarkTimeBuiltins[name]; ok {
 			return builtin.BindReceiver(t), nil
@@ -74,4 +75,5 @@ func (t *StarlarkTime) Attr(name string) (starlark.Value, error) {
 		return nil, nil
 	}
 }
+
 // <<< Implementation of starlark.HasAttrs interface.
