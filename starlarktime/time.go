@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 type StarlarkTime struct {
@@ -39,6 +40,31 @@ func (t *StarlarkTime) Hash() (uint32, error) {
 }
 
 // <<< Implementation of starlark Value interface
+
+// >>> Implementation of starlark.Comparable interface.
+func (t *StarlarkTime) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	a := t.Time
+	b := y.(*StarlarkTime).Time
+
+	switch op {
+	case syntax.EQL:
+		return a.Equal(b), nil
+	case syntax.NEQ:
+		return !a.Equal(b), nil
+	case syntax.LT:
+		return a.Before(b), nil
+	case syntax.LE:
+		return !a.After(b), nil
+	case syntax.GT:
+		return a.After(b), nil
+	case syntax.GE:
+		return !a.Before(b), nil
+	}
+
+	return false, errors.New("operation not supported")
+}
+
+// <<< Implementation of starlark.Comparable interface.
 
 // >>> Implementation of starlark.HasAttrs interface.
 func (t *StarlarkTime) AttrNames() []string {
