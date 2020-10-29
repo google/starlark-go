@@ -49,13 +49,13 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
-		"parse": starlark.NewBuiltin("time.parse", parse),
+		"parse_time": starlark.NewBuiltin("time.parse", parseTime),
 		"now":   starlark.NewBuiltin("time.now", now),
 		"time":  starlark.NewBuiltin("time.time", new),
 	},
 }
 
-func parse(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func parseTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var value, fmt, tz starlark.String
 
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &value, &fmt, &tz); err != nil {
