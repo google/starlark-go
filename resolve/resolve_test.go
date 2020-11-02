@@ -15,7 +15,6 @@ import (
 )
 
 func setOptions(src string) {
-	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")
 	resolve.AllowLambda = option(src, "lambda")
 	resolve.AllowNestedDef = option(src, "nesteddef")
@@ -38,7 +37,7 @@ func TestResolve(t *testing.T) {
 			continue
 		}
 
-		// A chunk may set options by containing e.g. "option:float".
+		// A chunk may set options by containing e.g. "option:nesteddef".
 		setOptions(chunk.Source)
 
 		if err := resolve.File(f, isPredeclared, isUniversal); err != nil {

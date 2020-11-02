@@ -100,7 +100,7 @@ const doesnt = "this Starlark dialect does not "
 var (
 	AllowNestedDef      = false // allow def statements within function bodies
 	AllowLambda         = false // allow lambda expressions
-	AllowFloat          = false // allow floating point literals, the 'float' built-in, and x / y
+	AllowFloat          = false // obsolete; no effect
 	AllowSet            = false // allow the 'set' built-in
 	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
 	AllowRecursion      = false // allow while statements and recursive functions
@@ -418,9 +418,6 @@ func (r *resolver) useToplevel(use use) (bind *Binding) {
 		r.predeclared[id.Name] = bind // save it
 	} else if r.isUniversal(id.Name) {
 		// use of universal name
-		if !AllowFloat && id.Name == "float" {
-			r.errorf(id.NamePos, doesnt+"support floating point")
-		}
 		if !AllowSet && id.Name == "set" {
 			r.errorf(id.NamePos, doesnt+"support sets")
 		}
@@ -636,9 +633,6 @@ func (r *resolver) expr(e syntax.Expr) {
 		r.use(e)
 
 	case *syntax.Literal:
-		if !AllowFloat && e.Token == syntax.FLOAT {
-			r.errorf(e.TokenPos, doesnt+"support floating point")
-		}
 
 	case *syntax.ListExpr:
 		for _, x := range e.List {
@@ -713,9 +707,6 @@ func (r *resolver) expr(e syntax.Expr) {
 		r.expr(e.X)
 
 	case *syntax.BinaryExpr:
-		if !AllowFloat && e.Op == syntax.SLASH {
-			r.errorf(e.OpPos, doesnt+"support floating point (use //)")
-		}
 		r.expr(e.X)
 		r.expr(e.Y)
 

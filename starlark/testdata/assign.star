@@ -232,13 +232,10 @@ assert.fails(lambda: tuple, "global variable tuple referenced before assignment"
 tuple = ()
 
 ---
-# option:float option:set
-# Same as above, but set and float are dialect-specific;
+# option:set
+# Same as above, but set is dialect-specific;
 # we shouldn't notice any difference.
 load("assert.star", "assert")
-
-float = 1.0
-assert.eq(type(float), "float")
 
 set = [1, 2, 3]
 assert.eq(type(set), "list")

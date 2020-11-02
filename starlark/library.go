@@ -12,6 +12,7 @@ package starlark
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"sort"
@@ -46,7 +47,7 @@ func init() {
 		"dir":       NewBuiltin("dir", dir),
 		"enumerate": NewBuiltin("enumerate", enumerate),
 		"fail":      NewBuiltin("fail", fail),
-		"float":     NewBuiltin("float", float), // requires resolve.AllowFloat
+		"float":     NewBuiltin("float", float),
 		"getattr":   NewBuiltin("getattr", getattr),
 		"hasattr":   NewBuiltin("hasattr", hasattr),
 		"hash":      NewBuiltin("hash", hash),
@@ -330,19 +331,51 @@ func float(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 			return Float(0.0), nil
 		}
 	case Int:
-		return x.Float(), nil
+		return x.finiteFloat()
 	case Float:
 		return x, nil
 	case String:
-		f, err := strconv.ParseFloat(string(x), 64)
+		if x == "" {
+			return nil, fmt.Errorf("float: empty string")
+		}
+		// +/- NaN or Inf or Infinity (case insensitive)?
+		s := string(x)
+		switch x[len(x)-1] {
+		case 'y', 'Y':
+			if strings.EqualFold(s, "infinity") || strings.EqualFold(s, "+infinity") {
+				return inf, nil
+			} else if strings.EqualFold(s, "-infinity") {
+				return neginf, nil
+			}
+		case 'f', 'F':
+			if strings.EqualFold(s, "inf") || strings.EqualFold(s, "+inf") {
+				return inf, nil
+			} else if strings.EqualFold(s, "-inf") {
+				return neginf, nil
+			}
+		case 'n', 'N':
+			if strings.EqualFold(s, "nan") || strings.EqualFold(s, "+nan") || strings.EqualFold(s, "-nan") {
+				return nan, nil
+			}
+		}
+		f, err := strconv.ParseFloat(s, 64)
+		if math.IsInf(f, 0) {
+			return nil, fmt.Errorf("floating-point number too large")
+		}
 		if err != nil {
-			return nil, nameErr(b, err)
+			return nil, fmt.Errorf("invalid float literal: %s", s)
 		}
 		return Float(f), nil
 	default:
 		return nil, fmt.Errorf("float got %s, want number or string", x.Type())
 	}
 }
+
+var (
+	inf    = Float(math.Inf(+1))
+	neginf = Float(math.Inf(-1))
+	nan    = Float(math.NaN())
+)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#getattr
 func getattr(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {

@@ -307,12 +307,7 @@ def h(kwargs, a, **kwargs): pass ### "duplicate parameter: kwargs"
 def i(*x, **x): pass ### "duplicate parameter: x"
 
 ---
-# No floating point
-a = float("3.141") ### `dialect does not support floating point`
-b = 1 / 2          ### `dialect does not support floating point \(use //\)`
-c = 3.141          ### `dialect does not support floating point`
----
-# Floating point support (option:float)
+# Floating-point support is now standard.
 a = float("3.141")
 b = 1 / 2
 c = 3.141
