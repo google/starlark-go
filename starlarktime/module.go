@@ -50,8 +50,8 @@ var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
 		"parse_time": starlark.NewBuiltin("time.parse", parseTime),
-		"now":   starlark.NewBuiltin("time.now", now),
-		"time":  starlark.NewBuiltin("time.time", newTime),
+		"now":        starlark.NewBuiltin("time.now", now),
+		"time":       starlark.NewBuiltin("time.time", newTime),
 	},
 }
 
@@ -64,14 +64,14 @@ func parseTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 
 	var t time.Time
 	var err error
-    if len(fmt) < 1 {
-        // Use RFC3339 by default
+	if len(fmt) < 1 {
+		// Use RFC3339 by default
 		t, err = time.Parse(time.RFC3339, string(value))
 		if err != nil {
 			return starlark.None, err
 		}
-    } else if len(tz) < 1 {
-        // Use UTC by default
+	} else if len(tz) < 1 {
+		// Use UTC by default
 		t, err = time.Parse(string(fmt), string(value))
 		if err != nil {
 			return starlark.None, err
