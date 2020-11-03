@@ -96,6 +96,19 @@ func (t *StarlarkDuration) CompareSameType(op syntax.Token, y starlark.Value, de
 
 // <<< Implementation of starlark.Comparable interface.
 
+// >>> Implementation of starlark.HasUnary interface.
+func (t *StarlarkDuration) Unary(op syntax.Token) (starlark.Value, error) {
+	switch op {
+	case syntax.PLUS:
+		return t, nil
+	case syntax.MINUS:
+		return &StarlarkDuration{Duration: -t.Duration}, nil
+	}
+	return nil, nil
+}
+
+// <<< Implementation of starlark.HasUnary interface.
+
 // >>> Implementation of starlark.HasBinary interface.
 func (t *StarlarkDuration) Binary(op syntax.Token, sy starlark.Value, side starlark.Side) (starlark.Value, error) {
 	// We always expect left-hand operations in the form x = a + b.
