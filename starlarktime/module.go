@@ -52,6 +52,7 @@ var Module = &starlarkstruct.Module{
 		"parse_time": starlark.NewBuiltin("time.parse", parseTime),
 		"now":        starlark.NewBuiltin("time.now", now),
 		"time":       starlark.NewBuiltin("time.time", newTime),
+		"duration":   starlark.NewBuiltin("time.duration", newDuration),
 	},
 }
 
