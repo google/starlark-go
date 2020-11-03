@@ -49,10 +49,11 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
-		"parse_time": starlark.NewBuiltin("time.parse", parseTime),
-		"now":        starlark.NewBuiltin("time.now", now),
-		"time":       starlark.NewBuiltin("time.time", newTime),
-		"duration":   starlark.NewBuiltin("time.duration", newDuration),
+		"parse_time":     starlark.NewBuiltin("time.parse_time", parseTime),
+		"now":            starlark.NewBuiltin("time.now", now),
+		"time":           starlark.NewBuiltin("time.time", newTime),
+		"parse_duration": starlark.NewBuiltin("time.parse_duration", parseDuration),
+		"duration":       starlark.NewBuiltin("time.duration", newDuration),
 	},
 }
 
@@ -160,6 +161,21 @@ func newTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	t := time.Date(year, time.Month(month), day, hour, minute, second, nanosecond, loc)
 
 	return &StarlarkTime{Time: t}, nil
+}
+
+func parseDuration(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value starlark.String
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &value); err != nil {
+		return nil, err
+	}
+
+	d, err := time.ParseDuration(string(value))
+	if err != nil {
+		return starlark.None, err
+	}
+
+	return &StarlarkDuration{Duration: d}, nil
 }
 
 func newDuration(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
