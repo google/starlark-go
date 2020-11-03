@@ -68,7 +68,7 @@ func (t *StarlarkTime) CompareSameType(op syntax.Token, y starlark.Value, depth 
 
 // >>> Implementation of starlark.HasAttrs interface.
 func (t *StarlarkTime) AttrNames() []string {
-	attrs := []string{"year", "month", "day", "hour", "minute", "second", "microsecond"}
+	attrs := []string{"year", "month", "day", "hour", "minute", "second", "nanosecond"}
 	for name := range starlarkTimeBuiltins {
 		attrs = append(attrs, name)
 	}
@@ -91,8 +91,8 @@ func (t *StarlarkTime) Attr(name string) (starlark.Value, error) {
 		return starlark.MakeInt(t.Time.Minute()), nil
 	case "second":
 		return starlark.MakeInt(t.Time.Second()), nil
-	case "microsecond":
-		return starlark.Float(float64(t.Time.Nanosecond()) / 1e3), nil
+	case "nanosecond":
+		return starlark.MakeInt(t.Time.Nanosecond()), nil
 	default:
 		if builtin, ok := starlarkTimeBuiltins[name]; ok {
 			return builtin.BindReceiver(t), nil
