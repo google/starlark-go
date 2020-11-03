@@ -58,13 +58,20 @@ var Module = &starlarkstruct.Module{
 func parseTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var value, fmt, tz starlark.String
 
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &value, &fmt, &tz); err != nil {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &value, &fmt, &tz); err != nil {
 		return nil, err
 	}
 
 	var t time.Time
 	var err error
-	if len(tz) < 1 {
+    if len(fmt) < 1 {
+        // Use RFC3339 by default
+		t, err = time.Parse(time.RFC3339, string(value))
+		if err != nil {
+			return starlark.None, err
+		}
+    } else if len(tz) < 1 {
+        // Use UTC by default
 		t, err = time.Parse(string(fmt), string(value))
 		if err != nil {
 			return starlark.None, err
