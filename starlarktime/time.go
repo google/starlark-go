@@ -103,3 +103,40 @@ func (t *StarlarkTime) Attr(name string) (starlark.Value, error) {
 }
 
 // <<< Implementation of starlark.HasAttrs interface.
+
+// >>> Implementation of starlark.HasBinary interface.
+func (t *StarlarkTime) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+	// We always expect left-hand operations in the form x = a + b.
+	if side != starlark.Left {
+		return nil, nil
+	}
+	switch op {
+	case syntax.PLUS:
+		// Can only add durations or seconds
+		if d, ok := y.(*StarlarkDuration); ok {
+			return &StarlarkTime{Time: t.Time.Add(d.Duration)}, nil
+		} else if s, ok := y.(starlark.Int); ok {
+			if secs, secs_ok := s.Int64(); secs_ok {
+				return &StarlarkTime{Time: t.Time.Add(time.Duration(secs) * time.Second)}, nil
+			}
+			return nil, errors.New("operant cannot be represented as int64")
+		}
+		return nil, errors.New("operant must be either a 'duration' or a number of seconds")
+	case syntax.MINUS:
+		// Can only subtract time, durations or seconds
+		if ty, ok := y.(*StarlarkTime); ok {
+			return &StarlarkDuration{Duration: t.Time.Sub(ty.Time)}, nil
+		} else if d, ok := y.(*StarlarkDuration); ok {
+			return &StarlarkTime{Time: t.Time.Add(-d.Duration)}, nil
+		} else if s, ok := y.(starlark.Int); ok {
+			if secs, secs_ok := s.Int64(); secs_ok {
+				return &StarlarkTime{Time: t.Time.Add(time.Duration(-secs) * time.Second)}, nil
+			}
+			return nil, errors.New("operant cannot be represented as int64")
+		}
+		return nil, errors.New("operant must be either 'time', 'duration' or a number of seconds")
+	}
+	return nil, nil
+}
+
+// <<< Implementation of starlark.HasBinary interface.
