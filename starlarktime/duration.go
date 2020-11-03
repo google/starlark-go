@@ -41,31 +41,6 @@ func (t *StarlarkDuration) Hash() (uint32, error) {
 
 // <<< Implementation of starlark Value interface
 
-// >>> Implementation of starlark.Comparable interface.
-func (t *StarlarkDuration) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
-	a := t.Duration
-	b := y.(*StarlarkDuration).Duration
-
-	switch op {
-	case syntax.EQL:
-		return a == b, nil
-	case syntax.NEQ:
-		return a != b, nil
-	case syntax.LT:
-		return a < b, nil
-	case syntax.LE:
-		return a <= b, nil
-	case syntax.GT:
-		return a > b, nil
-	case syntax.GE:
-		return a >= b, nil
-	}
-
-	return false, errors.New("operation not supported")
-}
-
-// <<< Implementation of starlark.Comparable interface.
-
 // >>> Implementation of starlark.HasAttrs interface.
 func (t *StarlarkDuration) AttrNames() []string {
 	attrs := []string{"hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds"}
@@ -95,3 +70,28 @@ func (t *StarlarkDuration) Attr(name string) (starlark.Value, error) {
 }
 
 // <<< Implementation of starlark.HasAttrs interface.
+
+// >>> Implementation of starlark.Comparable interface.
+func (t *StarlarkDuration) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+    a := t.Duration
+    b := y.(*StarlarkDuration).Duration
+
+    switch op {
+    case syntax.EQL:
+        return a == b, nil
+    case syntax.NEQ:
+        return a != b, nil
+    case syntax.LT:
+        return a < b, nil
+    case syntax.LE:
+        return a <= b, nil
+    case syntax.GT:
+        return a > b, nil
+    case syntax.GE:
+        return a >= b, nil
+    }
+
+    return false, errors.New("operation not supported")
+}
+
+// <<< Implementation of starlark.Comparable interface.
