@@ -32,7 +32,7 @@ func (t *StarlarkTime) Freeze() {
 }
 
 func (t *StarlarkTime) Truth() starlark.Bool {
-	return true
+	return t.Time.IsZero() == false
 }
 
 func (t *StarlarkTime) Hash() (uint32, error) {
