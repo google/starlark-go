@@ -51,7 +51,7 @@ var Module = &starlarkstruct.Module{
 	Members: starlark.StringDict{
 		"parse_time": starlark.NewBuiltin("time.parse", parseTime),
 		"now":   starlark.NewBuiltin("time.now", now),
-		"time":  starlark.NewBuiltin("time.time", new),
+		"time":  starlark.NewBuiltin("time.time", newTime),
 	},
 }
 
@@ -102,7 +102,7 @@ func now(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 	return &StarlarkTime{Time: t}, nil
 }
 
-func new(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func newTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	y := starlark.MakeInt(0)
 	m := starlark.MakeInt(0)
 	d := starlark.MakeInt(0)
