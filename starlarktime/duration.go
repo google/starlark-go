@@ -95,3 +95,65 @@ func (t *StarlarkDuration) CompareSameType(op syntax.Token, y starlark.Value, de
 }
 
 // <<< Implementation of starlark.Comparable interface.
+
+// >>> Implementation of starlark.HasBinary interface.
+func (t *StarlarkDuration) Binary(op syntax.Token, sy starlark.Value, side starlark.Side) (starlark.Value, error) {
+	// We always expect left-hand operations in the form x = a + b.
+	if side != starlark.Left {
+		return nil, nil
+	}
+
+	switch y := sy.(type) {
+	case *StarlarkTime:
+		switch op {
+		case syntax.PLUS:
+			return &StarlarkTime{Time: y.Time.Add(t.Duration)}, nil
+		default:
+			return nil, nil
+		}
+	case *StarlarkDuration:
+		switch op {
+		case syntax.PLUS:
+			return &StarlarkDuration{Duration: t.Duration + y.Duration}, nil
+		case syntax.MINUS:
+			return &StarlarkDuration{Duration: t.Duration - y.Duration}, nil
+		case syntax.SLASH:
+			return starlark.Float(float64(t.Duration) / float64(y.Duration)), nil
+		default:
+			return nil, nil
+		}
+	case starlark.Int:
+		s, ok := y.Int64()
+		if !ok {
+			return nil, errors.New("cannot convert operant to int64")
+		}
+		switch op {
+		case syntax.PLUS:
+			return &StarlarkDuration{Duration: t.Duration + time.Duration(s)*time.Second}, nil
+		case syntax.MINUS:
+			return &StarlarkDuration{Duration: t.Duration - time.Duration(s)*time.Second}, nil
+		case syntax.STAR:
+			return &StarlarkDuration{Duration: time.Duration(t.Duration.Nanoseconds() * s)}, nil
+		case syntax.SLASH:
+			return starlark.Float(t.Duration.Seconds() / float64(s)), nil
+		default:
+			return nil, nil
+		}
+	case starlark.Float:
+		switch op {
+		case syntax.PLUS:
+			return &StarlarkDuration{Duration: t.Duration + time.Duration(float64(y*1e9))}, nil
+		case syntax.MINUS:
+			return &StarlarkDuration{Duration: t.Duration - time.Duration(float64(y*1e9))}, nil
+		case syntax.STAR:
+			return &StarlarkDuration{Duration: time.Duration(float64(t.Duration.Nanoseconds()) * float64(y))}, nil
+		case syntax.SLASH:
+			return starlark.Float(t.Duration.Seconds() / float64(y)), nil
+		default:
+			return nil, nil
+		}
+	}
+	return nil, nil
+}
+
+// <<< Implementation of starlark.HasBinary interface.
