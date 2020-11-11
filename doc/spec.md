@@ -571,14 +571,6 @@ non-zero.
 int("ffff", 16)                 # 65535, 0xffff
 ```
 
-<b>Implementation note:</b>
-In the Go implementation of Starlark, integer representation and
-arithmetic is exact, motivated by the need for lossless manipulation
-of protocol messages which may contain signed and unsigned 64-bit
-integers.
-The Java implementation currently supports only signed 32-bit integers.
-
-
 ### Floating-point numbers
 
 The Starlark floating-point data type represents an IEEE 754
@@ -623,15 +615,6 @@ non-zero.
 float(3) / 2                                    # 1.5
 3.0 // 2.0                                      # 1
 ```
-
-<b>Implementation note:</b>
-The Go implementation of Starlark supports floating-point numbers as an
-optional feature, motivated by the need for lossless manipulation of
-protocol messages.
-The `-float` flag enables support for floating-point literals,
-the `float` built-in function, and the real division operator `/`.
-The Java implementation does not yet support floating-point numbers.
-
 
 ### Strings
 
@@ -1183,10 +1166,6 @@ A built-in function is a function or method implemented in Go by the interpreter
 or the application into which the interpreter is embedded.
 
 The [type](#type) of a built-in function is `"builtin_function_or_method"`.
-<b>Implementation note:</b>
-The Java implementation of `type(x)` returns `"function"` for all
-functions, whether built in or defined in Starlark,
-even though applications distinguish these two types.
 
 A built-in function value used in a Boolean context is always considered true.
 
@@ -2619,9 +2598,6 @@ a, b = {"a": 1, "b": 2}
 The same process for assigning a value to a target expression is used
 in `for` loops and in comprehensions.
 
-<b>Implementation note:</b>
-In the Java implementation, targets cannot be dot expressions.
-
 
 ### Augmented assignments
 
@@ -3168,13 +3144,6 @@ If x is a `float`, the result is x.
 if x is an `int`, the result is the nearest floating point value to x.
 If x is a string, the string is interpreted as a floating-point literal.
 With no arguments, `float()` returns `0.0`.
-
-<b>Implementation note:</b>
-Floating-point numbers are an optional feature.
-The Go implementation of Starlark requires the `-float` flag to
-enable support for floating-point literals, the `float` built-in
-function, and the real division operator `/`.
-The Java implementation does not yet support floating-point numbers.
 
 
 ### getattr
@@ -4272,10 +4241,7 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 
 * Integers are represented with infinite precision.
 * Integer arithmetic is exact.
-* Floating-point literals are supported (option: `-float`).
-* The `float` built-in function is provided (option: `-float`).
-* Real division using `float / float` is supported (option: `-float`).
-* String interpolation supports the `[ioxXeEfFgGc]` conversions.
+* String interpolation supports the `[ioxXc]` conversions.
 * `def` statements may be nested (option: `-nesteddef`).
 * `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
@@ -4286,7 +4252,5 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * The `set` built-in function is provided (option: `-set`).
 * `set & set` and `set | set` compute set intersection and union, respectively.
 * `assert` is a valid identifier.
-* Dot expressions may appear on the left side of an assignment: `x.f = 1`.
-* `type(x)` returns `"builtin_function_or_method"` for built-in functions.
 * `if`, `for`, and `while` are permitted at top level (option: `-globalreassign`).
 * top-level rebindings are permitted (option: `-globalreassign`).
