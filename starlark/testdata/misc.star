@@ -39,6 +39,7 @@
 load("assert.star", "assert")
 
 # Ordered comparisons require values of the same type.
+assert.fails(lambda: None < None, "not impl")
 assert.fails(lambda: None < False, "not impl")
 assert.fails(lambda: False < list, "not impl")
 assert.fails(lambda: list < {}, "not impl")
