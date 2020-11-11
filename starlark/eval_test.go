@@ -510,7 +510,7 @@ func TestBacktrace(t *testing.T) {
 	// functions, including propagation through built-ins such as 'min'.
 	const src = `
 def f(x): return 1//x
-def g(x): f(x)
+def g(x): return f(x)
 def h(): return min([1, 2, 0], key=g)
 def i(): return h()
 i()
@@ -523,7 +523,7 @@ i()
   crash.star:5:18: in i
   crash.star:4:20: in h
   <builtin>: in min
-  crash.star:3:12: in g
+  crash.star:3:19: in g
   crash.star:2:19: in f
 Error: floored division by zero`
 	if got := backtrace(t, err); got != want {

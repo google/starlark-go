@@ -132,7 +132,6 @@ type Comparable interface {
 }
 
 var (
-	_ Comparable = None
 	_ Comparable = Int{}
 	_ Comparable = False
 	_ Comparable = Float(0)
@@ -354,9 +353,6 @@ func (NoneType) Type() string          { return "NoneType" }
 func (NoneType) Freeze()               {} // immutable
 func (NoneType) Truth() Bool           { return False }
 func (NoneType) Hash() (uint32, error) { return 0, nil }
-func (NoneType) CompareSameType(op syntax.Token, y Value, depth int) (bool, error) {
-	return threeway(op, 0), nil
-}
 
 // Bool is the type of a Starlark bool.
 type Bool bool
