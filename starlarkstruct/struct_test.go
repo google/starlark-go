@@ -19,7 +19,6 @@ func init() {
 	// The tests make extensive use of these not-yet-standard features.
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
-	resolve.AllowFloat = true
 	resolve.AllowSet = true
 }
 

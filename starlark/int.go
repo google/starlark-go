@@ -193,6 +193,16 @@ func (i Int) Float() Float {
 	return Float(iSmall)
 }
 
+// finiteFloat returns the finite float value nearest i,
+// or an error if the magnitude is too large.
+func (i Int) finiteFloat() (Float, error) {
+	f := i.Float()
+	if math.IsInf(float64(f), 0) {
+		return 0, fmt.Errorf("int too large to convert to float")
+	}
+	return f, nil
+}
+
 func (x Int) Sign() int {
 	xSmall, xBig := x.get()
 	if xBig != nil {

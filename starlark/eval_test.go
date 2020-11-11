@@ -24,7 +24,6 @@ import (
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
 func setOptions(src string) {
-	resolve.AllowFloat = option(src, "float")
 	resolve.AllowGlobalReassign = option(src, "globalreassign")
 	resolve.LoadBindsGlobally = option(src, "loadbindsglobally")
 	resolve.AllowLambda = option(src, "lambda")

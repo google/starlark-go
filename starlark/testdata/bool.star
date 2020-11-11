@@ -1,5 +1,4 @@
 # Tests of Starlark 'bool'
-# option:float
 
 load("assert.star", "assert")
 
@@ -8,6 +7,13 @@ assert.true(True)
 assert.true(not False)
 assert.true(not not True)
 assert.true(not not 1 >= 1)
+
+# precedence of not
+assert.true(not not 2 > 1)
+# assert.true(not (not 2) > 1)   # TODO(adonovan): fix: gives error for False > 1.
+# assert.true(not ((not 2) > 1)) # TODO(adonovan): fix
+# assert.true(not ((not (not 2)) > 1)) # TODO(adonovan): fix
+# assert.true(not not not (2 > 1))
 
 # bool conversion
 assert.eq(
