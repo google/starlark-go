@@ -741,7 +741,9 @@ func (r *resolver) expr(e syntax.Expr) {
 				// k=v
 				n++
 				if seenKwargs {
-					r.errorf(pos, "argument may not follow **kwargs")
+					r.errorf(pos, "keyword argument may not follow **kwargs")
+				} else if seenVarargs {
+					r.errorf(pos, "keyword argument may not follow *args")
 				}
 				x := binop.X.(*syntax.Ident)
 				if seenName[x.Name] {
@@ -757,9 +759,9 @@ func (r *resolver) expr(e syntax.Expr) {
 				// positional argument
 				p++
 				if seenVarargs {
-					r.errorf(pos, "argument may not follow *args")
+					r.errorf(pos, "positional argument may not follow *args")
 				} else if seenKwargs {
-					r.errorf(pos, "argument may not follow **kwargs")
+					r.errorf(pos, "positional argument may not follow **kwargs")
 				} else if len(seenName) > 0 {
 					r.errorf(pos, "positional argument may not follow named")
 				}

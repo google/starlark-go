@@ -289,12 +289,12 @@ f(**{}, *[]) ### `\*args may not follow \*\*kwargs`
 f(**{}, **{}) ### `multiple \*\*kwargs not allowed`
 
 ---
-# Only keyword arguments may follow *args in a call.
+# Only **kwargs may follow *args in a call.
 def f(*args, **kwargs):
   pass
 
-f(*[], 1) ### `argument may not follow \*args`
-f(*[], a=1) # ok
+f(*[], 1) ### `positional argument may not follow \*args`
+f(*[], a=1) ### `keyword argument may not follow \*args`
 f(*[], *[]) ### `multiple \*args not allowed`
 f(*[], **{}) # ok
 
