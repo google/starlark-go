@@ -297,6 +297,7 @@ def j(a, b=42, *args, c, d=123, e, **kwargs):
 		t.Fatal(err)
 	}
 
+	// All errors are dynamic; see resolver for static errors.
 	for _, test := range []struct{ src, want string }{
 		// a()
 		{`a()`, `None`},
@@ -352,8 +353,6 @@ def j(a, b=42, *args, c, d=123, e, **kwargs):
 		{`f(0, b=1)`, `(0, 1, (), {})`},
 		{`f(0, a=1)`, `function f got multiple values for parameter "a"`},
 		{`f(0, b=1, c=2)`, `(0, 1, (), {"c": 2})`},
-		{`f(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`, // github.com/google/skylark/issues/135
-			`(0, 1, (3, 4), {"x": 2, "y": 5, "z": 6})`},
 
 		// g(a, b=42, *args, c=123, **kwargs)
 		{`g()`, `function g missing 1 argument (a)`},
@@ -365,8 +364,6 @@ def j(a, b=42, *args, c, d=123, e, **kwargs):
 		{`g(0, b=1)`, `(0, 1, (), 123, {})`},
 		{`g(0, a=1)`, `function g got multiple values for parameter "a"`},
 		{`g(0, b=1, c=2, d=3)`, `(0, 1, (), 2, {"d": 3})`},
-		{`g(0, 1, x=2, *[3, 4], y=5, **dict(z=6))`,
-			`(0, 1, (3, 4), 123, {"x": 2, "y": 5, "z": 6})`},
 
 		// h(a, b=42, *, c=123, **kwargs)
 		{`h()`, `function h missing 1 argument (a)`},
@@ -378,7 +375,6 @@ def j(a, b=42, *args, c, d=123, e, **kwargs):
 		{`h(0, a=1)`, `function h got multiple values for parameter "a"`},
 		{`h(0, b=1, c=2)`, `(0, 1, 2, {})`},
 		{`h(0, b=1, d=2)`, `(0, 1, 123, {"d": 2})`},
-		{`h(0, b=1, c=2, d=3)`, `(0, 1, 2, {"d": 3})`},
 		{`h(0, b=1, c=2, d=3)`, `(0, 1, 2, {"d": 3})`},
 
 		// i(a, b=42, *, c, d=123, e, **kwargs)
