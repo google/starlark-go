@@ -137,26 +137,24 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		case starlark.IterableMapping:
 			// e.g. dict (must have string keys)
 			buf.WriteByte('{')
-			iter := x.Iterate()
-			defer iter.Done()
-			var k starlark.Value
-			for i := 0; iter.Next(&k); i++ {
+			items := x.Items()
+			for _, item := range items {
+				if _, ok := item[0].(starlark.String); !ok {
+					return fmt.Errorf("%s has %s key, want string", x.Type(), item[0].Type())
+				}
+			}
+			sort.Slice(items, func(i, j int) bool {
+				return items[i][0].(starlark.String) < items[j][0].(starlark.String)
+			})
+			for i, item := range items {
 				if i > 0 {
 					buf.WriteByte(',')
 				}
-				s, ok := starlark.AsString(k)
-				if !ok {
-					return fmt.Errorf("%s has %s key, want string", x.Type(), k.Type())
-				}
-				v, found, err := x.Get(k)
-				if err != nil || !found {
-					log.Fatalf("internal error: mapping %s has %s among keys but value lookup fails", x.Type(), k)
-				}
-
-				quote(s)
+				k, _ := starlark.AsString(item[0])
+				quote(k)
 				buf.WriteByte(':')
-				if err := emit(v); err != nil {
-					return fmt.Errorf("in %s key %s: %v", x.Type(), k, err)
+				if err := emit(item[1]); err != nil {
+					return fmt.Errorf("in %s key %s: %v", x.Type(), item[0], err)
 				}
 			}
 			buf.WriteByte('}')
