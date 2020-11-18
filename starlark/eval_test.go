@@ -512,7 +512,6 @@ i()
 `
 	thread := new(starlark.Thread)
 	_, err := starlark.ExecFile(thread, "crash.star", src, nil)
-	// Compiled code currently has no column information.
 	const want = `Traceback (most recent call last):
   crash.star:6:2: in <toplevel>
   crash.star:5:18: in i
@@ -527,6 +526,9 @@ Error: floored division by zero`
 
 	// Additionally, ensure that errors originating in
 	// Starlark and/or Go each have an accurate frame.
+	// The topmost frame, if built-in, is not shown,
+	// but the name of the built-in function is shown
+	// as "Error in fn: ...".
 	//
 	// This program fails in Starlark (f) if x==0,
 	// or in Go (string.join) if x is non-zero.
@@ -542,8 +544,7 @@ Error: floored division by zero`,
 		1: `Traceback (most recent call last):
   crash.star:3:2: in <toplevel>
   crash.star:2:17: in f
-  <builtin>: in join
-Error: join: in list, want string, got int`,
+Error in join: join: in list, want string, got int`,
 	} {
 		globals := starlark.StringDict{"i": starlark.MakeInt(i)}
 		_, err := starlark.ExecFile(thread, "crash.star", src2, globals)

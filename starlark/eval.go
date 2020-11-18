@@ -217,7 +217,9 @@ func (stack *CallStack) Pop() CallFrame {
 // String returns a user-friendly description of the stack.
 func (stack CallStack) String() string {
 	out := new(strings.Builder)
-	fmt.Fprintf(out, "Traceback (most recent call last):\n")
+	if len(stack) > 0 {
+		fmt.Fprintf(out, "Traceback (most recent call last):\n")
+	}
 	for _, fr := range stack {
 		fmt.Fprintf(out, "  %s: in %s\n", fr.Pos, fr.Name)
 	}
@@ -259,7 +261,15 @@ func (e *EvalError) Error() string { return e.Msg }
 // Backtrace returns a user-friendly error message describing the stack
 // of calls that led to this error.
 func (e *EvalError) Backtrace() string {
-	return fmt.Sprintf("%sError: %s", e.CallStack, e.Msg)
+	// If the topmost stack frame is a built-in function,
+	// remove it from the stack and add print "Error in fn:".
+	stack := e.CallStack
+	suffix := ""
+	if last := len(stack) - 1; last >= 0 && stack[last].Pos.Filename() == builtinFilename {
+		suffix = " in " + stack[last].Name
+		stack = stack[:last]
+	}
+	return fmt.Sprintf("%sError%s: %s", stack, suffix, e.Msg)
 }
 
 func (e *EvalError) Unwrap() error { return e.cause }
