@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -888,5 +889,27 @@ func TestExecutionSteps(t *testing.T) {
 	_, err = countSteps(1000)
 	if fmt.Sprint(err) != "Starlark computation cancelled: too many steps" {
 		t.Errorf("execution returned error %q, want cancellation", err)
+	}
+}
+
+// TestDeps fails if the interpreter proper (not the REPL, etc) sprouts new external dependencies.
+// We may expand the list of permitted dependencies, but should do so deliberately, not casually.
+func TestDeps(t *testing.T) {
+	cmd := exec.Command("go", "list", "-deps")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Skipf("'go list' failed: %s", err)
+	}
+	for _, pkg := range strings.Split(string(out), "\n") {
+		// Does pkg have form "domain.name/dir"?
+		slash := strings.IndexByte(pkg, '/')
+		dot := strings.IndexByte(pkg, '.')
+		if 0 < dot && dot < slash {
+			if strings.HasPrefix(pkg, "go.starlark.net/") ||
+				strings.HasPrefix(pkg, "golang.org/x/sys/") {
+				continue // permitted dependencies
+			}
+			t.Errorf("new interpreter dependency: %s", pkg)
+		}
 	}
 }
