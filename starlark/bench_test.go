@@ -6,6 +6,7 @@ package starlark_test
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -45,16 +46,74 @@ func Benchmark(b *testing.B) {
 			value := globals[name]
 			if fn, ok := value.(*starlark.Function); ok && strings.HasPrefix(name, "bench_") {
 				b.Run(name, func(b *testing.B) {
-					for i := 0; i < b.N; i++ {
-						_, err := starlark.Call(thread, fn, nil, nil)
-						if err != nil {
-							reportEvalError(b, err)
-						}
+					_, err := starlark.Call(thread, fn, starlark.Tuple{benchmark{b}}, nil)
+					if err != nil {
+						reportEvalError(b, err)
 					}
 				})
 			}
 		}
 	}
+}
+
+// A benchmark is passed to each bench_xyz(b) function in a bench_*.star file.
+// It provides b.n, the number of iterations that must be executed by the function,
+// which is typically of the form:
+//
+//   def bench_foo(b):
+//      for _ in range(b.n):
+//         ...work...
+//
+// It also provides stop, start, and restart methods to stop the clock in case
+// there is significant set-up work that should not count against the measured
+// operation.
+//
+// (This interface is inspired by Go's testing.B, and is also implemented
+// by the java.starlark.net implementation; see
+// https://github.com/bazelbuild/starlark/pull/75#pullrequestreview-275604129.)
+type benchmark struct {
+	b *testing.B
+}
+
+func (benchmark) Freeze()               {}
+func (benchmark) Truth() starlark.Bool  { return true }
+func (benchmark) Type() string          { return "benchmark" }
+func (benchmark) String() string        { return "<benchmark>" }
+func (benchmark) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: benchmark") }
+func (benchmark) AttrNames() []string   { return []string{"n", "restart", "start", "stop"} }
+func (b benchmark) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "n":
+		return starlark.MakeInt(b.b.N), nil
+	case "restart":
+		return benchmarkRestart.BindReceiver(b), nil
+	case "start":
+		return benchmarkStart.BindReceiver(b), nil
+	case "stop":
+		return benchmarkStop.BindReceiver(b), nil
+	}
+	return nil, nil
+}
+
+var (
+	benchmarkRestart = starlark.NewBuiltin("restart", benchmarkRestartImpl)
+	benchmarkStart   = starlark.NewBuiltin("start", benchmarkStartImpl)
+	benchmarkStop    = starlark.NewBuiltin("stop", benchmarkStopImpl)
+)
+
+func benchmarkRestartImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	b.Receiver().(benchmark).b.ResetTimer()
+	return starlark.None, nil
+}
+
+func benchmarkStartImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	b.Receiver().(benchmark).b.StartTimer()
+	return starlark.None, nil
+}
+
+func benchmarkStopImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	b.Receiver().(benchmark).b.StopTimer()
+	return starlark.None, nil
 }
 
 // BenchmarkProgram measures operations relevant to compiled programs.
