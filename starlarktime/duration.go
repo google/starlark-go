@@ -58,9 +58,9 @@ func (t *StarlarkDuration) Attr(name string) (starlark.Value, error) {
 	case "seconds":
 		return starlark.Float(t.Duration.Seconds()), nil
 	case "milliseconds":
-		return starlark.Float(t.Duration.Milliseconds()), nil
+		return starlark.Float(float64(t.Duration.Nanoseconds()) / 1e6), nil
 	case "microseconds":
-		return starlark.Float(t.Duration.Microseconds()), nil
+		return starlark.Float(float64(t.Duration.Nanoseconds()) / 1e3), nil
 	case "nanoseconds":
 		return starlark.Float(t.Duration.Nanoseconds()), nil
 	default:
