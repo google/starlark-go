@@ -1,5 +1,4 @@
 # Benchmarks of Starlark execution
-# option:nesteddef
 
 def bench_range_construction(b):
     for _ in range(b.n):

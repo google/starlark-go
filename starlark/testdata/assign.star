@@ -90,7 +90,6 @@ assert.eq(m, 3)
 assert.eq(n, 4)
 
 ---
-# option:nesteddef
 # misc assignment
 load("assert.star", "assert")
 
@@ -176,7 +175,6 @@ f()
 g = 1
 
 ---
-# option:nesteddef
 # Free variables are captured by reference, so this is ok.
 load("assert.star", "assert")
 

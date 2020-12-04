@@ -1,5 +1,4 @@
 # Tests of Starlark 'list'
-# option:nesteddef
 
 load("assert.star", "assert", "freeze")
 
@@ -16,14 +15,14 @@ assert.true(not [])
 
 # indexing, x[i]
 abc = list("abc".elems())
-assert.fails(lambda : abc[-4], "list index -4 out of range \\[-3:2]")
+assert.fails(lambda: abc[-4], "list index -4 out of range \\[-3:2]")
 assert.eq(abc[-3], "a")
 assert.eq(abc[-2], "b")
 assert.eq(abc[-1], "c")
 assert.eq(abc[0], "a")
 assert.eq(abc[1], "b")
 assert.eq(abc[2], "c")
-assert.fails(lambda : abc[3], "list index 3 out of range \\[-3:2]")
+assert.fails(lambda: abc[3], "list index 3 out of range \\[-3:2]")
 
 # x[i] = ...
 x3 = [0, 1, 2]
@@ -45,8 +44,8 @@ assert.fails(x3.clear, "cannot clear frozen list")
 
 # list + list
 assert.eq([1, 2, 3] + [3, 4, 5], [1, 2, 3, 3, 4, 5])
-assert.fails(lambda : [1, 2] + (3, 4), "unknown.*list \\+ tuple")
-assert.fails(lambda : (1, 2) + [3, 4], "unknown.*tuple \\+ list")
+assert.fails(lambda: [1, 2] + (3, 4), "unknown.*list \\+ tuple")
+assert.fails(lambda: (1, 2) + [3, 4], "unknown.*tuple \\+ list")
 
 # list * int,  int * list
 assert.eq(abc * 0, [])
@@ -73,8 +72,8 @@ assert.eq([(y, x) for x, y in {1: 2, 3: 4}.items()], [(2, 1), (4, 3)])
 
 # corner cases of parsing:
 assert.eq([x for x in range(12) if x % 2 == 0 if x % 3 == 0], [0, 6])
-assert.eq([x for x in [1, 2] if lambda : None], [1, 2])
-assert.eq([x for x in [1, 2] if (lambda : 3 if True else 4)], [1, 2])
+assert.eq([x for x in [1, 2] if lambda: None], [1, 2])
+assert.eq([x for x in [1, 2] if (lambda: 3 if True else 4)], [1, 2])
 
 # list function
 assert.eq(list(), [])
@@ -98,8 +97,8 @@ listcompblock()
 
 # list.pop
 x4 = [1, 2, 3, 4, 5]
-assert.fails(lambda : x4.pop(-6), "index -6 out of range \\[-5:4]")
-assert.fails(lambda : x4.pop(6), "index 6 out of range \\[-5:4]")
+assert.fails(lambda: x4.pop(-6), "index -6 out of range \\[-5:4]")
+assert.fails(lambda: x4.pop(6), "index 6 out of range \\[-5:4]")
 assert.eq(x4.pop(), 5)
 assert.eq(x4, [1, 2, 3, 4])
 assert.eq(x4.pop(1), 2)
@@ -205,12 +204,12 @@ def remove(v):
 assert.eq(remove(3), [1, 4, 1])
 assert.eq(remove(1), [3, 4, 1])
 assert.eq(remove(4), [3, 1, 1])
-assert.fails(lambda : [3, 1, 4, 1].remove(42), "remove: element not found")
+assert.fails(lambda: [3, 1, 4, 1].remove(42), "remove: element not found")
 
 # list.index
 bananas = list("bananas".elems())
 assert.eq(bananas.index("a"), 1)  # bAnanas
-assert.fails(lambda : bananas.index("d"), "value not in list")
+assert.fails(lambda: bananas.index("d"), "value not in list")
 
 # start
 assert.eq(bananas.index("a", -1000), 1)  # bAnanas
@@ -220,14 +219,14 @@ assert.eq(bananas.index("a", 2), 3)  # banAnas
 assert.eq(bananas.index("a", 3), 3)  # banAnas
 assert.eq(bananas.index("b", 0), 0)  # Bananas
 assert.eq(bananas.index("n", -3), 4)  # banaNas
-assert.fails(lambda : bananas.index("n", -2), "value not in list")
+assert.fails(lambda: bananas.index("n", -2), "value not in list")
 assert.eq(bananas.index("s", -2), 6)  # bananaS
-assert.fails(lambda : bananas.index("b", 1), "value not in list")
+assert.fails(lambda: bananas.index("b", 1), "value not in list")
 
 # start, end
 assert.eq(bananas.index("s", -1000, 7), 6)  # bananaS
-assert.fails(lambda : bananas.index("s", -1000, 6), "value not in list")
-assert.fails(lambda : bananas.index("d", -1000, 1000), "value not in list")
+assert.fails(lambda: bananas.index("s", -1000, 6), "value not in list")
+assert.fails(lambda: bananas.index("d", -1000, 1000), "value not in list")
 
 # slicing, x[i:j:k]
 assert.eq(bananas[6::-2], list("snnb".elems()))

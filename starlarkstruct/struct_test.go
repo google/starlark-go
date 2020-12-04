@@ -9,18 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 )
-
-func init() {
-	// The tests make extensive use of these not-yet-standard features.
-	resolve.AllowLambda = true
-	resolve.AllowNestedDef = true
-	resolve.AllowSet = true
-}
 
 func Test(t *testing.T) {
 	testdata := starlarktest.DataFile("starlarkstruct", ".")
