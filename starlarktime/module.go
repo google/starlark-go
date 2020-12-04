@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package starlarktime defines functions to work with dates/times
+// Package starlarktime defines functions to work with dates/times and durations
 package starlarktime
 
 import (
@@ -16,35 +16,64 @@ import (
 // Module time is a Starlark module similar to the datetime python package.
 //
 //   time = module(
-//      parse,
+//      parse_time,
 //      now,
 //      time,
+//      parse_duration,
+//      duration,
 //   )
 //
-// def parse(string, format[, location]):
-//   The parse function parses the given "string" with the "format" specified.
-//   Formats follow the specifications in the Golang "time" package.
+// def parse_time(string, format[, location]):
+//   This function parses the given "string" with the "format" specified
+//   and returns a "time" object. The formats follow the specifications
+//   in the Golang "time" package.
 //   The optional "location" argument can be used to specify the timezone
 //   location for the resulting time. In case no location is given and the
 //   given string does not contain any timezone information, the time is
 //   returned in UTC.
 //
 //   For example
-//     parse("2020-01-01T12:00:00Z", "2006-01-02T15:04:05Z", "Europe/Berlin")
-//   will return a time object with the given time localized in the CET/CEST
-//   timezone.
+//     parse_time("2020-01-01T12:00:00Z", "2006-01-02T15:04:05Z", "Europe/Berlin")
+//   will return a time object localized in the CET/CEST timezone.
 //
 // def now([location]):
-//   The now function returns the current time.
+//   This function returns the current time as "time" object.
 //   The optional "location" parameter can be used to specify the timezone
 //   location for the returned time. In case no location is given, the local
 //   time is returned.
 //
 // def time([year[, month[, day[, hour[, minute[, second[, nanosecond[, location]]]]]]]]):
-//   The time function returns the a new time instance with the given values.
+//   This function returns a new "time" object with the given values.
 //   All parameters are optional and default to zero if not specified. The "location"
 //   parameter can be used to specify the timezone location for the returned
 //   time. It defaults to UTC if not specified.
+//
+//   For example
+//     time(2020, 1, 1, 12, 0, 0, 0, "UTC)
+//   will return a time object for "2020-01-01T12:00:00Z".
+//
+// def parse_duration(string):
+//   This function parses the given "string" and returns a "duration" object.
+//   The formats follow the specifications in the Golang "time" package, with
+//   valid suffixes are "ns", "us", "ms", "s", "m", "h".
+//
+//   For example
+//     parse_duration("1m30s")
+//   will return a duration of 90 seconds.
+//
+// def duration(**kwargs):
+//   This function returns a new "duration" object with the given values
+//   specified in the keyword arguments.
+//   Valid keywords are "hours", "minutes", "seconds", "milliseconds",
+//   "microseconds" and "nanoseconds". The values for the keywords can
+//   be specified as integer or float values.
+//   NOTE: The resulting duration is floored to nanoseconds.
+//
+//   All parameters are optional and default to zero if not specified.
+//
+//   For example
+//     duration(hours=1.5)
+//   will return the duration of a football match.
 //
 var Module = &starlarkstruct.Module{
 	Name: "time",
