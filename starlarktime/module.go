@@ -179,42 +179,36 @@ func parseDuration(thread *starlark.Thread, b *starlark.Builtin, args starlark.T
 }
 
 func newDuration(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	h := starlark.MakeInt(0)
-	m := starlark.MakeInt(0)
-	s := starlark.MakeInt(0)
-	ms := starlark.MakeInt(0)
-	us := starlark.MakeInt(0)
-	ns := starlark.MakeInt(0)
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0, &h, &m, &s, &ms, &us, &ns); err != nil {
-		return nil, err
+	t := 0.0
+	for i, kwarg := range kwargs {
+		if len(kwarg) != 2 {
+			return starlark.None, fmt.Errorf("invalid length of keyword argument at position %d", i+1)
+		}
+		k, ok := kwarg[0].(starlark.String)
+		if !ok {
+			return starlark.None, fmt.Errorf("invalid key in keyword argument at position %d", i+1)
+		}
+		v, ok := starlark.AsFloat(kwarg[1])
+		if !ok {
+			return starlark.None, fmt.Errorf("invalid value for keyword argument %q at position %d", k, i+1)
+		}
+		switch k {
+		case "hours":
+			t += float64(time.Hour) * v
+		case "minutes":
+			t += float64(time.Minute) * v
+		case "seconds":
+			t += float64(time.Second) * v
+		case "milliseconds":
+			t += float64(time.Millisecond) * v
+		case "microseconds":
+			t += float64(time.Microsecond) * v
+		case "nanoseconds":
+			t += float64(time.Nanosecond) * v
+		default:
+			return starlark.None, fmt.Errorf("invalid keyword %q", k)
+		}
 	}
 
-	hour, ok := h.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("hours: cannot convert to int64")
-	}
-	minute, ok := m.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("minutes: cannot convert to int64")
-	}
-	second, ok := s.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("seconds: cannot convert to int64")
-	}
-	millisecond, ok := ms.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("milliseconds: cannot convert to int64")
-	}
-	microsecond, ok := us.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("microseconds: cannot convert to int64")
-	}
-	nanosecond, ok := ns.Int64()
-	if !ok {
-		return starlark.None, fmt.Errorf("nanoseconds: cannot convert to int64")
-	}
-
-	d := time.Duration((((hour*3600+minute*60+second)*1000+millisecond)*1000+microsecond)*1000 + nanosecond)
-
-	return &StarlarkDuration{Duration: d}, nil
+	return &StarlarkDuration{Duration: time.Duration(int64(t))}, nil
 }
