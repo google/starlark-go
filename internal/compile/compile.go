@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"go.starlark.net/resolve"
@@ -46,7 +47,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 11
+const Version = 12
 
 type Opcode uint8
 
@@ -309,11 +310,14 @@ func (op Opcode) String() string {
 type Program struct {
 	Loads     []Binding     // name (really, string) and position of each load stmt
 	Names     []string      // names of attributes and predeclared variables
-	Constants []interface{} // = string | int64 | float64 | *big.Int
+	Constants []interface{} // = string | int64 | float64 | *big.Int | Bytes
 	Functions []*Funcode
 	Globals   []Binding // for error messages and tracing
 	Toplevel  *Funcode  // module initialization function
 }
+
+// The type of a bytes literal value, to distinguish from text string.
+type Bytes string
 
 // A Funcode is the code of a compiled Starlark function.
 //
@@ -863,6 +867,8 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 		switch x := fn.Prog.Constants[arg].(type) {
 		case string:
 			comment = strconv.Quote(x)
+		case Bytes:
+			comment = "b" + strconv.Quote(string(x))
 		default:
 			comment = fmt.Sprint(x)
 		}
@@ -1283,8 +1289,12 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		fcomp.lookup(e)
 
 	case *syntax.Literal:
-		// e.Value is int64, float64, *bigInt, or string.
-		fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(e.Value))
+		// e.Value is int64, float64, *bigInt, string
+		v := e.Value
+		if e.Token == syntax.BYTES {
+			v = Bytes(v.(string))
+		}
+		fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
 
 	case *syntax.ListExpr:
 		for _, x := range e.List {
@@ -1522,7 +1532,7 @@ func (fcomp *fcomp) plus(e *syntax.BinaryExpr) {
 }
 
 // addable reports whether e is a statically addable
-// expression: a [s]tring, [l]ist, or [t]uple.
+// expression: a [s]tring, [b]ytes, [l]ist, or [t]uple.
 func addable(e syntax.Expr) rune {
 	switch e := e.(type) {
 	case *syntax.Literal:
@@ -1530,6 +1540,8 @@ func addable(e syntax.Expr) rune {
 		switch e.Token {
 		case syntax.STRING:
 			return 's'
+		case syntax.BYTES:
+			return 'b'
 		}
 	case *syntax.ListExpr:
 		return 'l'
@@ -1544,12 +1556,16 @@ func addable(e syntax.Expr) rune {
 // The resulting syntax is degenerate, lacking position, etc.
 func add(code rune, args []summand) syntax.Expr {
 	switch code {
-	case 's':
-		var buf bytes.Buffer
+	case 's', 'b':
+		var buf strings.Builder
 		for _, arg := range args {
 			buf.WriteString(arg.x.(*syntax.Literal).Value.(string))
 		}
-		return &syntax.Literal{Token: syntax.STRING, Value: buf.String()}
+		tok := syntax.STRING
+		if code == 'b' {
+			tok = syntax.BYTES
+		}
+		return &syntax.Literal{Token: tok, Value: buf.String()}
 	case 'l':
 		var elems []syntax.Expr
 		for _, arg := range args {

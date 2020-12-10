@@ -499,12 +499,19 @@ func (f Float) Unary(op syntax.Token) (Value, error) {
 	return nil, nil
 }
 
-// String is the type of a Starlark string.
+// String is the type of a Starlark text string.
 //
 // A String encapsulates an an immutable sequence of bytes,
 // but strings are not directly iterable. Instead, iterate
 // over the result of calling one of these four methods:
 // codepoints, codepoint_ords, elems, elem_ords.
+//
+// Strings typically contain text; use Bytes for binary strings.
+// The Starlark spec defines text strings as sequences of UTF-k
+// codes that encode Unicode code points. In this Go implementation,
+// k=8, whereas in a Java implementation, k=16. For portability,
+// operations on strings should aim to avoid assumptions about
+// the value of k.
 //
 // Warning: the contract of the Value interface's String method is that
 // it returns the value printed in Starlark notation,
@@ -513,7 +520,7 @@ func (f Float) Unary(op syntax.Token) (Value, error) {
 // of a Starlark string as a Go string.
 type String string
 
-func (s String) String() string        { return strconv.Quote(string(s)) }
+func (s String) String() string        { return syntax.Quote(string(s), false) }
 func (s String) GoString() string      { return string(s) }
 func (s String) Type() string          { return "string" }
 func (s String) Freeze()               {} // immutable
@@ -545,73 +552,106 @@ func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, err
 
 func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), ok }
 
-// A stringIterable is an iterable whose iterator yields a sequence of
-// either Unicode code points or elements (bytes),
-// either numerically or as successive substrings.
-type stringIterable struct {
-	s          String
-	ords       bool
-	codepoints bool
+// A stringElems is an iterable whose iterator yields a sequence of
+// elements (bytes), either numerically or as successive substrings.
+// It is an indexable sequence.
+type stringElems struct {
+	s    String
+	ords bool
 }
 
-var _ Iterable = (*stringIterable)(nil)
+var (
+	_ Iterable  = (*stringElems)(nil)
+	_ Indexable = (*stringElems)(nil)
+)
 
-func (si stringIterable) String() string {
-	var etype string
-	if si.codepoints {
-		etype = "codepoint"
-	} else {
-		etype = "elem"
-	}
+func (si stringElems) String() string {
 	if si.ords {
-		return si.s.String() + "." + etype + "_ords()"
+		return si.s.String() + ".elem_ords()"
 	} else {
-		return si.s.String() + "." + etype + "s()"
+		return si.s.String() + ".elems()"
 	}
 }
-func (si stringIterable) Type() string {
-	if si.codepoints {
-		return "codepoints"
+func (si stringElems) Type() string          { return "string.elems" }
+func (si stringElems) Freeze()               {} // immutable
+func (si stringElems) Truth() Bool           { return True }
+func (si stringElems) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", si.Type()) }
+func (si stringElems) Iterate() Iterator     { return &stringElemsIterator{si, 0} }
+func (si stringElems) Len() int              { return len(si.s) }
+func (si stringElems) Index(i int) Value {
+	if si.ords {
+		return MakeInt(int(si.s[i]))
 	} else {
-		return "elems"
+		// TODO(adonovan): opt: preallocate canonical 1-byte strings
+		// to avoid interface allocation.
+		return si.s[i : i+1]
 	}
 }
-func (si stringIterable) Freeze()               {} // immutable
-func (si stringIterable) Truth() Bool           { return True }
-func (si stringIterable) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", si.Type()) }
-func (si stringIterable) Iterate() Iterator     { return &stringIterator{si, 0} }
 
-type stringIterator struct {
-	si stringIterable
+type stringElemsIterator struct {
+	si stringElems
 	i  int
 }
 
-func (it *stringIterator) Next(p *Value) bool {
+func (it *stringElemsIterator) Next(p *Value) bool {
+	if it.i == len(it.si.s) {
+		return false
+	}
+	*p = it.si.Index(it.i)
+	it.i++
+	return true
+}
+
+func (*stringElemsIterator) Done() {}
+
+// A stringCodepoints is an iterable whose iterator yields a sequence of
+// Unicode code points, either numerically or as successive substrings.
+// It is not indexable.
+type stringCodepoints struct {
+	s    String
+	ords bool
+}
+
+var _ Iterable = (*stringCodepoints)(nil)
+
+func (si stringCodepoints) String() string {
+	if si.ords {
+		return si.s.String() + ".codepoint_ords()"
+	} else {
+		return si.s.String() + ".codepoints()"
+	}
+}
+func (si stringCodepoints) Type() string          { return "string.codepoints" }
+func (si stringCodepoints) Freeze()               {} // immutable
+func (si stringCodepoints) Truth() Bool           { return True }
+func (si stringCodepoints) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", si.Type()) }
+func (si stringCodepoints) Iterate() Iterator     { return &stringCodepointsIterator{si, 0} }
+
+type stringCodepointsIterator struct {
+	si stringCodepoints
+	i  int
+}
+
+func (it *stringCodepointsIterator) Next(p *Value) bool {
 	s := it.si.s[it.i:]
 	if s == "" {
 		return false
 	}
-	if it.si.codepoints {
-		r, sz := utf8.DecodeRuneInString(string(s))
-		if !it.si.ords {
+	r, sz := utf8.DecodeRuneInString(string(s))
+	if !it.si.ords {
+		if r == utf8.RuneError {
+			*p = String(r)
+		} else {
 			*p = s[:sz]
-		} else {
-			*p = MakeInt(int(r))
 		}
-		it.i += sz
 	} else {
-		b := int(s[0])
-		if !it.si.ords {
-			*p = s[:1]
-		} else {
-			*p = MakeInt(b)
-		}
-		it.i += 1
+		*p = MakeInt(int(r))
 	}
+	it.i += sz
 	return true
 }
 
-func (*stringIterator) Done() {}
+func (*stringCodepointsIterator) Done() {}
 
 // A Function is a function defined by a Starlark def statement or lambda expression.
 // The initialization behavior of a Starlark module is also represented by a Function.
@@ -1084,6 +1124,7 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 	case nil:
 		out.WriteString("<nil>") // indicates a bug
 
+	// These four cases are duplicates of T.String(), for efficiency.
 	case NoneType:
 		out.WriteString("None")
 
@@ -1098,7 +1139,7 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 		}
 
 	case String:
-		fmt.Fprintf(out, "%q", string(x))
+		out.WriteString(syntax.Quote(string(x), false))
 
 	case *List:
 		out.WriteByte('[')
@@ -1318,6 +1359,8 @@ func Len(x Value) int {
 	switch x := x.(type) {
 	case String:
 		return x.Len()
+	case Indexable:
+		return x.Len()
 	case Sequence:
 		return x.Len()
 	}
@@ -1334,4 +1377,55 @@ func Iterate(x Value) Iterator {
 		return x.Iterate()
 	}
 	return nil
+}
+
+// Bytes is the type of a Starlark binary string.
+//
+// A Bytes encapsulates an immutable sequence of bytes.
+// It is comparable, indexable, and sliceable, but not direcly iterable;
+// use bytes.elems() for an iterable view.
+//
+// In this Go implementation, the elements of 'string' and 'bytes' are
+// both bytes, but in other implementations, notably Java, the elements
+// of a 'string' are UTF-16 codes (Java chars). The spec abstracts text
+// strings as sequences of UTF-k codes that encode Unicode code points,
+// and operations that convert from text to binary incur UTF-k-to-UTF-8
+// transcoding; conversely, conversion from binary to text incurs
+// UTF-8-to-UTF-k transcoding. Because k=8 for Go, these operations
+// are the identity function, at least for valid encodings of text.
+type Bytes string
+
+var (
+	_ Comparable = Bytes("")
+	_ Sliceable  = Bytes("")
+	_ Indexable  = Bytes("")
+)
+
+func (b Bytes) String() string        { return syntax.Quote(string(b), true) }
+func (b Bytes) Type() string          { return "bytes" }
+func (b Bytes) Freeze()               {} // immutable
+func (b Bytes) Truth() Bool           { return len(b) > 0 }
+func (b Bytes) Hash() (uint32, error) { return String(b).Hash() }
+func (b Bytes) Len() int              { return len(b) }
+func (b Bytes) Index(i int) Value     { return b[i : i+1] }
+
+func (b Bytes) Attr(name string) (Value, error) { return builtinAttr(b, name, bytesMethods) }
+func (b Bytes) AttrNames() []string             { return builtinAttrNames(bytesMethods) }
+
+func (b Bytes) Slice(start, end, step int) Value {
+	if step == 1 {
+		return b[start:end]
+	}
+
+	sign := signum(step)
+	var str []byte
+	for i := start; signum(end-i) == sign; i += step {
+		str = append(str, b[i])
+	}
+	return Bytes(str)
+}
+
+func (x Bytes) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+	y := y_.(Bytes)
+	return threeway(op, strings.Compare(string(x), string(y))), nil
 }

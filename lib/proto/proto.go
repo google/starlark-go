@@ -79,8 +79,6 @@
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
-// - Contribute the 'bytes' data type to the core language.
-//   See https://github.com/bazelbuild/starlark/issues/112.
 // - Make Message and RepeatedField comparable.
 //   (NOTE: proto.Equal works only with generated message types.)
 // - Support maps, oneof, any. But not messageset if we can avoid it.
@@ -234,7 +232,7 @@ func marshal(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 		if err != nil {
 			return nil, fmt.Errorf("%s: %v", fn.Name(), err)
 		}
-		return Bytes(data), nil
+		return starlark.Bytes(data), nil
 	} else {
 		text, err := prototext.MarshalOptions{Indent: "  "}.Marshal(m.Message())
 		if err != nil {
@@ -247,7 +245,7 @@ func marshal(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 // unmarshal(msg) decodes a binary protocol message to a Message.
 func unmarshal(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
-	var data Bytes
+	var data starlark.Bytes
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &desc, &data); err != nil {
 		return nil, err
 	}
@@ -486,7 +484,7 @@ func toProto(fdesc protoreflect.FieldDescriptor, v starlark.Value) (protoreflect
 	case protoreflect.StringKind:
 		if s, ok := starlark.AsString(v); ok {
 			return protoreflect.ValueOfString(s), nil
-		} else if b, ok := v.(Bytes); ok {
+		} else if b, ok := v.(starlark.Bytes); ok {
 			// TODO(adonovan): allow bytes for string? Not friendly to a Java port.
 			return protoreflect.ValueOfBytes([]byte(b)), nil
 		}
@@ -497,7 +495,7 @@ func toProto(fdesc protoreflect.FieldDescriptor, v starlark.Value) (protoreflect
 			// Instead provide b"..." literals in the core
 			// and a bytes(str) conversion.
 			return protoreflect.ValueOfBytes([]byte(s)), nil
-		} else if b, ok := v.(Bytes); ok {
+		} else if b, ok := v.(starlark.Bytes); ok {
 			return protoreflect.ValueOfBytes([]byte(b)), nil
 		}
 
@@ -588,7 +586,7 @@ func toStarlark1(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen 
 		return starlark.String(x.String())
 
 	case protoreflect.BytesKind:
-		return Bytes(x.Bytes())
+		return starlark.Bytes(x.Bytes())
 
 	case protoreflect.DoubleKind, protoreflect.FloatKind:
 		return starlark.Float(x.Float())
@@ -1231,79 +1229,4 @@ func (x EnumValueDescriptor) CompareSameType(op syntax.Token, y_ starlark.Value,
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y_.Type())
 	}
-}
-
-// A Bytes is an immutable sequence of bytes.
-// It is comparable, iterable, indexable, and sliceable.
-//
-// (In go.starlark.net, text Strings are also byte strings,
-// but we shouldn't rely on that.
-// See https://github.com/bazelbuild/starlark/issues/112.)
-type Bytes string
-
-var (
-	_ starlark.Comparable = Bytes("")
-	_ starlark.Iterable   = Bytes("")
-	_ starlark.Sliceable  = Bytes("")
-	_ starlark.Sequence   = Bytes("")
-)
-
-func (b Bytes) String() string             { return fmt.Sprintf("<%d bytes>", len(b)) }
-func (b Bytes) Type() string               { return "bytes" }
-func (b Bytes) Freeze()                    {} // immutable
-func (b Bytes) Truth() starlark.Bool       { return len(b) > 0 }
-func (b Bytes) Hash() (uint32, error)      { return starlark.String(b).Hash() }
-func (b Bytes) Len() int                   { return len(b) }
-func (b Bytes) Index(i int) starlark.Value { return starlark.MakeInt(int(b[i])) }
-
-func (b Bytes) Slice(start, end, step int) starlark.Value {
-	if step == 1 {
-		return b[start:end]
-	}
-
-	sign := signum(step)
-	var str []byte
-	for i := start; signum(end-i) == sign; i += step {
-		str = append(str, b[i])
-	}
-	return Bytes(str)
-}
-
-// From Hacker's Delight, section 2.8.
-func signum64(x int64) int { return int(uint64(x>>63) | uint64(-x)>>63) }
-func signum(x int) int     { return signum64(int64(x)) }
-
-func (b Bytes) Iterate() starlark.Iterator { return &bytesIterator{string(b)} }
-
-type bytesIterator struct{ string }
-
-func (it *bytesIterator) Next(p *starlark.Value) bool {
-	if it.string == "" {
-		return false
-	}
-	*p = starlark.MakeInt(int(it.string[0]))
-	it.string = it.string[1:]
-	return true
-}
-
-func (it *bytesIterator) Done() {}
-
-func (x Bytes) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
-	y := y_.(Bytes)
-	cmp := strings.Compare(string(x), string(y))
-	switch op {
-	case syntax.EQL:
-		return cmp == 0, nil
-	case syntax.NEQ:
-		return cmp != 0, nil
-	case syntax.LE:
-		return cmp <= 0, nil
-	case syntax.LT:
-		return cmp < 0, nil
-	case syntax.GE:
-		return cmp >= 0, nil
-	case syntax.GT:
-		return cmp > 0, nil
-	}
-	panic(op)
 }

@@ -361,9 +361,12 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 	case reflect.Struct:
 		switch v := x.Interface().(type) {
 		case syntax.Literal:
-			if v.Token == syntax.STRING {
+			switch v.Token {
+			case syntax.STRING:
 				fmt.Fprintf(out, "%q", v.Value)
-			} else if v.Token == syntax.INT {
+			case syntax.BYTES:
+				fmt.Fprintf(out, "b%q", v.Value)
+			case syntax.INT:
 				fmt.Fprintf(out, "%d", v.Value)
 			}
 			return

@@ -22,17 +22,14 @@ var quoteTests = []struct {
 	{`'quote"here'`, `quote"here`, false},
 	{`"quote'here"`, `quote'here`, true},
 	{`'quote\'here'`, `quote'here`, false},
-	{`"""hello " ' world "" asdf ''' foo"""`, `hello " ' world "" asdf ''' foo`, true},
-	{`"""hello
-world"""`, "hello\nworld", true},
 
-	{`"\a\b\f\n\r\t\v\000\377"`, "\a\b\f\n\r\t\v\000\xFF", true},
-	{`"\a\b\f\n\r\t\v\x00\xff"`, "\a\b\f\n\r\t\v\000\xFF", false},
-	{`"\a\b\f\n\r\t\v\000\xFF"`, "\a\b\f\n\r\t\v\000\xFF", false},
-	{`"\a\b\f\n\r\t\v\000\377\"'\\\003\200"`, "\a\b\f\n\r\t\v\x00\xFF\"'\\\x03\x80", true},
-	{`"\a\b\f\n\r\t\v\x00\xff\"'\\\x03\x80"`, "\a\b\f\n\r\t\v\x00\xFF\"'\\\x03\x80", false},
-	{`"\a\b\f\n\r\t\v\000\xFF\"'\\\x03\x80"`, "\a\b\f\n\r\t\v\x00\xFF\"'\\\x03\x80", false},
-	{`"\a\b\f\n\r\t\v\000\xFF\"\\\x03\x80"`, "\a\b\f\n\r\t\v\x00\xFF\"\\\x03\x80", false},
+	{`"\a\b\f\n\r\t\v\x00\x7f"`, "\a\b\f\n\r\t\v\000\x7F", true},
+	{`"\a\b\f\n\r\t\v\x00\x7f"`, "\a\b\f\n\r\t\v\000\x7F", false},
+	{`"\a\b\f\n\r\t\v\x00\x7f"`, "\a\b\f\n\r\t\v\000\x7F", false},
+	{`"\a\b\f\n\r\t\v\x00\x7f\"'\\\x03"`, "\a\b\f\n\r\t\v\x00\x7F\"'\\\x03", true},
+	{`"\a\b\f\n\r\t\v\x00\x7f\"'\\\x03"`, "\a\b\f\n\r\t\v\x00\x7F\"'\\\x03", false},
+	{`"\a\b\f\n\r\t\v\x00\x7f\"'\\\x03"`, "\a\b\f\n\r\t\v\x00\x7F\"'\\\x03", false},
+	{`"\a\b\f\n\r\t\v\x00\x7f\"\\\x03"`, "\a\b\f\n\r\t\v\x00\x7F\"\\\x03", false},
 	{
 		`"cat $(SRCS) | grep '\\s*ip_block:' | sed -e 's/\\s*ip_block: \"\\([^ ]*\\)\"/    \x27\\1\x27,/g' >> $@; "`,
 		"cat $(SRCS) | grep '\\s*ip_block:' | sed -e 's/\\s*ip_block: \"\\([^ ]*\\)\"/    '\\1',/g' >> $@; ",
@@ -50,7 +47,7 @@ func TestQuote(t *testing.T) {
 		if !tt.std {
 			continue
 		}
-		q := quote(tt.s, strings.HasPrefix(tt.q, `"""`))
+		q := Quote(tt.s, false)
 		if q != tt.q {
 			t.Errorf("quote(%#q) = %s, want %s", tt.s, q, tt.q)
 		}
@@ -59,7 +56,7 @@ func TestQuote(t *testing.T) {
 
 func TestUnquote(t *testing.T) {
 	for _, tt := range quoteTests {
-		s, triple, err := unquote(tt.q)
+		s, triple, _, err := unquote(tt.q)
 		wantTriple := strings.HasPrefix(tt.q, `"""`) || strings.HasPrefix(tt.q, `'''`)
 		if s != tt.s || triple != wantTriple || err != nil {
 			t.Errorf("unquote(%s) = %#q, %v, %v want %#q, %v, nil", tt.q, s, triple, err, tt.s, wantTriple)
