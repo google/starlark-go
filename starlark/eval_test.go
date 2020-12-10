@@ -10,6 +10,7 @@ import (
 	"math"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -709,6 +710,34 @@ func TestUnpackCustomUnpacker(t *testing.T) {
 	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "a", &a)
 	if want := "unpack: for parameter a: got int, want string"; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)
+	}
+}
+
+func TestAsInt(t *testing.T) {
+	for _, test := range []struct {
+		val  starlark.Value
+		ptr  interface{}
+		want string
+	}{
+		{starlark.MakeInt(42), new(int32), "42"},
+		{starlark.MakeInt(-1), new(int32), "-1"},
+		{starlark.MakeInt(1 << 40), new(int32), "1099511627776 out of range (want value in signed 32-bit range)"},
+		{starlark.MakeInt(-1 << 40), new(int32), "-1099511627776 out of range (want value in signed 32-bit range)"},
+
+		{starlark.MakeInt(42), new(uint16), "42"},
+		{starlark.MakeInt(0xffff), new(uint16), "65535"},
+		{starlark.MakeInt(0x10000), new(uint16), "65536 out of range (want value in unsigned 16-bit range)"},
+		{starlark.MakeInt(-1), new(uint16), "-1 out of range (want value in unsigned 16-bit range)"},
+	} {
+		var got string
+		if err := starlark.AsInt(test.val, test.ptr); err != nil {
+			got = err.Error()
+		} else {
+			got = fmt.Sprint(reflect.ValueOf(test.ptr).Elem().Interface())
+		}
+		if got != test.want {
+			t.Errorf("AsInt(%s, %T): got %q, want %q", test.val, test.ptr, got, test.want)
+		}
 	}
 }
 

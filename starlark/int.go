@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"strconv"
 
 	"go.starlark.net/syntax"
@@ -332,6 +333,61 @@ func AsInt32(x Value) (int, error) {
 		return 0, fmt.Errorf("%s out of range", i)
 	}
 	return int(iSmall), nil
+}
+
+// AsInt sets *ptr to the value of Starlark int x, if it is exactly representable,
+// otherwise it returns an error.
+// The type of ptr must be one of the pointer types *int, *int8, *int16, *int32, or *int64,
+// or one of their unsigned counterparts including *uintptr.
+func AsInt(x Value, ptr interface{}) error {
+	xint, ok := x.(Int)
+	if !ok {
+		return fmt.Errorf("got %s, want int", x.Type())
+	}
+
+	bits := reflect.TypeOf(ptr).Elem().Size() * 8
+	switch ptr.(type) {
+	case *int, *int8, *int16, *int32, *int64:
+		i, ok := xint.Int64()
+		if !ok || bits < 64 && !(-1<<(bits-1) <= i && i < 1<<(bits-1)) {
+			return fmt.Errorf("%s out of range (want value in signed %d-bit range)", xint, bits)
+		}
+		switch ptr := ptr.(type) {
+		case *int:
+			*ptr = int(i)
+		case *int8:
+			*ptr = int8(i)
+		case *int16:
+			*ptr = int16(i)
+		case *int32:
+			*ptr = int32(i)
+		case *int64:
+			*ptr = int64(i)
+		}
+
+	case *uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
+		i, ok := xint.Uint64()
+		if !ok || bits < 64 && i >= 1<<bits {
+			return fmt.Errorf("%s out of range (want value in unsigned %d-bit range)", xint, bits)
+		}
+		switch ptr := ptr.(type) {
+		case *uint:
+			*ptr = uint(i)
+		case *uint8:
+			*ptr = uint8(i)
+		case *uint16:
+			*ptr = uint16(i)
+		case *uint32:
+			*ptr = uint32(i)
+		case *uint64:
+			*ptr = uint64(i)
+		case *uintptr:
+			*ptr = uintptr(i)
+		}
+	default:
+		panic(fmt.Sprintf("invalid argument type: %T", ptr))
+	}
+	return nil
 }
 
 // NumberToInt converts a number x to an integer value.

@@ -20,10 +20,10 @@ type Unpacker interface {
 // supplied parameter variables.  pairs is an alternating list of names
 // and pointers to variables.
 //
-// If the variable is a bool, int, string, *List, *Dict, Callable,
+// If the variable is a bool, integer, string, *List, *Dict, Callable,
 // Iterable, or user-defined implementation of Value,
 // UnpackArgs performs the appropriate type check.
-// An int uses the AsInt32 check.
+// Predeclared Go integer types uses the AsInt check.
 // If the parameter name ends with "?",
 // it and all following parameters are optional.
 //
@@ -199,12 +199,9 @@ func unpackOneArg(v Value, ptr interface{}) error {
 			return fmt.Errorf("got %s, want bool", v.Type())
 		}
 		*ptr = bool(b)
-	case *int:
-		i, err := AsInt32(v)
-		if err != nil {
-			return err
-		}
-		*ptr = i
+	case *int, *int8, *int16, *int32, *int64,
+		*uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
+		return AsInt(v, ptr)
 	case **List:
 		list, ok := v.(*List)
 		if !ok {
