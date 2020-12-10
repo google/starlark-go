@@ -740,7 +740,6 @@ func range_(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 		return nil, err
 	}
 
-	// TODO(adonovan): analyze overflow/underflows cases for 32-bit implementations.
 	if len(args) == 1 {
 		// range(stop)
 		start, stop = 0, start
