@@ -5,16 +5,16 @@ package from the go standard library.
     time defines time primitives for starlark
     path: time
     functions:
-      duration(string) duration
+      parse_duration(string) duration
         parse a duration
-      location(string) location
+      parse_location(string) location
         parse a location
-      time(string, format=..., location=...) time
+      parse_time(string, format=..., location=...) time
         parse a time
-      fromtimestamptime(int) time
+      from_timestamp(int) time
         parse a Unix timestamp
       now() time
-        implementations would be able to make this a constant
+        internal call to time.Time, returns the current time by default
       zero() time
         a constant
 
@@ -32,15 +32,15 @@ package from the go standard library.
           duration < duration = booleans
       time
         functions:
-          year() int
-          month() int
-          day() int
-          hour() int
-          minute() int
-          second() int
-          nanosecond() int
-          unix() int
-          unix_nano() int
+          year duration
+          month int
+          day int
+          hour int
+          minute int
+          second int
+          nanosecond int
+          unix int
+          unix_nano int
           in_location(string) time
             get time representing the same instant but in a different location
           format(string) string

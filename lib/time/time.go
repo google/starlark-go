@@ -26,7 +26,7 @@ var Module = &starlarkstruct.Module{
 		"time":           starlark.NewBuiltin("time", newTime),
 		"parse_time":     starlark.NewBuiltin("time", parseTime),
 		"sleep":          starlark.NewBuiltin("sleep", sleep),
-		"from_timestamp": starlark.NewBuiltin("fromtimestamp", fromUnixTime),
+		"from_timestamp": starlark.NewBuiltin("from_timestamp", fromTimestamp),
 
 		"zero": Time{},
 
@@ -114,7 +114,7 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	return Time(t), nil
 }
 
-func fromUnixTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x int
 	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &x); err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (d Duration) Freeze() {}
 // Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y)
 // required by starlark.Value interface.
 func (d Duration) Hash() (uint32, error) {
-	return starlark.MakeInt64(int64(d)).Hash()
+	return uint32(d) ^ uint32(int64(d)>>32), nil
 }
 
 // Truth returns the truth value of an object required by starlark.Value
@@ -253,7 +253,6 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 			return Duration(x - time.Duration(i)), nil
 		case Time:
 			// duration - time = duration
-			return nil, nil
 		}
 
 	case syntax.SLASH:
@@ -272,16 +271,6 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
 			return Duration(d / Duration(i)), nil
-		case Time:
-			// y := time.Time(yV.(Time))
-			// switch op {
-			// case syntax.PLUS:
-			// 	// duration + time = time
-			// 	return Time(y.Add(x)), nil
-			// case syntax.MINUS:
-			// 	// duration - time = duration
-			// 	return nil, nil
-			// }
 		}
 
 		// if int64(y) == 0 {
@@ -302,16 +291,6 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
 			}
 			return d / Duration(i), nil
-		case Time:
-			// y := time.Time(yV.(Time))
-			// switch op {
-			// case syntax.PLUS:
-			// 	// duration + time = time
-			// 	return Time(y.Add(x)), nil
-			// case syntax.MINUS:
-			// 	// duration - time = duration
-			// 	return nil, nil
-			// }
 		}
 
 		// if int64(y) == 0 {
@@ -329,19 +308,7 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
 			}
 			return d * Duration(i), nil
-		case Time:
-			// y := time.Time(yV.(Time))
-			// switch op {
-			// case syntax.PLUS:
-			// 	// duration + time = time
-			// 	return Time(y.Add(x)), nil
-			// case syntax.MINUS:
-			// 	// duration - time = duration
-			// 	return nil, nil
-			// }
 		}
-
-		// return Duration(x * y), nil
 	}
 
 	return nil, nil
@@ -378,7 +345,7 @@ func (t Time) Freeze() {}
 // Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y)
 // required by starlark.Value interface.
 func (t Time) Hash() (uint32, error) {
-	return starlark.MakeInt64(time.Time(t).UnixNano()).Hash()
+	return uint32(time.Time(t).UnixNano()) ^ uint32(int64(time.Time(t).UnixNano())>>32), nil
 }
 
 // Truth returns the truth value of an object required by starlark.Value
