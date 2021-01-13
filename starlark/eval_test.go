@@ -721,8 +721,9 @@ func TestAsInt(t *testing.T) {
 	}{
 		{starlark.MakeInt(42), new(int32), "42"},
 		{starlark.MakeInt(-1), new(int32), "-1"},
-		{starlark.MakeInt(1 << 40), new(int32), "1099511627776 out of range (want value in signed 32-bit range)"},
-		{starlark.MakeInt(-1 << 40), new(int32), "-1099511627776 out of range (want value in signed 32-bit range)"},
+		// Use Lsh not 1<<40 as the latter exceeds int if GOARCH=386.
+		{starlark.MakeInt(1).Lsh(40), new(int32), "1099511627776 out of range (want value in signed 32-bit range)"},
+		{starlark.MakeInt(-1).Lsh(40), new(int32), "-1099511627776 out of range (want value in signed 32-bit range)"},
 
 		{starlark.MakeInt(42), new(uint16), "42"},
 		{starlark.MakeInt(0xffff), new(uint16), "65535"},
