@@ -44,7 +44,7 @@ func MakeUint64(x uint64) Int {
 }
 
 // MakeBigInt returns a Starlark int for the specified big.Int.
-// The new Int value will contain a copy of x, the caller is safe to modify x.
+// The new Int value will contain a copy of x. The caller is safe to modify x.
 func MakeBigInt(x *big.Int) Int {
 	if n := x.BitLen(); n < 32 || n == 32 && x.Int64() == math.MinInt32 {
 		return makeSmallInt(x.Int64())
@@ -87,8 +87,7 @@ func (i Int) Int64() (_ int64, ok bool) {
 	return iSmall, true
 }
 
-// BigInt returns a copy of the value as a big.Int.
-// It is safe to modify the returned value.
+// BigInt returns a new big.Int with the same value as the Int.
 func (i Int) BigInt() *big.Int {
 	iSmall, iBig := i.get()
 	if iBig != nil {
@@ -99,7 +98,7 @@ func (i Int) BigInt() *big.Int {
 
 // bigInt returns the value as a big.Int.
 // It differs from BigInt in that this method returns the actual
-// reference and any modification will change the state of i
+// reference and any modification will change the state of i.
 func (i Int) bigInt() *big.Int {
 	iSmall, iBig := i.get()
 	if iBig != nil {
