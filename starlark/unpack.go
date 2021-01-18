@@ -202,6 +202,12 @@ func unpackOneArg(v Value, ptr interface{}) error {
 	case *int, *int8, *int16, *int32, *int64,
 		*uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
 		return AsInt(v, ptr)
+    case *float64:
+        f, ok := v.(Float)
+        if !ok {
+            return fmt.Errorf("got %s, want float", v.Type())
+        }
+        *ptr = float64(f)
 	case **List:
 		list, ok := v.(*List)
 		if !ok {
