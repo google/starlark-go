@@ -71,3 +71,32 @@ func TestIntOpts(t *testing.T) {
 		}
 	}
 }
+
+func TestImmutabilityMakeBigInt(t *testing.T) {
+	// use max int64 for the test
+	expect := int64(^uint64(0) >> 1)
+
+	mutint := big.NewInt(expect)
+	value := MakeBigInt(mutint)
+	mutint.Set(big.NewInt(1))
+
+	got, _ := value.Int64()
+	if got != expect {
+		t.Errorf("expected %d, got %d", expect, got)
+	}
+}
+
+func TestImmutabilityBigInt(t *testing.T) {
+	// use 1 and max int64 for the test
+	for _, expect := range []int64{1, int64(^uint64(0) >> 1)} {
+		value := MakeBigInt(big.NewInt(expect))
+
+		bigint := value.BigInt()
+		bigint.Set(big.NewInt(2))
+
+		got, _ := value.Int64()
+		if got != expect {
+			t.Errorf("expected %d, got %d", expect, got)
+		}
+	}
+}

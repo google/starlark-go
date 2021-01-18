@@ -44,12 +44,13 @@ func MakeUint64(x uint64) Int {
 }
 
 // MakeBigInt returns a Starlark int for the specified big.Int.
-// The caller must not subsequently modify x.
+// The new Int value will contain a copy of x. The caller is safe to modify x.
 func MakeBigInt(x *big.Int) Int {
 	if n := x.BitLen(); n < 32 || n == 32 && x.Int64() == math.MinInt32 {
 		return makeSmallInt(x.Int64())
 	}
-	return makeBigInt(x)
+	z := new(big.Int).Set(x)
+	return makeBigInt(z)
 }
 
 var (
@@ -86,9 +87,19 @@ func (i Int) Int64() (_ int64, ok bool) {
 	return iSmall, true
 }
 
-// BigInt returns the value as a big.Int.
-// The returned variable must not be modified by the client.
+// BigInt returns a new big.Int with the same value as the Int.
 func (i Int) BigInt() *big.Int {
+	iSmall, iBig := i.get()
+	if iBig != nil {
+		return new(big.Int).Set(iBig)
+	}
+	return big.NewInt(iSmall)
+}
+
+// bigInt returns the value as a big.Int.
+// It differs from BigInt in that this method returns the actual
+// reference and any modification will change the state of i.
+func (i Int) bigInt() *big.Int {
 	iSmall, iBig := i.get()
 	if iBig != nil {
 		return iBig
@@ -179,7 +190,7 @@ func (x Int) CompareSameType(op syntax.Token, v Value, depth int) (bool, error) 
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return threeway(op, x.BigInt().Cmp(y.BigInt())), nil
+		return threeway(op, x.bigInt().Cmp(y.bigInt())), nil
 	}
 	return threeway(op, signum64(xSmall-ySmall)), nil
 }
@@ -216,7 +227,7 @@ func (x Int) Add(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Add(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).Add(x.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall + ySmall)
 }
@@ -224,7 +235,7 @@ func (x Int) Sub(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Sub(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).Sub(x.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall - ySmall)
 }
@@ -232,7 +243,7 @@ func (x Int) Mul(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Mul(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).Mul(x.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall * ySmall)
 }
@@ -240,7 +251,7 @@ func (x Int) Or(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Or(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).Or(x.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall | ySmall)
 }
@@ -248,7 +259,7 @@ func (x Int) And(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).And(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).And(x.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall & ySmall)
 }
@@ -256,7 +267,7 @@ func (x Int) Xor(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Xor(x.BigInt(), y.BigInt()))
+		return MakeBigInt(new(big.Int).Xor(x.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall ^ ySmall)
 }
@@ -267,8 +278,8 @@ func (x Int) Not() Int {
 	}
 	return makeSmallInt(^xSmall)
 }
-func (x Int) Lsh(y uint) Int { return MakeBigInt(new(big.Int).Lsh(x.BigInt(), y)) }
-func (x Int) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh(x.BigInt(), y)) }
+func (x Int) Lsh(y uint) Int { return MakeBigInt(new(big.Int).Lsh(x.bigInt(), y)) }
+func (x Int) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh(x.bigInt(), y)) }
 
 // Precondition: y is nonzero.
 func (x Int) Div(y Int) Int {
@@ -276,7 +287,7 @@ func (x Int) Div(y Int) Int {
 	ySmall, yBig := y.get()
 	// http://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
 	if xBig != nil || yBig != nil {
-		xb, yb := x.BigInt(), y.BigInt()
+		xb, yb := x.bigInt(), y.bigInt()
 
 		var quo, rem big.Int
 		quo.QuoRem(xb, yb, &rem)
@@ -298,7 +309,7 @@ func (x Int) Mod(y Int) Int {
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		xb, yb := x.BigInt(), y.BigInt()
+		xb, yb := x.bigInt(), y.bigInt()
 
 		var quo, rem big.Int
 		quo.QuoRem(xb, yb, &rem)
