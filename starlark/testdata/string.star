@@ -412,9 +412,6 @@ assert.fails(lambda: sorted("abc"), "got string, want iterable")  # sorted
 assert.fails(lambda: [].extend("bc"), "got string, want iterable")  # list.extend
 assert.fails(lambda: ",".join("abc"), "got string, want iterable")  # string.join
 assert.fails(lambda: dict(["ab"]), "not iterable .*string")  # dict
-
-# The Java implementation does not correctly reject the following cases:
-# (See Google Issue b/34385336)
 assert.fails(for_string, "string value is not iterable")  # for loop
 assert.fails(lambda: [x for x in "abc"], "string value is not iterable")  # comprehension
 assert.fails(lambda: all("abc"), "got string, want iterable")  # all

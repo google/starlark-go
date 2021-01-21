@@ -2518,12 +2518,6 @@ def twice(x):
 twice = lambda x: x * 2
 ```
 
-<b>Implementation note:</b>
-The Go implementation of Starlark requires the `-lambda` flag
-to enable support for lambda expressions.
-The Java implementation does not support them.
-See Google Issue b/36358844.
-
 
 ## Statements
 
@@ -2738,12 +2732,6 @@ referenced within the function body; and the global dictionary of the
 current module.
 
 <!-- this is too implementation-oriented; it's not a spec. -->
-
-<b>Implementation note:</b>
-The Go implementation of Starlark requires the `-nesteddef`
-flag to enable support for nested `def` statements.
-The Java implementation does not permit a `def` expression to be
-nested within the body of another function.
 
 
 ### Return statements
@@ -4244,11 +4232,7 @@ applications to mimic the Bazel dialect more closely. Our goal is
 eventually to eliminate all such differences on a case-by-case basis.
 See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 
-* Integers are represented with infinite precision.
-* Integer arithmetic is exact.
 * String interpolation supports the `[ioxXc]` conversions.
-* `def` statements may be nested (option: `-nesteddef`).
-* `lambda` expressions are supported (option: `-lambda`).
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
 * Strings support octal and hex byte escapes.
