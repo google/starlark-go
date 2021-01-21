@@ -98,14 +98,16 @@ const doesnt = "this Starlark dialect does not "
 // These features are either not standard Starlark (yet), or deprecated
 // features of the BUILD language, so we put them behind flags.
 var (
-	AllowNestedDef      = false // allow def statements within function bodies
-	AllowLambda         = false // allow lambda expressions
-	AllowFloat          = false // obsolete; no effect
 	AllowSet            = false // allow the 'set' built-in
 	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
 	AllowRecursion      = false // allow while statements and recursive functions
-	AllowBitwise        = true  // obsolete; bitwise operations (&, |, ^, ~, <<, and >>) are always enabled
 	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
+
+	// obsolete flags for features that are now standard. No effect.
+	AllowNestedDef = true
+	AllowLambda    = true
+	AllowFloat     = true
+	AllowBitwise   = true
 )
 
 // File resolves the specified file and records information about the
@@ -506,9 +508,6 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		r.assign(stmt.LHS, isAugmented)
 
 	case *syntax.DefStmt:
-		if !AllowNestedDef && r.container().function != nil {
-			r.errorf(stmt.Def, doesnt+"support nested def")
-		}
 		r.bind(stmt.Name)
 		fn := &Function{
 			Name:   stmt.Name.Name,
@@ -780,9 +779,6 @@ func (r *resolver) expr(e syntax.Expr) {
 		}
 
 	case *syntax.LambdaExpr:
-		if !AllowLambda {
-			r.errorf(e.Lambda, doesnt+"support lambda")
-		}
 		fn := &Function{
 			Name:   "lambda",
 			Pos:    e.Lambda,

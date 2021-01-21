@@ -2518,7 +2518,6 @@ def twice(x):
 twice = lambda x: x * 2
 ```
 
-
 ## Statements
 
 ```grammar {.good}
@@ -4235,7 +4234,7 @@ See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 * String interpolation supports the `[ioxXc]` conversions.
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
-* Strings support octal and hex byte escapes.
+* Strings support hex byte escapes.
 * Strings have the additional methods `elem_ords`, `codepoint_ords`, and `codepoints`.
 * The `chr` and `ord` built-in functions are supported.
 * The `set` built-in function is provided (option: `-set`).

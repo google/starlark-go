@@ -79,7 +79,7 @@ _ = [x for x in "abc"]
 M(x) ### "undefined: x"
 
 ---
-# Functions may have forward refs.   (option:lambda option:nesteddef)
+# Functions may have forward refs.
 def f():
    g()
    h() ### "undefined: h"
