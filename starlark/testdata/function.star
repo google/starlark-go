@@ -1,5 +1,5 @@
 # Tests of Starlark 'function'
-# option:nesteddef option:set
+# option:set
 
 # TODO(adonovan):
 # - add some introspection functions for looking at function values
@@ -239,7 +239,7 @@ assert.eq(y, ((1, 2, 4), dict(x=3, z=5)))
 assert.eq(r, [1, 2, 3, 4, 5])
 
 ---
-# option:nesteddef option:recursion
+# option:recursion
 # See github.com/bazelbuild/starlark#170
 load("assert.star", "assert")
 
@@ -276,7 +276,6 @@ def e():
 assert.eq(e(), 1)
 
 ---
-# option:nesteddef
 load("assert.star", "assert")
 
 def e():
