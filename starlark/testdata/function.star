@@ -287,6 +287,23 @@ def e():
 
 assert.fails(e, "local variable x referenced before assignment")
 
+def f():
+    def inner():
+        return x
+    if False:
+        x = 0
+    return x # fails (x is an uninitialized cell of this function)
+
+assert.fails(f, "local variable x referenced before assignment")
+
+def g():
+    def inner():
+        return x # fails (x is an uninitialized cell of the enclosing function)
+    if False:
+        x = 0
+    return inner()
+
+assert.fails(g, "local variable x referenced before assignment")
 
 ---
 # A trailing comma is allowed in any function definition or call.
