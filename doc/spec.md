@@ -4231,7 +4231,7 @@ applications to mimic the Bazel dialect more closely. Our goal is
 eventually to eliminate all such differences on a case-by-case basis.
 See [Starlark spec issue 20](https://github.com/bazelbuild/starlark/issues/20).
 
-* String interpolation supports the `[ixXc]` conversions.
+* String interpolation supports the `[ioxXc]` conversions.
 * String elements are bytes.
 * Non-ASCII strings are encoded using UTF-8.
 * Strings support hex byte escapes.
