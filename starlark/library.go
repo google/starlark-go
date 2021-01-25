@@ -473,95 +473,23 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		return nil, err
 	}
 
-	// "If x is not a number or base is given, x must be a string."
 	if s, ok := AsString(x); ok {
 		b := 10
 		if base != nil {
 			var err error
 			b, err = AsInt32(base)
-			if err != nil || b != 0 && (b < 2 || b > 36) {
+			if err != nil {
+				return nil, fmt.Errorf("int: for base, got %s, want int", base.Type())
+			}
+			if b != 0 && (b < 2 || b > 36) {
 				return nil, fmt.Errorf("int: base must be an integer >= 2 && <= 36")
 			}
 		}
-
-		orig := s // save original for error message
-
-		// remove sign
-		var neg bool
-		if s != "" {
-			if s[0] == '+' {
-				s = s[1:]
-			} else if s[0] == '-' {
-				neg = true
-				s = s[1:]
-			}
+		res := parseInt(s, b)
+		if res == nil {
+			return nil, fmt.Errorf("int: invalid literal with base %d: %s", b, s)
 		}
-
-		// remove base prefix
-		baseprefix := 0
-		if len(s) > 1 && s[0] == '0' {
-			if len(s) > 2 {
-				switch s[1] {
-				case 'o', 'O':
-					s = s[2:]
-					baseprefix = 8
-				case 'x', 'X':
-					s = s[2:]
-					baseprefix = 16
-				case 'b', 'B':
-					s = s[2:]
-					baseprefix = 2
-				}
-			}
-
-			// For automatic base detection,
-			// a string starting with zero
-			// must be all zeros.
-			// Thus we reject int("0755", 0).
-			if baseprefix == 0 && b == 0 {
-				for i := 1; i < len(s); i++ {
-					if s[i] != '0' {
-						goto invalid
-					}
-				}
-				return zero, nil
-			}
-
-			if b != 0 && baseprefix != 0 && baseprefix != b {
-				// Explicit base doesn't match prefix,
-				// e.g. int("0o755", 16).
-				goto invalid
-			}
-		}
-
-		// select base
-		if b == 0 {
-			if baseprefix != 0 {
-				b = baseprefix
-			} else {
-				b = 10
-			}
-		}
-
-		// we explicitly handled sign above.
-		// if a sign remains, it is invalid.
-		if s != "" && (s[0] == '-' || s[0] == '+') {
-			goto invalid
-		}
-
-		// s has no sign or base prefix.
-		//
-		// int(x) permits arbitrary precision, unlike the scanner.
-		if i, ok := new(big.Int).SetString(s, b); ok {
-			res := MakeBigInt(i)
-			if neg {
-				res = zero.Sub(res)
-			}
-			return res, nil
-		}
-
-	invalid:
-		return nil, fmt.Errorf("int: invalid literal with base %d: %s", b, orig)
+		return res, nil
 	}
 
 	if base != nil {
@@ -581,6 +509,76 @@ func int_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		return nil, fmt.Errorf("int: %s", err)
 	}
 	return i, nil
+}
+
+// parseInt defines the behavior of int(string, base=int). It returns nil on error.
+func parseInt(s string, base int) Value {
+	// remove sign
+	var neg bool
+	if s != "" {
+		if s[0] == '+' {
+			s = s[1:]
+		} else if s[0] == '-' {
+			neg = true
+			s = s[1:]
+		}
+	}
+
+	// remove optional base prefix
+	baseprefix := 0
+	if len(s) > 1 && s[0] == '0' {
+		if len(s) > 2 {
+			switch s[1] {
+			case 'o', 'O':
+				baseprefix = 8
+			case 'x', 'X':
+				baseprefix = 16
+			case 'b', 'B':
+				baseprefix = 2
+			}
+		}
+		if baseprefix != 0 {
+			// Remove the base prefix if it matches
+			// the explicit base, or if base=0.
+			if base == 0 || baseprefix == base {
+				base = baseprefix
+				s = s[2:]
+			}
+		} else {
+			// For automatic base detection,
+			// a string starting with zero
+			// must be all zeros.
+			// Thus we reject int("0755", 0).
+			if base == 0 {
+				for i := 1; i < len(s); i++ {
+					if s[i] != '0' {
+						return nil
+					}
+				}
+				return zero
+			}
+		}
+	}
+	if base == 0 {
+		base = 10
+	}
+
+	// we explicitly handled sign above.
+	// if a sign remains, it is invalid.
+	if s != "" && (s[0] == '-' || s[0] == '+') {
+		return nil
+	}
+
+	// s has no sign or base prefix.
+	if i, ok := new(big.Int).SetString(s, base); ok {
+		res := MakeBigInt(i)
+		if neg {
+			res = zero.Sub(res)
+		}
+		return res
+	}
+
+	return nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#len

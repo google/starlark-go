@@ -251,10 +251,10 @@ func (x *Ident) Span() (start, end Position) {
 // A Literal represents a literal string or number.
 type Literal struct {
 	commentsRef
-	Token    Token // = STRING | INT
+	Token    Token // = STRING | INT | FLOAT
 	TokenPos Position
 	Raw      string      // uninterpreted text
-	Value    interface{} // = string | int64 | *big.Int
+	Value    interface{} // = string | int64 | *big.Int | float64
 }
 
 func (x *Literal) Span() (start, end Position) {
