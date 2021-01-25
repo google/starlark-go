@@ -154,6 +154,7 @@ assert.eq(0x1000000000000001 * 0x1000000000000001, 0x100000000000000200000000000
 assert.eq(int("1010", 2), 10)
 assert.eq(int("111111101", 2), 509)
 assert.eq(int("0b0101", 0), 5)
+assert.eq(int("0b0101", 2), 5) # prefix is redundant with explicit base
 assert.eq(int("0b00000", 0), 0)
 assert.eq(1111111111111111 * 1111111111111111, 1234567901234567654320987654321)
 assert.fails(lambda: int("0x123", 8), "invalid literal.*base 8")
@@ -161,6 +162,16 @@ assert.fails(lambda: int("-0x123", 8), "invalid literal.*base 8")
 assert.fails(lambda: int("0o123", 16), "invalid literal.*base 16")
 assert.fails(lambda: int("-0o123", 16), "invalid literal.*base 16")
 assert.fails(lambda: int("0x110", 2), "invalid literal.*base 2")
+
+# Base prefix is honored only if base=0, or if the prefix matches the explicit base.
+# See https://github.com/google/starlark-go/issues/337
+assert.fails(lambda: int("0b0"), "invalid literal.*base 10")
+assert.eq(int("0b0", 0), 0)
+assert.eq(int("0b0", 2), 0)
+assert.eq(int("0b0", 16), 0xb0)
+assert.eq(int("0x0b0", 16), 0xb0)
+assert.eq(int("0x0b0", 0), 0xb0)
+assert.eq(int("0x0b0101", 16), 0x0b0101)
 
 # int from string, auto detect base
 assert.eq(int("123", 0), 123)

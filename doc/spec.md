@@ -3186,10 +3186,29 @@ If x is a `bool`, the result is 0 for `False` or 1 for `True`.
 If x is a string, it is interpreted as a sequence of digits in the
 specified base, decimal by default.
 If `base` is zero, x is interpreted like an integer literal, the base
-being inferred from an optional base marker such as `0b`, `0o`, or
+being inferred from an optional base prefix such as `0b`, `0o`, or
 `0x` preceding the first digit.
+When the `base` is provided explictly, a matching base prefix is
+also permitted, and has no effect.
 Irrespective of base, the string may start with an optional `+` or `-`
 sign indicating the sign of the result.
+
+```python
+int("11")               # 11
+int("11", 0)            # 11
+int("11", 10)           # 11
+int("11", 2)            # 3
+int("11", 8)            # 9
+int("11", 16)           # 17
+
+int("0x11", 0)          # 17
+int("0x11", 16)         # 17
+int("0b1", 16)          # 177 (0xb1)
+int("0b1", 2)           # 1
+int("0b1", 0)           # 1
+
+int("0x11")             # error: invalid literal with base 10
+```
 
 ### len
 
