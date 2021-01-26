@@ -116,8 +116,7 @@ func ExampleThread_Load_sequential() {
 		return e.globals, e.err
 	}
 
-	thread := &starlark.Thread{Name: "exec c.star", Load: load}
-	globals, err := load(thread, "c.star")
+	globals, err := load(nil, "c.star")
 	if err != nil {
 		log.Fatal(err)
 	}
