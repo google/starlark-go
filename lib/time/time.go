@@ -1,6 +1,7 @@
 package time
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -18,17 +19,13 @@ const ModuleName = "time"
 var Module = &starlarkstruct.Module{
 	Name: ModuleName,
 	Members: starlark.StringDict{
-		"duration":       starlark.NewBuiltin("duration", newDuration),
 		"parse_duration": starlark.NewBuiltin("parse_duration", parseDuration),
 		"parse_location": starlark.NewBuiltin("parse_location", parseLocation),
 		"now":            starlark.NewBuiltin("now", now),
-		"struct":         starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"time":           starlark.NewBuiltin("time", newTime),
 		"parse_time":     starlark.NewBuiltin("time", parseTime),
 		"sleep":          starlark.NewBuiltin("sleep", sleep),
 		"from_timestamp": starlark.NewBuiltin("from_timestamp", fromTimestamp),
-
-		"zero": Time{},
 
 		"nanosecond":  Duration(time.Nanosecond),
 		"microsecond": Duration(time.Microsecond),
@@ -54,13 +51,13 @@ var NowFunc = time.Now
 
 func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
-	err := starlark.UnpackArgs("duration", args, kwargs, "d", &d)
+	err := starlark.UnpackPositionalArgs("duration", args, kwargs, 1, &d)
 	return d, err
 }
 
 func parseLocation(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var s string
-	if err := starlark.UnpackArgs("location", args, kwargs, "s", &s); err != nil {
+	if err := starlark.UnpackPositionalArgs("location", args, kwargs, 1, &s); err != nil {
 		return nil, err
 	}
 	loc, err := time.LoadLocation(s)
@@ -91,7 +88,7 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 		x, location string
 		format      = time.RFC3339
 	)
-	if err := starlark.UnpackArgs("time", args, kwargs, "x", &x, "format?", &format, "location", &location); err != nil {
+	if err := starlark.UnpackArgs("time", args, kwargs, "x", &x, "format?", &format, "location?", &location); err != nil {
 		return nil, err
 	}
 
@@ -129,14 +126,6 @@ func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwar
 // Duration is a Starlark representation of a duration.
 type Duration time.Duration
 
-func newDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x Duration
-	if err := starlark.UnpackPositionalArgs("duration", args, kwargs, 1, &x); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
 // assert at compile time that Duration implements Unpacker.
 var _ starlark.Unpacker = (*Duration)(nil)
 
@@ -163,14 +152,14 @@ func (d *Duration) Unpack(v starlark.Value) error {
 		return nil
 	}
 
-	return fmt.Errorf("cannot convert %s to %s", v.Type(), d.Type())
+	return fmt.Errorf("got %s, want a duration, string, or int", v.Type())
 }
 
 // String implements the Stringer interface.
 func (d Duration) String() string { return time.Duration(d).String() }
 
 // Type returns a short string describing the value's type.
-func (d Duration) Type() string { return "time.duration" }
+func (d Duration) Type() string { return ModuleName + ".duration" }
 
 // Freeze renders Duration immutable. required by starlark.Value interface
 // because duration is already immutable this is a no-op.
@@ -182,8 +171,7 @@ func (d Duration) Hash() (uint32, error) {
 	return uint32(d) ^ uint32(int64(d)>>32), nil
 }
 
-// Truth returns the truth value of an object required by starlark.Value
-// interface.
+// Truth reports whether the duration is non-zero.
 func (d Duration) Truth() starlark.Bool { return d != 0 }
 
 // Attr gets a value for a string attribute, implementing dot expression support
@@ -196,6 +184,10 @@ func (d Duration) Attr(name string) (starlark.Value, error) {
 		return starlark.Float(time.Duration(d).Minutes()), nil
 	case "seconds":
 		return starlark.Float(time.Duration(d).Seconds()), nil
+	case "milliseconds":
+		return starlark.MakeInt64(time.Duration(d).Milliseconds()), nil
+	case "microseconds":
+		return starlark.MakeInt64(time.Duration(d).Microseconds()), nil
 	case "nanoseconds":
 		return starlark.MakeInt64(time.Duration(d).Nanoseconds()), nil
 	}
@@ -209,20 +201,44 @@ func (d Duration) AttrNames() []string {
 		"hours",
 		"minutes",
 		"seconds",
+		"milliseconds",
+		"microseconds",
 		"nanoseconds",
 	}
+}
+
+// CompareSameType implements comparison of two Duration values. required by
+// starlark.Comparable interface.
+func (d Duration) CompareSameType(op syntax.Token, v starlark.Value, depth int) (bool, error) {
+	x := time.Duration(d)
+	y := time.Duration(v.(Duration))
+	switch op {
+	case syntax.EQL:
+		return x == y, nil
+	case syntax.NEQ:
+		return x != y, nil
+	case syntax.LT:
+		return x < y, nil
+	case syntax.LE:
+		return x <= y, nil
+	case syntax.GT:
+		return x > y, nil
+	case syntax.GE:
+		return x >= y, nil
+	}
+	return false, errors.New("operation not supported")
 }
 
 // Binary implements binary operators, which satisfies the starlark.HasBinary
 // interface. operators:
 //    duration + duration = duration
-//    duration + int = duration
 //    duration + time = time
 //    duration - duration = duration
-//    duration - int = duration
-//    duration - time = duration
-//    duration == duration = boolean
-//    duration < duration = boolean
+//    duration / duration = float
+//    duration / int = duration
+//    duration // duration = int
+//    duration // int = duration
+//    duration * int = duration
 func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (starlark.Value, error) {
 	x := time.Duration(d)
 
@@ -231,12 +247,6 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 		switch y := yV.(type) {
 		case Duration:
 			return Duration(x + time.Duration(y)), nil
-		case starlark.Int:
-			i, ok := y.Int64()
-			if !ok {
-				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
-			}
-			return Duration(x + time.Duration(i)), nil
 		case Time:
 			return Time(time.Time(y).Add(x)), nil
 		}
@@ -245,14 +255,6 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 		switch y := yV.(type) {
 		case Duration:
 			return Duration(x - time.Duration(y)), nil
-		case starlark.Int:
-			i, ok := y.Int64()
-			if !ok {
-				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
-			}
-			return Duration(x - time.Duration(i)), nil
-		case Time:
-			// duration - time = duration
 		}
 
 	case syntax.SLASH:
@@ -261,7 +263,7 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 			if int64(y) == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
-			return d / y, nil
+			return starlark.Float(float64(x.Nanoseconds()) / float64(time.Duration(y).Nanoseconds())), nil
 		case starlark.Int:
 			i, ok := y.Int64()
 			if !ok {
@@ -273,35 +275,26 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 			return Duration(d / Duration(i)), nil
 		}
 
-		// if int64(y) == 0 {
-		// 	return nil, fmt.Errorf("%s division by zero", d.Type())
-		// }
-		// return Duration(x / y), nil
-
 	case syntax.SLASHSLASH:
 		switch y := yV.(type) {
 		case Duration:
 			if int64(y) == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
-			return d / y, nil
+			return starlark.MakeInt64(x.Nanoseconds() / time.Duration(y).Nanoseconds()), nil
 		case starlark.Int:
 			i, ok := yV.(starlark.Int).Int64()
 			if !ok {
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
 			}
+			if int64(i) == 0 {
+				return nil, fmt.Errorf("%s division by zero", d.Type())
+			}
 			return d / Duration(i), nil
 		}
 
-		// if int64(y) == 0 {
-		// 	return nil, fmt.Errorf("time.duration floored divison by zero")
-		// }
-		// return Duration(x / y), nil
-
 	case syntax.STAR:
 		switch y := yV.(type) {
-		case Duration:
-			return d * y, nil
 		case starlark.Int:
 			i, ok := y.Int64()
 			if !ok {
@@ -322,7 +315,7 @@ func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		year, month, day, hour, min, sec, nsec int
 		loc                                    string
 	)
-	if err := starlark.UnpackArgs("time", args, kwargs, "year", &year, "month", &month, "day", &day, "hour", &hour, "min", &min, "sec", &sec, "nsec", &nsec, "loc", &loc); err != nil {
+	if err := starlark.UnpackArgs("time", args, kwargs, "year?", &year, "month?", &month, "day?", &day, "hour?", &hour, "minute?", &min, "second?", &sec, "nanosecond?", &nsec, "location?", &loc); err != nil {
 		return nil, err
 	}
 	location, err := time.LoadLocation(loc)
@@ -332,11 +325,12 @@ func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	return Time(time.Date(year, time.Month(month), day, hour, min, sec, nsec, location)), nil
 }
 
-// String implements the Stringer interface.
+// String returns the time formatted using the format string
+//	"2006-01-02 15:04:05.999999999 -0700 MST"
 func (t Time) String() string { return time.Time(t).String() }
 
 // Type returns "time.time".
-func (t Time) Type() string { return "time.time" }
+func (t Time) Type() string { return ModuleName + ".time" }
 
 // Freeze renders time immutable. required by starlark.Value interface
 // because Time is already immutable this is a no-op.
@@ -421,8 +415,6 @@ func (t Time) Binary(op syntax.Token, yV starlark.Value, side starlark.Side) (st
 		switch y := yV.(type) {
 		case Duration:
 			return Time(x.Add(time.Duration(y))), nil
-		case Time:
-			return nil, fmt.Errorf("cannot add %s to %s", t.Type(), yV.Type())
 		}
 	case syntax.MINUS:
 		switch y := yV.(type) {
@@ -447,21 +439,21 @@ var timeMethods = map[string]builtinMethod{
 }
 
 func timeFormat(fnname string, recV starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.String
-	if err := starlark.UnpackArgs("format", args, kwargs, "x", &x); err != nil {
+	var x string
+	if err := starlark.UnpackPositionalArgs("format", args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
 
 	recv := time.Time(recV.(Time))
-	return starlark.String(recv.Format(string(x))), nil
+	return starlark.String(recv.Format(x)), nil
 }
 
 func timeIn(fnname string, recV starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.String
-	if err := starlark.UnpackArgs("in_location", args, kwargs, "x", &x); err != nil {
+	var x string
+	if err := starlark.UnpackPositionalArgs("in_location", args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
-	loc, err := time.LoadLocation(string(x))
+	loc, err := time.LoadLocation(x)
 	if err != nil {
 		return nil, err
 	}
