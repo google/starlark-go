@@ -439,6 +439,27 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+func TestFilePortion(t *testing.T) {
+	// Imagine that the Starlark file or expression print(x.f) is extracted
+	// from the middle of a file in some hypothetical template language;
+	// see https://github.com/google/starlark-go/issues/346. For example:
+	// --
+	// {{loop x seq}}
+	//   {{print(x.f)}}
+	// {{end}}
+	// --
+	fp := syntax.FilePortion{Content: []byte("print(x.f)"), FirstLine: 2, FirstCol: 4}
+	file, err := syntax.Parse("foo.template", fp, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	span := fmt.Sprint(file.Stmts[0].Span())
+	want := "foo.template:2:4 foo.template:2:14"
+	if span != want {
+		t.Errorf("wrong span: got %q, want %q", span, want)
+	}
+}
+
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
