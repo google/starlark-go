@@ -182,6 +182,15 @@ var tokenNames = [...]string{
 	WHILE:         "while",
 }
 
+// A FilePortion describes the content of a portion of a file.
+// Callers may provide a FilePortion for the src argument of Parse
+// when the desired initial line and column numbers are not (1, 1),
+// such as when an expression is parsed from within larger file.
+type FilePortion struct {
+	Content             []byte
+	FirstLine, FirstCol int32
+}
+
 // A Position describes the location of a rune of input.
 type Position struct {
 	file *string // filename (indirect for compactness)
@@ -249,8 +258,12 @@ type scanner struct {
 }
 
 func newScanner(filename string, src interface{}, keepComments bool) (*scanner, error) {
+	var firstLine, firstCol int32 = 1, 1
+	if portion, ok := src.(FilePortion); ok {
+		firstLine, firstCol = portion.FirstLine, portion.FirstCol
+	}
 	sc := &scanner{
-		pos:          Position{file: &filename, Line: 1, Col: 1},
+		pos:          MakePosition(&filename, firstLine, firstCol),
 		indentstk:    make([]int, 1, 10), // []int{0} + spare capacity
 		lineStart:    true,
 		keepComments: keepComments,
@@ -279,6 +292,8 @@ func readSource(filename string, src interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
+	case FilePortion:
+		return src.Content, nil
 	case nil:
 		return ioutil.ReadFile(filename)
 	default:
