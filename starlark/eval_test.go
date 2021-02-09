@@ -731,9 +731,26 @@ func TestUnpackNoneCoalescing(t *testing.T) {
 	}
 
 	// failure
-	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "a", &a)
+	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "a??", &a)
 	if want := "unpack: for parameter a: got int, want string"; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)
+	}
+
+	err = starlark.UnpackArgs("unpack", nil, []starlark.Tuple{
+		starlark.Tuple{starlark.String("a"), starlark.None},
+		starlark.Tuple{starlark.String("a"), starlark.None},
+	}, "a??", &a)
+	if want := "unpack: got multiple values for keyword argument \"a\""; fmt.Sprint(err) != want {
+		t.Errorf("unpack args error = %q, want %q", err, want)
+	}
+}
+
+func TestUnpackRequiredAfterOptional(t *testing.T) {
+	// Assert 'c' is implicitly optional
+	var a, b, c string
+	args := starlark.Tuple{starlark.String("a")}
+	if err := starlark.UnpackArgs("unpack", args, nil, "a", &a, "b?", &b, "c", &c); err != nil {
+		t.Errorf("UnpackArgs failed: %v", err)
 	}
 }
 
