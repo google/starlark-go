@@ -112,11 +112,11 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 }
 
 func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x int
+	var x int64
 	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
-	return Time(time.Unix(int64(x), 0)), nil
+	return Time(time.Unix(x, 0)), nil
 }
 
 func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
