@@ -24,8 +24,11 @@ type Unpacker interface {
 // Iterable, or user-defined implementation of Value,
 // UnpackArgs performs the appropriate type check.
 // Predeclared Go integer types uses the AsInt check.
-// If the parameter name ends with "?",
-// it and all following parameters are optional.
+//
+// If the parameter name ends with "?", it's optional.
+//
+// If the parameter name ends with "??", it's optional and treats the None value
+// as if the argument was absent.
 //
 // If the variable implements Unpacker, its Unpack argument
 // is called with the argument value, allowing an application
@@ -89,9 +92,11 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 
 	paramName := func(x interface{}) string { // (no free variables)
 		name := x.(string)
-		if name[len(name)-1] == '?' {
-			name = name[:len(name)-1]
-		}
+
+		// name may end in "?" or "??"
+		name = strings.TrimSuffix(name, "?")
+		name = strings.TrimSuffix(name, "?")
+
 		return name
 	}
 
@@ -102,7 +107,7 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 	}
 	for i, arg := range args {
 		defined.set(i)
-		if err := unpackOneArg(arg, pairs[2*i+1]); err != nil {
+		if err := unpackOneArg(arg, pairs[2*i+1], pairs[2*i].(string)); err != nil {
 			name := paramName(pairs[2*i])
 			return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 		}
@@ -120,7 +125,7 @@ kwloop:
 						fnname, name)
 				}
 				ptr := pairs[2*i+1]
-				if err := unpackOneArg(arg, ptr); err != nil {
+				if err := unpackOneArg(arg, ptr, pairs[2*i].(string)); err != nil {
 					return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 				}
 				continue kwloop
@@ -133,7 +138,7 @@ kwloop:
 	// (We needn't check the first len(args).)
 	for i := len(args); i < nparams; i++ {
 		name := pairs[2*i].(string)
-		if strings.HasSuffix(name, "?") {
+		if isOptionalParamSpec(name) {
 			break // optional
 		}
 		if !defined.get(i) {
@@ -142,6 +147,16 @@ kwloop:
 	}
 
 	return nil
+}
+
+func isOptionalParamSpec(paramSpec string) bool {
+	return strings.HasSuffix(paramSpec, "?")
+}
+
+// Denotes an optional parameter where param=None should be unpacked
+// as if the parameter was unset.
+func isNoneCoalescingParamSpec(paramSpec string) bool {
+	return strings.HasSuffix(paramSpec, "??")
 }
 
 // UnpackPositionalArgs unpacks the positional arguments into
@@ -173,14 +188,19 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 		return fmt.Errorf("%s: got %d arguments, want %s%d", fnname, len(args), atmost, max)
 	}
 	for i, arg := range args {
-		if err := unpackOneArg(arg, vars[i]); err != nil {
+		if err := unpackOneArg(arg, vars[i], ""); err != nil {
 			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
 		}
 	}
 	return nil
 }
 
-func unpackOneArg(v Value, ptr interface{}) error {
+func unpackOneArg(v Value, ptr interface{}, paramSpec string) error {
+	if _, isNone := v.(NoneType); isNone && isNoneCoalescingParamSpec(paramSpec) {
+		// Passing None should skip the param entirely.
+		return nil
+	}
+
 	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
 	case Unpacker:

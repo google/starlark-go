@@ -711,6 +711,32 @@ func TestUnpackCustomUnpacker(t *testing.T) {
 	}
 }
 
+func TestUnpackNoneCoalescing(t *testing.T) {
+	a := optionalStringUnpacker{str: "a"}
+	wantA := optionalStringUnpacker{str: "a", isSet: false}
+	b := optionalStringUnpacker{str: "b"}
+	wantB := optionalStringUnpacker{str: "b", isSet: false}
+
+	// Success
+	args := starlark.Tuple{starlark.None}
+	kwargs := []starlark.Tuple{starlark.Tuple{starlark.String("b"), starlark.None}}
+	if err := starlark.UnpackArgs("unpack", args, kwargs, "a??", &a, "b??", &a); err != nil {
+		t.Errorf("UnpackArgs failed: %v", err)
+	}
+	if a != wantA {
+		t.Errorf("for a, got %v, want %v", a, wantA)
+	}
+	if b != wantB {
+		t.Errorf("for b, got %v, want %v", b, wantB)
+	}
+
+	// failure
+	err := starlark.UnpackArgs("unpack", starlark.Tuple{starlark.MakeInt(42)}, nil, "a", &a)
+	if want := "unpack: for parameter a: got int, want string"; fmt.Sprint(err) != want {
+		t.Errorf("unpack args error = %q, want %q", err, want)
+	}
+}
+
 func TestAsInt(t *testing.T) {
 	for _, test := range []struct {
 		val  starlark.Value
