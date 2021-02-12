@@ -10,6 +10,7 @@ import (
 	"go/build"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,8 +43,8 @@ func scan(src interface{}) (tokens string, err error) {
 			}
 		case FLOAT:
 			fmt.Fprintf(&buf, "%e", val.float)
-		case STRING:
-			fmt.Fprintf(&buf, "%q", val.string)
+		case STRING, BYTES:
+			buf.WriteString(Quote(val.string, tok == BYTES))
 		default:
 			buf.WriteString(tok.String())
 		}
@@ -189,9 +190,34 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{"i = 012934", `foo.star:1:5: invalid int literal`},
 		// octal escapes in string literals
 		{`"\037"`, `"\x1f" EOF`},
-		{`"\377"`, `"\xff" EOF`},
-		{`"\378"`, `"\x1f8" EOF`},                                // = '\37' + '8'
-		{`"\400"`, `foo.star:1:1: invalid escape sequence \400`}, // unlike Python 2 and 3
+		{`"\377"`, `foo.star:1:1: non-ASCII octal escape \377 (use \u00FF for the UTF-8 encoding of U+00FF)`},
+		{`"\378"`, `"\x1f8" EOF`},                               // = '\37' + '8'
+		{`"\400"`, `foo.star:1:1: non-ASCII octal escape \400`}, // unlike Python 2 and 3
+		// hex escapes
+		{`"\x00\x20\x09\x41\x7e\x7f"`, `"\x00 \tA~\x7f" EOF`}, // DEL is non-printable
+		{`"\x80"`, `foo.star:1:1: non-ASCII hex escape`},
+		{`"\xff"`, `foo.star:1:1: non-ASCII hex escape`},
+		{`"\xFf"`, `foo.star:1:1: non-ASCII hex escape`},
+		{`"\xF"`, `foo.star:1:1: truncated escape sequence \xF`},
+		{`"\x"`, `foo.star:1:1: truncated escape sequence \x`},
+		{`"\xfg"`, `foo.star:1:1: invalid escape sequence \xfg`},
+		// Unicode escapes
+		// \uXXXX
+		{`"\u0400"`, `"Ѐ" EOF`},
+		{`"\u100"`, `foo.star:1:1: truncated escape sequence \u100`},
+		{`"\u04000"`, `"Ѐ0" EOF`}, // = U+0400 + '0'
+		{`"\u100g"`, `foo.star:1:1: invalid escape sequence \u100g`},
+		{`"\u4E16"`, `"世" EOF`},
+		{`"\udc00"`, `foo.star:1:1: invalid Unicode code point U+DC00`}, // surrogate
+		// \UXXXXXXXX
+		{`"\U00000400"`, `"Ѐ" EOF`},
+		{`"\U0000400"`, `foo.star:1:1: truncated escape sequence \U0000400`},
+		{`"\U000004000"`, `"Ѐ0" EOF`}, // = U+0400 + '0'
+		{`"\U1000000g"`, `foo.star:1:1: invalid escape sequence \U1000000g`},
+		{`"\U0010FFFF"`, `"\U0010ffff" EOF`},
+		{`"\U00110000"`, `foo.star:1:1: code point out of range: \U00110000 (max \U00110000)`},
+		{`"\U0001F63F"`, `"😿" EOF`},
+		{`"\U0000dc00"`, `foo.star:1:1: invalid Unicode code point U+DC00`}, // surrogate
 
 		// backslash escapes
 		// As in Go, a backslash must escape something.
@@ -218,6 +244,12 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		{`r'\"'`, `"\\\"" EOF`},
 		{`'a\zb'`, `foo.star:1:1: invalid escape sequence \z`},
 		{`"\o123"`, `foo.star:1:1: invalid escape sequence \o`},
+		// bytes literals (where they differ from text strings)
+		{`b"AЀ世😿"`, `b"AЀ世😿`},                                       // 1-4 byte encodings, literal
+		{`b"\x41\u0400\u4e16\U0001F63F"`, `b"AЀ世😿"`},                // same, as escapes
+		{`b"\377\378\x80\xff\xFf"`, `b"\xff\x1f8\x80\xff\xff" EOF`}, // hex/oct escapes allow non-ASCII
+		{`b"\400"`, `foo.star:1:2: invalid escape sequence \400`},
+		{`b"\udc00"`, `foo.star:1:2: invalid Unicode code point U+DC00`}, // (same as string)
 		// floats starting with octal digits
 		{"012934.", `1.293400e+04 EOF`},
 		{"012934.1", `1.293410e+04 EOF`},
@@ -243,7 +275,9 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		if err != nil {
 			got = err.(Error).Error()
 		}
-		if test.want != got {
+		// Prefix match allows us to truncate errors in expecations.
+		// Success cases all end in EOF.
+		if !strings.HasPrefix(got, test.want) {
 			t.Errorf("scan `%s` = [%s], want [%s]", test.input, got, test.want)
 		}
 	}

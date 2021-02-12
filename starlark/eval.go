@@ -478,6 +478,8 @@ func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Functi
 			v = MakeBigInt(c)
 		case string:
 			v = String(c)
+		case compile.Bytes:
+			v = Bytes(c)
 		case float64:
 			v = Float(c)
 		default:
@@ -796,6 +798,8 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				return xf * y, nil
 			case String:
 				return stringRepeat(y, x)
+			case Bytes:
+				return bytesRepeat(y, x)
 			case *List:
 				elems, err := tupleRepeat(Tuple(y.elems), x)
 				if err != nil {
@@ -819,6 +823,10 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 		case String:
 			if y, ok := y.(Int); ok {
 				return stringRepeat(x, y)
+			}
+		case Bytes:
+			if y, ok := y.(Int); ok {
+				return bytesRepeat(x, y)
 			}
 		case *List:
 			if y, ok := y.(Int); ok {
@@ -996,6 +1004,19 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
 			}
 			return Bool(strings.Contains(string(y), string(needle))), nil
+		case Bytes:
+			switch needle := x.(type) {
+			case Bytes:
+				return Bool(strings.Contains(string(y), string(needle))), nil
+			case Int:
+				var b byte
+				if err := AsInt(needle, &b); err != nil {
+					return nil, fmt.Errorf("int in bytes: %s", err)
+				}
+				return Bool(strings.IndexByte(string(y), b) >= 0), nil
+			default:
+				return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
+			}
 		case rangeValue:
 			i, err := NumberToInt(x)
 			if err != nil {
@@ -1136,6 +1157,11 @@ func tupleRepeat(elems Tuple, n Int) (Tuple, error) {
 		x *= 2
 	}
 	return res, nil
+}
+
+func bytesRepeat(b Bytes, n Int) (Bytes, error) {
+	res, err := stringRepeat(String(b), n)
+	return Bytes(res), err
 }
 
 func stringRepeat(s String, n Int) (String, error) {

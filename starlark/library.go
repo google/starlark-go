@@ -42,6 +42,7 @@ func init() {
 		"any":       NewBuiltin("any", any),
 		"all":       NewBuiltin("all", all),
 		"bool":      NewBuiltin("bool", bool_),
+		"bytes":     NewBuiltin("bytes", bytes_),
 		"chr":       NewBuiltin("chr", chr),
 		"dict":      NewBuiltin("dict", dict),
 		"dir":       NewBuiltin("dir", dir),
@@ -73,6 +74,10 @@ func init() {
 // methods of built-in types
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#built-in-methods
 var (
+	bytesMethods = map[string]*Builtin{
+		"elems": NewBuiltin("elems", bytes_elems),
+	}
+
 	dictMethods = map[string]*Builtin{
 		"clear":      NewBuiltin("clear", dict_clear),
 		"get":        NewBuiltin("get", dict_get),
@@ -198,6 +203,45 @@ func bool_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error
 	return x.Truth(), nil
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#bytes
+func bytes_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("bytes does not accept keyword arguments")
+	}
+	if len(args) != 1 {
+		return nil, fmt.Errorf("bytes: got %d arguments, want exactly 1", len(args))
+	}
+	switch x := args[0].(type) {
+	case Bytes:
+		return x, nil
+	case String:
+		// Invalid encodings are replaced by that of U+FFFD.
+		return Bytes(utf8Transcode(string(x))), nil
+	case Iterable:
+		// iterable of numeric byte values
+		var buf strings.Builder
+		if n := Len(x); n >= 0 {
+			// common case: known length
+			buf.Grow(n)
+		}
+		iter := x.Iterate()
+		defer iter.Done()
+		var elem Value
+		var b byte
+		for i := 0; iter.Next(&elem); i++ {
+			if err := AsInt(elem, &b); err != nil {
+				return nil, fmt.Errorf("bytes: at index %d, %s", i, err)
+			}
+			buf.WriteByte(b)
+		}
+		return Bytes(buf.String()), nil
+
+	default:
+		// Unlike string(foo), which stringifies it, bytes(foo) is an error.
+		return nil, fmt.Errorf("bytes: got %s, want string, bytes, or iterable of ints", x.Type())
+	}
+}
+
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#chr
 func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {
@@ -261,9 +305,6 @@ func enumerate(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, e
 	}
 
 	iter := iterable.Iterate()
-	if iter == nil {
-		return nil, fmt.Errorf("enumerate: got %s, want iterable", iterable.Type())
-	}
 	defer iter.Done()
 
 	var pairs []Value
@@ -433,19 +474,27 @@ func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hash
 func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var s string
-	if err := UnpackPositionalArgs("hash", args, kwargs, 1, &s); err != nil {
+	var x Value
+	if err := UnpackPositionalArgs("hash", args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
 
-	// The Starlark spec requires that the hash function be
-	// deterministic across all runs, motivated by the need
-	// for reproducibility of builds. Thus we cannot call
-	// String.Hash, which uses the fastest implementation
-	// available, because as varies across process restarts,
-	// and may evolve with the implementation.
-
-	return MakeInt(int(javaStringHash(s))), nil
+	var h int
+	switch x := x.(type) {
+	case String:
+		// The Starlark spec requires that the hash function be
+		// deterministic across all runs, motivated by the need
+		// for reproducibility of builds. Thus we cannot call
+		// String.Hash, which uses the fastest implementation
+		// available, because as varies across process restarts,
+		// and may evolve with the implementation.
+		h = int(javaStringHash(string(x)))
+	case Bytes:
+		h = int(softHashString(string(x))) // FNV32
+	default:
+		return nil, fmt.Errorf("hash: got %s, want string or bytes", x.Type())
+	}
+	return MakeInt(h), nil
 }
 
 // javaStringHash returns the same hash as would be produced by
@@ -691,16 +740,26 @@ func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	if len(args) != 1 {
 		return nil, fmt.Errorf("ord: got %d arguments, want 1", len(args))
 	}
-	s, ok := AsString(args[0])
-	if !ok {
-		return nil, fmt.Errorf("ord: got %s, want string", args[0].Type())
+	switch x := args[0].(type) {
+	case String:
+		// ord(string) returns int value of sole rune.
+		s := string(x)
+		r, sz := utf8.DecodeRuneInString(s)
+		if sz == 0 || sz != len(s) {
+			n := utf8.RuneCountInString(s)
+			return nil, fmt.Errorf("ord: string encodes %d Unicode code points, want 1", n)
+		}
+		return MakeInt(int(r)), nil
+
+	case Bytes:
+		// ord(bytes) returns int value of sole byte.
+		if len(x) != 1 {
+			return nil, fmt.Errorf("ord: bytes has length %d, want 1", len(x))
+		}
+		return MakeInt(int(x[0])), nil
+	default:
+		return nil, fmt.Errorf("ord: got %s, want string or bytes", x.Type())
 	}
-	r, sz := utf8.DecodeRuneInString(s)
-	if sz == 0 || sz != len(s) {
-		n := utf8.RuneCountInString(s)
-		return nil, fmt.Errorf("ord: string encodes %d Unicode code points, want 1", n)
-	}
-	return MakeInt(int(r)), nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#print
@@ -716,6 +775,8 @@ func print(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 		}
 		if s, ok := AsString(v); ok {
 			buf.WriteString(s)
+		} else if b, ok := v.(Bytes); ok {
+			buf.WriteString(string(b))
 		} else {
 			writeValue(buf, v, nil)
 		}
@@ -993,11 +1054,29 @@ func str(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	if len(args) != 1 {
 		return nil, fmt.Errorf("str: got %d arguments, want exactly 1", len(args))
 	}
-	x := args[0]
-	if _, ok := AsString(x); !ok {
-		x = String(x.String())
+	switch x := args[0].(type) {
+	case String:
+		return x, nil
+	case Bytes:
+		// Invalid encodings are replaced by that of U+FFFD.
+		return String(utf8Transcode(string(x))), nil
+	default:
+		return String(x.String()), nil
 	}
-	return x, nil
+}
+
+// utf8Transcode returns the UTF-8-to-UTF-8 transcoding of s.
+// The effect is that each code unit that is part of an
+// invalid sequence is replaced by U+FFFD.
+func utf8Transcode(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var out strings.Builder
+	for _, r := range s {
+		out.WriteRune(r)
+	}
+	return out.String()
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#tuple
@@ -1374,12 +1453,50 @@ func string_iterable(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, 
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	return stringIterable{
-		s:          b.Receiver().(String),
-		ords:       b.Name()[len(b.Name())-2] == 'd',
-		codepoints: b.Name()[0] == 'c',
-	}, nil
+	s := b.Receiver().(String)
+	ords := b.Name()[len(b.Name())-2] == 'd'
+	codepoints := b.Name()[0] == 'c'
+	if codepoints {
+		return stringCodepoints{s, ords}, nil
+	} else {
+		return stringElems{s, ords}, nil
+	}
 }
+
+// bytes_elems returns an unspecified iterable value whose
+// iterator yields the int values of successive elements.
+func bytes_elems(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	return bytesIterable{b.Receiver().(Bytes)}, nil
+}
+
+// A bytesIterable is an iterable returned by bytes.elems(),
+// whose iterator yields a sequence of numeric bytes values.
+type bytesIterable struct{ bytes Bytes }
+
+var _ Iterable = (*bytesIterable)(nil)
+
+func (bi bytesIterable) String() string        { return bi.bytes.String() + ".elems()" }
+func (bi bytesIterable) Type() string          { return "bytes.elems" }
+func (bi bytesIterable) Freeze()               {} // immutable
+func (bi bytesIterable) Truth() Bool           { return True }
+func (bi bytesIterable) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", bi.Type()) }
+func (bi bytesIterable) Iterate() Iterator     { return &bytesIterator{bi.bytes} }
+
+type bytesIterator struct{ bytes Bytes }
+
+func (it *bytesIterator) Next(p *Value) bool {
+	if it.bytes == "" {
+		return false
+	}
+	*p = MakeInt(int(it.bytes[0]))
+	it.bytes = it.bytes[1:]
+	return true
+}
+
+func (*bytesIterator) Done() {}
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·count
 func string_count(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {

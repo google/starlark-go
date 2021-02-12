@@ -35,6 +35,7 @@ const (
 	INT    // 123
 	FLOAT  // 1.23e45
 	STRING // "foo" or 'foo' or '''foo''' or r'foo' or r"foo"
+	BYTES  // b"foo", etc
 
 	// Punctuation
 	PLUS          // +
@@ -268,7 +269,7 @@ func newScanner(filename string, src interface{}, keepComments bool) (*scanner, 
 		lineStart:    true,
 		keepComments: keepComments,
 	}
-	sc.readline, _ = src.(func() ([]byte, error)) // REPL only
+	sc.readline, _ = src.(func() ([]byte, error)) // ParseCompoundStmt (REPL) only
 	if sc.readline == nil {
 		data, err := readSource(filename, src)
 		if err != nil {
@@ -422,7 +423,7 @@ type tokenValue struct {
 	int    int64    // decoded int
 	bigInt *big.Int // decoded integers > int64
 	float  float64  // decoded float
-	string string   // decoded string
+	string string   // decoded string or bytes
 	pos    Position // start position of token
 }
 
@@ -642,8 +643,15 @@ start:
 
 	// identifier or keyword
 	if isIdentStart(c) {
-		// raw string literal
-		if c == 'r' && len(sc.rest) > 1 && (sc.rest[1] == '"' || sc.rest[1] == '\'') {
+		if (c == 'r' || c == 'b') && len(sc.rest) > 1 && (sc.rest[1] == '"' || sc.rest[1] == '\'') {
+			//  r"..."
+			//  b"..."
+			sc.readRune()
+			c = sc.peekRune()
+			return sc.scanString(val, c)
+		} else if c == 'r' && len(sc.rest) > 2 && sc.rest[1] == 'b' && (sc.rest[2] == '"' || sc.rest[2] == '\'') {
+			// rb"..."
+			sc.readRune()
 			sc.readRune()
 			c = sc.peekRune()
 			return sc.scanString(val, c)
@@ -887,12 +895,16 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 	}
 	val.raw = raw.String()
 
-	s, _, err := unquote(val.raw)
+	s, _, isByte, err := unquote(val.raw)
 	if err != nil {
 		sc.error(start, err.Error())
 	}
 	val.string = s
-	return STRING
+	if isByte {
+		return BYTES
+	} else {
+		return STRING
+	}
 }
 
 func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
