@@ -15,68 +15,91 @@ assert.eq(t.in_location("US/Eastern").format("3 04 PM"), "10 04 PM")
 
 assert.eq(t - t, time.parse_duration("0s"))
 
-d = time.parse_duration("1s")
-assert.eq(d - d, time.parse_duration("0"))
-assert.eq(d + d, time.parse_duration("2s"))
-assert.eq(d * 5, time.parse_duration("5s"))
+d1s = time.parse_duration("1s")
+assert.eq(d1s - d1s, time.parse_duration("0"))
+assert.eq(d1s + d1s, time.parse_duration("2s"))
+assert.eq(d1s * 5, time.parse_duration("5s"))
 assert.eq(time.parse_duration("0s") + time.parse_duration("3m35s"), time.parse_duration("3m35s"))
 
-d2 = time.parse_duration("10h")
+d10h = time.parse_duration("10h")
 # duration attributes
-assert.eq(10.0, d2.hours)
-assert.eq(10*60.0, d2.minutes)
-assert.eq(10*60*60.0, d2.seconds)
-assert.eq(10*60*60*1000, d2.milliseconds)
-assert.eq(10*60*60*1000000, d2.microseconds)
-assert.eq(10*60*60*1000000000, d2.nanoseconds)
+assert.eq(10.0, d10h.hours)
+assert.eq(10*60.0, d10h.minutes)
+assert.eq(10*60*60.0, d10h.seconds)
+assert.eq(10*60*60*1000, d10h.milliseconds)
+assert.eq(10*60*60*1000000, d10h.microseconds)
+assert.eq(10*60*60*1000000000, d10h.nanoseconds)
 
-# duration == duration = boolean
-# duration != duration = boolean
+# duration type
+assert.eq("time.duration", type(d10h))
+# duration str
+assert.eq("10h0m0s", str(d10h))
+# duration hash
+durations = {
+    d10h: "10h",
+    d1s: "10s",
+}
+assert.eq("10h", durations[d10h])
+assert.eq("10s", durations[d1s])
+
+# duration == duration
+# duration != duration
 assert.eq(time.parse_duration("1h"), time.parse_duration("1h"))
 assert.ne(time.parse_duration("1h"), time.parse_duration("1m"))
-# duration < duration = boolean
+# duration < duration
 assert.lt(time.parse_duration("1m"), time.parse_duration("1h"))
 assert.true(not time.parse_duration("1h") < time.parse_duration("1h"))
 assert.true(not time.parse_duration("1h") < time.parse_duration("1m"))
-# duration <= duration = boolean
+# duration <= duration
 assert.true(time.parse_duration("1m") <= time.parse_duration("1h"))
 assert.true(time.parse_duration("1h") <= time.parse_duration("1h"))
 assert.true(not time.parse_duration("1h") <= time.parse_duration("1m"))
-# duration > duration = boolean
+# duration > duration
 assert.true(not time.parse_duration("1m") > time.parse_duration("1h"))
 assert.true(not time.parse_duration("1h") > time.parse_duration("1h"))
 assert.true(time.parse_duration("1h") > time.parse_duration("1m"))
-# duration >= duration = boolean
+# duration >= duration
 assert.true(not time.parse_duration("1m") >= time.parse_duration("1h"))
 assert.true(time.parse_duration("1h") >= time.parse_duration("1h"))
 assert.true(time.parse_duration("1h") >= time.parse_duration("1m"))
 
+refTime = time.parse_time("2011-04-22T13:33:48Z")
+tenHoursAfterRefTime = time.parse_time("2011-04-22T23:33:48Z")
+
 # duration + duration = duration
-assert.eq(d2 + d, time.parse_duration("10h01s"))
+assert.eq(d10h + d1s, time.parse_duration("10h01s"))
 # duration + time = time
-assert.eq(d2 + time.parse_time("2011-04-22T13:33:48Z"), time.parse_time("2011-04-22T23:33:48Z"))
+assert.eq(d10h + refTime, tenHoursAfterRefTime)
 # duration - duration = duration
-assert.eq(d2 - d, time.parse_duration("9h59m59s"))
+assert.eq(d10h - d1s, time.parse_duration("9h59m59s"))
 # duration / duration = float
-assert.eq(d2 / time.parse_duration("16m"), 37.5)
-assert.fails(lambda: d2 / time.parse_duration("0"), "division by zero")
+assert.eq(d10h / time.parse_duration("16m"), 37.5)
+assert.fails(lambda: d10h / time.parse_duration("0"), "division by zero")
 # duration / int = duration
-assert.eq(d2 / 20, time.parse_duration("30m"))
-assert.fails(lambda: d2 / 0, "division by zero")
+assert.eq(d10h / 20, time.parse_duration("30m"))
+assert.fails(lambda: d10h / 0, "division by zero")
+# int / duration = error
+assert.fails(lambda: 20 / d10h, "unsupported operation")
+# duration / float = duration
+assert.eq(d10h / 37.5, time.parse_duration("16m"))
+assert.fails(lambda: d10h / 0.0, "division by zero")
 # duration // duration = int
-assert.eq(d2 // time.parse_duration("16m"), 37)
-assert.fails(lambda: d2 // time.parse_duration("0"), "division by zero")
+assert.eq(d10h // time.parse_duration("16m"), 37)
+assert.fails(lambda: d10h // time.parse_duration("0"), "division by zero")
+# duration // int = duration
+assert.eq(d10h // 20, time.parse_duration("30m"))
+assert.fails(lambda: d10h // 0, "division by zero")
+# int // duration = error
+assert.fails(lambda: 20 // d10h, "unsupported operation")
 # duration * int = duration
-assert.eq(d * 1000, time.parse_duration("16m40s"))
-assert.fails(lambda: d2 // 0, "division by zero")
-
-
-before = time.now()
-time.sleep(10 * time.millisecond)
-assert.true((time.now() - before).nanoseconds >= time.parse_duration("10ms").nanoseconds)
+assert.eq(d1s * 1000, time.parse_duration("16m40s"))
+assert.fails(lambda: d10h // 0, "division by zero")
+# int * duration  = duration
+assert.eq(1000 * d1s, time.parse_duration("16m40s"))
 
 # time(year=..., month=..., day=..., hour=..., minute=..., second=..., nanosecond=..., location=...)
-t1 = time.time(2009, 6, 12, 12, 6, 10, 99, "US/Eastern")
+assert.fails(lambda: time.time(2009, 6, 12, 12, 6, 10, 99, "US/Eastern"), "unexpected positional argument")
+t1 = time.time(year=2009, month=6, day=12, hour=12, minute=6, second=10, nanosecond=99, location="US/Eastern")
 assert.eq(t1, time.parse_time("2009-06-12T12:06:10.000000099", format="2006-01-02T15:04:05.999999999", location="US/Eastern"))
 assert.eq(time.time(year=2012, month=12, day=31), time.parse_time("2012-12-31T00:00:00Z"))
 
@@ -91,29 +114,47 @@ assert.eq(99, t1.nanosecond)
 assert.eq(1244822770, t1.unix)
 assert.eq(1244822770000000099, t1.unix_nano)
 
-# time == time = boolean
-# time != time = boolean
-assert.eq(time.parse_time("2011-04-22T13:33:48Z"), time.parse_time("2011-04-22T13:33:48Z"))
-assert.ne(time.parse_time("2011-04-22T13:33:48Z"), time.parse_time("2011-04-22T13:33:49Z"))
-# time < time = boolean
-assert.lt(time.parse_time("2010-04-22T13:33:48Z"), time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2010-04-22T13:33:48Z") < time.parse_time("2010-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2010-04-22T13:33:48Z") < time.parse_time("2009-04-22T13:33:48Z"))
-# time <= time = boolean
-assert.true(time.parse_time("2010-04-22T13:33:48Z") <= time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(time.parse_time("2010-04-22T13:33:48Z") <= time.parse_time("2010-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2010-04-22T13:33:48Z") <= time.parse_time("2009-04-22T13:33:48Z"))
-# time > time = boolean
-assert.true(time.parse_time("2012-04-22T13:33:48Z") > time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2011-04-22T13:33:48Z") > time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2010-04-22T13:33:48Z") > time.parse_time("2011-04-22T13:33:48Z"))
-# time >= time = boolean
-assert.true(time.parse_time("2012-04-22T13:33:48Z") >= time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(time.parse_time("2011-04-22T13:33:48Z") >= time.parse_time("2011-04-22T13:33:48Z"))
-assert.true(not time.parse_time("2010-04-22T13:33:48Z") >= time.parse_time("2011-04-22T13:33:48Z"))
+# time type
+assert.eq("time.time", type(refTime))
+# duration str
+assert.eq("2011-04-22 13:33:48 +0000 UTC", str(refTime))
+# duration hash
+times = {
+    refTime: "refTime",
+    t1: "t1",
+}
+assert.eq("refTime", times[refTime])
+assert.eq("t1", times[t1])
+
+oneSecondAfterRefTime = time.parse_time("2011-04-22T13:33:49Z")
+oneYearAfterRefTime = time.parse_time("2012-04-22T13:33:48Z")
+oneYearBeforeRefTime = time.parse_time("2010-04-22T13:33:48Z")
+twoYearsBeforeRefTime = time.parse_time("2009-04-22T13:33:48Z")
+tenHoursBeforeRefTime = time.parse_time("2011-04-22T03:33:48Z")
+
+# time == time
+# time != time
+assert.eq(refTime, refTime)
+assert.ne(refTime, oneSecondAfterRefTime)
+# time < time
+assert.lt(oneYearBeforeRefTime, refTime)
+assert.true(not oneYearBeforeRefTime < oneYearBeforeRefTime)
+assert.true(not oneYearBeforeRefTime < twoYearsBeforeRefTime)
+# time <= time
+assert.true(oneYearBeforeRefTime <= refTime)
+assert.true(oneYearBeforeRefTime <= oneYearBeforeRefTime)
+assert.true(not oneYearBeforeRefTime <= twoYearsBeforeRefTime)
+# time > time
+assert.true(oneYearAfterRefTime > refTime)
+assert.true(not refTime > refTime)
+assert.true(not oneYearBeforeRefTime > refTime)
+# time >= time
+assert.true(oneYearAfterRefTime >= refTime)
+assert.true(refTime >= refTime)
+assert.true(not oneYearBeforeRefTime >= refTime)
 # time + duration = time
-assert.eq(time.parse_time("2011-04-22T13:33:48Z") + time.parse_duration("10h"), time.parse_time("2011-04-22T23:33:48Z"))
+assert.eq(refTime + d10h, tenHoursAfterRefTime)
 # time - duration = time
-assert.eq(time.parse_time("2011-04-22T13:33:48Z") - time.parse_duration("10h"), time.parse_time("2011-04-22T03:33:48Z"))
+assert.eq(refTime - d10h, tenHoursBeforeRefTime)
 # time - time = duration
-assert.eq(time.parse_time("2011-04-22T13:33:48Z") - time.parse_time("2011-04-22T03:33:48Z"), time.parse_duration("10h"))
+assert.eq(refTime - tenHoursBeforeRefTime, d10h)

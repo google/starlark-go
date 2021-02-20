@@ -92,7 +92,7 @@ func doMain() int {
 	// Ideally this statement would update the predeclared environment.
 	// TODO(adonovan): plumb predeclared env through to the REPL.
 	starlark.Universe["json"] = starlarkjson.Module
-	starlark.Universe[time.ModuleName] = time.Module
+	starlark.Universe["time"] = time.Module
 
 	switch {
 	case flag.NArg() == 1 || *execprog != "":

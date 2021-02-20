@@ -11,20 +11,15 @@ import (
 	"go.starlark.net/syntax"
 )
 
-// ModuleName defines the expected name for this Module when used in the
-// starlark runtime.
-const ModuleName = "time"
-
 // Module time is a Starlark module of time-related functions.
 var Module = &starlarkstruct.Module{
-	Name: ModuleName,
+	Name: "time",
 	Members: starlark.StringDict{
 		"parse_duration": starlark.NewBuiltin("parse_duration", parseDuration),
 		"parse_location": starlark.NewBuiltin("parse_location", parseLocation),
 		"now":            starlark.NewBuiltin("now", now),
 		"time":           starlark.NewBuiltin("time", newTime),
 		"parse_time":     starlark.NewBuiltin("time", parseTime),
-		"sleep":          starlark.NewBuiltin("sleep", sleep),
 		"from_timestamp": starlark.NewBuiltin("from_timestamp", fromTimestamp),
 
 		"nanosecond":  Duration(time.Nanosecond),
@@ -34,14 +29,6 @@ var Module = &starlarkstruct.Module{
 		"minute":      Duration(time.Minute),
 		"hour":        Duration(time.Hour),
 	},
-}
-
-// LoadModule loads the time module.
-// It is concurrency-safe and idempotent.
-func LoadModule() (starlark.StringDict, error) {
-	return starlark.StringDict{
-		ModuleName: Module,
-	}, nil
 }
 
 // NowFunc is a function that generates the current time. Intentionally exported
@@ -66,21 +53,6 @@ func parseLocation(thread *starlark.Thread, _ *starlark.Builtin, args starlark.T
 	}
 
 	return starlark.String(loc.String()), nil
-}
-
-// SleepFunc is a function that pauses the current goroutine for at least d.
-// Intentionally exported so that it can be overridden, for example by
-// applications that require their Starlark scripts to be fully deterministic.
-var SleepFunc = time.Sleep
-
-func sleep(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dur Duration
-	if err := starlark.UnpackPositionalArgs("sleep", args, kwargs, 1, &dur); err != nil {
-		return starlark.None, err
-	}
-
-	SleepFunc(time.Duration(dur))
-	return starlark.None, nil
 }
 
 func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -135,13 +107,6 @@ func (d *Duration) Unpack(v starlark.Value) error {
 	case Duration:
 		*d = x
 		return nil
-	case starlark.Int:
-		i, ok := x.Int64()
-		if !ok {
-			return fmt.Errorf("int value out of range (want signed 64-bit value)")
-		}
-		*d = Duration(i)
-		return nil
 	case starlark.String:
 		dur, err := time.ParseDuration(string(x))
 		if err != nil {
@@ -159,7 +124,7 @@ func (d *Duration) Unpack(v starlark.Value) error {
 func (d Duration) String() string { return time.Duration(d).String() }
 
 // Type returns a short string describing the value's type.
-func (d Duration) Type() string { return ModuleName + ".duration" }
+func (d Duration) Type() string { return "time.duration" }
 
 // Freeze renders Duration immutable. required by starlark.Value interface
 // because duration is already immutable this is a no-op.
@@ -236,15 +201,16 @@ func (d Duration) CompareSameType(op syntax.Token, v starlark.Value, depth int) 
 //    duration - duration = duration
 //    duration / duration = float
 //    duration / int = duration
+//    duration / float = duration
 //    duration // duration = int
 //    duration // int = duration
 //    duration * int = duration
-func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (starlark.Value, error) {
+func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	x := time.Duration(d)
 
 	switch op {
 	case syntax.PLUS:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			return Duration(x + time.Duration(y)), nil
 		case Time:
@@ -252,19 +218,22 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 		}
 
 	case syntax.MINUS:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			return Duration(x - time.Duration(y)), nil
 		}
 
 	case syntax.SLASH:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			if int64(y) == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
 			return starlark.Float(float64(x.Nanoseconds()) / float64(time.Duration(y).Nanoseconds())), nil
 		case starlark.Int:
+			if side == starlark.Right {
+				return nil, fmt.Errorf("unsupported operation")
+			}
 			i, ok := y.Int64()
 			if !ok {
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
@@ -272,18 +241,27 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 			if int64(i) == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
-			return Duration(d / Duration(i)), nil
+			return Duration(x.Nanoseconds() / i), nil
+		case starlark.Float:
+			f := float64(y)
+			if f == 0 {
+				return nil, fmt.Errorf("%s division by zero", d.Type())
+			}
+			return Duration(float64(x.Nanoseconds()) / f), nil
 		}
 
 	case syntax.SLASHSLASH:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			if int64(y) == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
 			return starlark.MakeInt64(x.Nanoseconds() / time.Duration(y).Nanoseconds()), nil
 		case starlark.Int:
-			i, ok := yV.(starlark.Int).Int64()
+			if side == starlark.Right {
+				return nil, fmt.Errorf("unsupported operation")
+			}
+			i, ok := y.Int64()
 			if !ok {
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
 			}
@@ -294,7 +272,7 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 		}
 
 	case syntax.STAR:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case starlark.Int:
 			i, ok := y.Int64()
 			if !ok {
@@ -307,7 +285,7 @@ func (d Duration) Binary(op syntax.Token, yV starlark.Value, _ starlark.Side) (s
 	return nil, nil
 }
 
-// Time is a starlark representation of a point in time.
+// Time is a starlark representation of a moment in time.
 type Time time.Time
 
 func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -315,8 +293,20 @@ func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		year, month, day, hour, min, sec, nsec int
 		loc                                    string
 	)
-	if err := starlark.UnpackArgs("time", args, kwargs, "year?", &year, "month?", &month, "day?", &day, "hour?", &hour, "minute?", &min, "second?", &sec, "nanosecond?", &nsec, "location?", &loc); err != nil {
+	if err := starlark.UnpackArgs("time", args, kwargs,
+		"year?", &year,
+		"month?", &month,
+		"day?", &day,
+		"hour?", &hour,
+		"minute?", &min,
+		"second?", &sec,
+		"nanosecond?", &nsec,
+		"location?", &loc,
+	); err != nil {
 		return nil, err
+	}
+	if len(args) > 0 {
+		return nil, fmt.Errorf("time: unexpected positional arguments")
 	}
 	location, err := time.LoadLocation(loc)
 	if err != nil {
@@ -330,7 +320,7 @@ func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 func (t Time) String() string { return time.Time(t).String() }
 
 // Type returns "time.time".
-func (t Time) Type() string { return ModuleName + ".time" }
+func (t Time) Type() string { return "time.time" }
 
 // Freeze renders time immutable. required by starlark.Value interface
 // because Time is already immutable this is a no-op.
@@ -393,13 +383,13 @@ func (t Time) AttrNames() []string {
 func (t Time) CompareSameType(op syntax.Token, yV starlark.Value, depth int) (bool, error) {
 	x := time.Time(t)
 	y := time.Time(yV.(Time))
-	cp := 0
+	cmp := 0
 	if x.Before(y) {
-		cp = -1
+		cmp = -1
 	} else if x.After(y) {
-		cp = 1
+		cmp = 1
 	}
-	return threeway(op, cp), nil
+	return threeway(op, cmp), nil
 }
 
 // Binary implements binary operators, which satisfies the starlark.HasBinary
@@ -407,26 +397,22 @@ func (t Time) CompareSameType(op syntax.Token, yV starlark.Value, depth int) (bo
 //    time + duration = time
 //    time - duration = time
 //    time - time = duration
-func (t Time) Binary(op syntax.Token, yV starlark.Value, side starlark.Side) (starlark.Value, error) {
+func (t Time) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	x := time.Time(t)
 
 	switch op {
 	case syntax.PLUS:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			return Time(x.Add(time.Duration(y))), nil
 		}
 	case syntax.MINUS:
-		switch y := yV.(type) {
+		switch y := y.(type) {
 		case Duration:
 			return Time(x.Add(time.Duration(-y))), nil
 		case Time:
 			// time - time = duration
-			if side == starlark.Left {
-				return Duration(x.Sub(time.Time(y))), nil
-			} else {
-				return Duration(time.Time(y).Sub(x)), nil
-			}
+			return Duration(x.Sub(time.Time(y))), nil
 		}
 	}
 
