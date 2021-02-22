@@ -24,8 +24,14 @@ type Unpacker interface {
 // Iterable, or user-defined implementation of Value,
 // UnpackArgs performs the appropriate type check.
 // Predeclared Go integer types uses the AsInt check.
-// If the parameter name ends with "?",
-// it and all following parameters are optional.
+//
+// If the parameter name ends with "?", it is optional.
+//
+// If the parameter name ends with "??", it is optional and treats the None value
+// as if the argument was absent.
+//
+// If a parameter is marked optional, then all following parameters are
+// implicitly optional where or not they are marked.
 //
 // If the variable implements Unpacker, its Unpack argument
 // is called with the argument value, allowing an application
@@ -87,12 +93,16 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 	var defined intset
 	defined.init(nparams)
 
-	paramName := func(x interface{}) string { // (no free variables)
-		name := x.(string)
-		if name[len(name)-1] == '?' {
+	paramName := func(x interface{}) (name string, skipNone bool) { // (no free variables)
+		name = x.(string)
+		if strings.HasSuffix(name, "??") {
+			name = strings.TrimSuffix(name, "??")
+			skipNone = true
+		} else if name[len(name)-1] == '?' {
 			name = name[:len(name)-1]
 		}
-		return name
+
+		return name, skipNone
 	}
 
 	// positional arguments
@@ -102,8 +112,13 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...interface{})
 	}
 	for i, arg := range args {
 		defined.set(i)
+		name, skipNone := paramName(pairs[2*i])
+		if skipNone {
+			if _, isNone := arg.(NoneType); isNone {
+				continue
+			}
+		}
 		if err := unpackOneArg(arg, pairs[2*i+1]); err != nil {
-			name := paramName(pairs[2*i])
 			return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 		}
 	}
@@ -113,12 +128,20 @@ kwloop:
 	for _, item := range kwargs {
 		name, arg := item[0].(String), item[1]
 		for i := 0; i < nparams; i++ {
-			if paramName(pairs[2*i]) == string(name) {
+			pName, skipNone := paramName(pairs[2*i])
+			if pName == string(name) {
 				// found it
 				if defined.set(i) {
 					return fmt.Errorf("%s: got multiple values for keyword argument %s",
 						fnname, name)
 				}
+
+				if skipNone {
+					if _, isNone := arg.(NoneType); isNone {
+						continue kwloop
+					}
+				}
+
 				ptr := pairs[2*i+1]
 				if err := unpackOneArg(arg, ptr); err != nil {
 					return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
