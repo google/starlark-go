@@ -479,7 +479,7 @@ func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		return nil, err
 	}
 
-	var h int
+	var h int64
 	switch x := x.(type) {
 	case String:
 		// The Starlark spec requires that the hash function be
@@ -488,13 +488,13 @@ func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		// String.Hash, which uses the fastest implementation
 		// available, because as varies across process restarts,
 		// and may evolve with the implementation.
-		h = int(javaStringHash(string(x)))
+		h = int64(javaStringHash(string(x)))
 	case Bytes:
-		h = int(softHashString(string(x))) // FNV32
+		h = int64(softHashString(string(x))) // FNV32
 	default:
 		return nil, fmt.Errorf("hash: got %s, want string or bytes", x.Type())
 	}
-	return MakeInt(h), nil
+	return MakeInt64(h), nil
 }
 
 // javaStringHash returns the same hash as would be produced by
