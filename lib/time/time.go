@@ -1,7 +1,6 @@
 package time
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -15,12 +14,12 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
-		"parse_duration": starlark.NewBuiltin("parse_duration", parseDuration),
-		"parse_location": starlark.NewBuiltin("parse_location", parseLocation),
-		"now":            starlark.NewBuiltin("now", now),
-		"time":           starlark.NewBuiltin("time", newTime),
-		"parse_time":     starlark.NewBuiltin("time", parseTime),
-		"from_timestamp": starlark.NewBuiltin("from_timestamp", fromTimestamp),
+		"parse_duration":    starlark.NewBuiltin("parse_duration", parseDuration),
+		"is_valid_timezone": starlark.NewBuiltin("is_valid_timezone", isValidTimezone),
+		"now":               starlark.NewBuiltin("now", now),
+		"time":              starlark.NewBuiltin("time", newTime),
+		"parse_time":        starlark.NewBuiltin("parse_time", parseTime),
+		"from_timestamp":    starlark.NewBuiltin("from_timestamp", fromTimestamp),
 
 		"nanosecond":  Duration(time.Nanosecond),
 		"microsecond": Duration(time.Microsecond),
@@ -36,35 +35,42 @@ var Module = &starlarkstruct.Module{
 // Starlark scripts to be fully deterministic.
 var NowFunc = time.Now
 
+// Parses the given duration string.
+// A duration string is a possibly signed sequence of
+// decimal numbers, each with optional fraction and a unit suffix,
+// such as "300ms", "-1.5h" or "2h45m".
+// Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
 	err := starlark.UnpackPositionalArgs("duration", args, kwargs, 1, &d)
 	return d, err
 }
 
-func parseLocation(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// Indicates whether the given name of location is valid or not.
+// Returns true if it is valid, false otherwise.
+func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var s string
-	if err := starlark.UnpackPositionalArgs("location", args, kwargs, 1, &s); err != nil {
+	if err := starlark.UnpackPositionalArgs("is_valid_timezone", args, kwargs, 1, &s); err != nil {
 		return nil, err
 	}
-	loc, err := time.LoadLocation(s)
-	if err != nil {
-		return nil, err
-	}
-
-	return starlark.String(loc.String()), nil
+	_, err := time.LoadLocation(s)
+	return starlark.Bool(err == nil), nil
 }
 
+// The expected arguments are a time string (mandatory), a time format (optional, set to RFC3339 by default)
+// and a name of location (optional set to UTC by default).
+// Parses the given time string using a specific time format and location.
 func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		x, location string
-		format      = time.RFC3339
+		x        string
+		location = "UTC"
+		format   = time.RFC3339
 	)
 	if err := starlark.UnpackArgs("time", args, kwargs, "x", &x, "format?", &format, "location?", &location); err != nil {
 		return nil, err
 	}
 
-	if location == "" {
+	if location == "UTC" {
 		t, err := time.Parse(format, x)
 		if err != nil {
 			return nil, err
@@ -83,6 +89,8 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	return Time(t), nil
 }
 
+// Parses the given timestamp string corresponding to
+// the total amount of seconds since January 1, 1970 UTC.
 func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x int64
 	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &x); err != nil {
@@ -91,6 +99,7 @@ func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.T
 	return Time(time.Unix(x, 0)), nil
 }
 
+// Generates the current time current time.
 func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return Time(NowFunc()), nil
 }
@@ -98,7 +107,7 @@ func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwar
 // Duration is a Starlark representation of a duration.
 type Duration time.Duration
 
-// assert at compile time that Duration implements Unpacker.
+// Assert at compile time that Duration implements Unpacker.
 var _ starlark.Unpacker = (*Duration)(nil)
 
 // Unpack is a custom argument unpacker
@@ -175,23 +184,13 @@ func (d Duration) AttrNames() []string {
 // CompareSameType implements comparison of two Duration values. required by
 // starlark.Comparable interface.
 func (d Duration) CompareSameType(op syntax.Token, v starlark.Value, depth int) (bool, error) {
-	x := time.Duration(d)
-	y := time.Duration(v.(Duration))
-	switch op {
-	case syntax.EQL:
-		return x == y, nil
-	case syntax.NEQ:
-		return x != y, nil
-	case syntax.LT:
-		return x < y, nil
-	case syntax.LE:
-		return x <= y, nil
-	case syntax.GT:
-		return x > y, nil
-	case syntax.GE:
-		return x >= y, nil
+	cmp := 0
+	if x, y := d, v.(Duration); x < y {
+		cmp = -1
+	} else if x > y {
+		cmp = 1
 	}
-	return false, errors.New("operation not supported")
+	return threeway(op, cmp), nil
 }
 
 // Binary implements binary operators, which satisfies the starlark.HasBinary
@@ -203,7 +202,6 @@ func (d Duration) CompareSameType(op syntax.Token, v starlark.Value, depth int) 
 //    duration / int = duration
 //    duration / float = duration
 //    duration // duration = int
-//    duration // int = duration
 //    duration * int = duration
 func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	x := time.Duration(d)
@@ -226,10 +224,10 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 	case syntax.SLASH:
 		switch y := y.(type) {
 		case Duration:
-			if int64(y) == 0 {
+			if y == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
-			return starlark.Float(float64(x.Nanoseconds()) / float64(time.Duration(y).Nanoseconds())), nil
+			return starlark.Float(x.Nanoseconds()) / starlark.Float(time.Duration(y).Nanoseconds()), nil
 		case starlark.Int:
 			if side == starlark.Right {
 				return nil, fmt.Errorf("unsupported operation")
@@ -238,10 +236,10 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 			if !ok {
 				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
 			}
-			if int64(i) == 0 {
+			if i == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
-			return Duration(x.Nanoseconds() / i), nil
+			return d / Duration(i), nil
 		case starlark.Float:
 			f := float64(y)
 			if f == 0 {
@@ -253,22 +251,10 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 	case syntax.SLASHSLASH:
 		switch y := y.(type) {
 		case Duration:
-			if int64(y) == 0 {
+			if y == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
 			}
 			return starlark.MakeInt64(x.Nanoseconds() / time.Duration(y).Nanoseconds()), nil
-		case starlark.Int:
-			if side == starlark.Right {
-				return nil, fmt.Errorf("unsupported operation")
-			}
-			i, ok := y.Int64()
-			if !ok {
-				return nil, fmt.Errorf("int value out of range (want signed 64-bit value)")
-			}
-			if int64(i) == 0 {
-				return nil, fmt.Errorf("%s division by zero", d.Type())
-			}
-			return d / Duration(i), nil
 		}
 
 	case syntax.STAR:
@@ -285,7 +271,7 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 	return nil, nil
 }
 
-// Time is a starlark representation of a moment in time.
+// Time is a Starlark representation of a moment in time.
 type Time time.Time
 
 func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -316,7 +302,7 @@ func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 }
 
 // String returns the time formatted using the format string
-//	"2006-01-02 15:04:05.999999999 -0700 MST"
+//	"2006-01-02 15:04:05.999999999 -0700 MST".
 func (t Time) String() string { return time.Time(t).String() }
 
 // Type returns "time.time".
@@ -472,7 +458,7 @@ func builtinAttrNames(methods map[string]builtinMethod) []string {
 	return names
 }
 
-// threeway interprets a three-way comparison value cmp (-1, 0, +1)
+// Threeway interprets a three-way comparison value cmp (-1, 0, +1)
 // as a boolean comparison (e.g. x < y).
 func threeway(op syntax.Token, cmp int) bool {
 	switch op {

@@ -86,22 +86,22 @@ assert.fails(lambda: d10h / 0.0, "division by zero")
 # duration // duration = int
 assert.eq(d10h // time.parse_duration("16m"), 37)
 assert.fails(lambda: d10h // time.parse_duration("0"), "division by zero")
-# duration // int = duration
-assert.eq(d10h // 20, time.parse_duration("30m"))
-assert.fails(lambda: d10h // 0, "division by zero")
-# int // duration = error
-assert.fails(lambda: 20 // d10h, "unsupported operation")
 # duration * int = duration
 assert.eq(d1s * 1000, time.parse_duration("16m40s"))
-assert.fails(lambda: d10h // 0, "division by zero")
 # int * duration  = duration
 assert.eq(1000 * d1s, time.parse_duration("16m40s"))
+
+# is_valid_timezone(location)
+assert.true(time.is_valid_timezone("UTC"))
+assert.true(time.is_valid_timezone("US/Eastern"))
+assert.true(not time.is_valid_timezone("UKN"))
 
 # time(year=..., month=..., day=..., hour=..., minute=..., second=..., nanosecond=..., location=...)
 assert.fails(lambda: time.time(2009, 6, 12, 12, 6, 10, 99, "US/Eastern"), "unexpected positional argument")
 t1 = time.time(year=2009, month=6, day=12, hour=12, minute=6, second=10, nanosecond=99, location="US/Eastern")
 assert.eq(t1, time.parse_time("2009-06-12T12:06:10.000000099", format="2006-01-02T15:04:05.999999999", location="US/Eastern"))
 assert.eq(time.time(year=2012, month=12, day=31), time.parse_time("2012-12-31T00:00:00Z"))
+assert.eq(time.time(year=2009, month=6, day=12, hour=12, minute=6, second=10, nanosecond=99, location="UTC"), time.time(year=2009, month=6, day=12, hour=12, minute=6, second=10, nanosecond=99))
 
 # time attributes
 assert.eq(2009, t1.year)
