@@ -42,7 +42,7 @@ var NowFunc = time.Now
 // Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
-	err := starlark.UnpackPositionalArgs("duration", args, kwargs, 1, &d)
+	err := starlark.UnpackPositionalArgs("parse_duration", args, kwargs, 1, &d)
 	return d, err
 }
 
@@ -66,7 +66,7 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 		location = "UTC"
 		format   = time.RFC3339
 	)
-	if err := starlark.UnpackArgs("time", args, kwargs, "x", &x, "format?", &format, "location?", &location); err != nil {
+	if err := starlark.UnpackArgs("parse_time", args, kwargs, "x", &x, "format?", &format, "location?", &location); err != nil {
 		return nil, err
 	}
 
