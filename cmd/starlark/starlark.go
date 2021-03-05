@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/lib/time"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -91,6 +92,7 @@ func doMain() int {
 	// Ideally this statement would update the predeclared environment.
 	// TODO(adonovan): plumb predeclared env through to the REPL.
 	starlark.Universe["json"] = starlarkjson.Module
+	starlark.Universe["time"] = time.Module
 
 	switch {
 	case flag.NArg() == 1 || *execprog != "":
