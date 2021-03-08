@@ -6,6 +6,7 @@
 package math // import "go.starlark.net/lib/math"
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -18,7 +19,11 @@ import (
 //
 //     abs(x) - Returns the absolute value of x.
 //     ceil(x) - Returns the ceiling of x, the smallest integer greater than or equal to x.
+//     copysign(x, y) - Returns a value with the magnitude of x and the sign of y.
 //     floor(x) - Returns the floor of x, the largest integer less than or equal to x.
+//     mod(x, y) - Returns the floating-point remainder of x/y. The magnitude of the result is less than y and its sign agrees with that of x.
+//     pow(x, y) - Returns x**y, the base-x exponential of y.
+//     remainder(x, y) - Returns the IEEE 754 floating-point remainder of x/y.
 //     round(x) - Returns the nearest integer, rounding half away from zero.
 //
 //     exp(x) - Returns e raised to the power x, where e = 2.718281… is the base of natural logarithms.
@@ -48,10 +53,11 @@ import (
 //     sinh(x) - Returns the hyperbolic sine of x.
 //     tanh(x) - Returns the hyperbolic tangent of x.
 //
-//     log(x, base=e) - Returns the logarithm of x in the given base.
-//                      The base is an optional parameter, by default the base of natural logarithms is used.
+//     log(x, base=e) - Returns the logarithm of x in the given base, or natural logarithm by default.
 //
-// All function accept both int and float values as arguments.
+//     gamma(x) - Returns the Gamma function of x.
+//
+// All functions accept both int and float values as arguments.
 //
 // The module also defines approximations of the following constants:
 //
@@ -61,10 +67,14 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "math",
 	Members: starlark.StringDict{
-		"abs":   newUnaryBuiltin("abs", math.Abs),
-		"ceil":  newUnaryBuiltin("ceil", math.Ceil),
-		"floor": newUnaryBuiltin("floor", math.Floor),
-		"round": newUnaryBuiltin("round", math.Round),
+		"abs":       newUnaryBuiltin("abs", math.Abs),
+		"ceil":      newUnaryBuiltin("ceil", math.Ceil),
+		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
+		"floor":     newUnaryBuiltin("floor", math.Floor),
+		"mod":       newBinaryBuiltin("round", math.Mod),
+		"pow":       newBinaryBuiltin("pow", math.Pow),
+		"remainder": newBinaryBuiltin("remainder", math.Remainder),
+		"round":     newUnaryBuiltin("round", math.Round),
 
 		"exp":  newUnaryBuiltin("exp", math.Exp),
 		"sqrt": newUnaryBuiltin("sqrt", math.Sqrt),
@@ -72,9 +82,9 @@ var Module = &starlarkstruct.Module{
 		"acos":  newUnaryBuiltin("acos", math.Acos),
 		"asin":  newUnaryBuiltin("asin", math.Asin),
 		"atan":  newUnaryBuiltin("atan", math.Atan),
-		"atan2": newBinaryFunction("atan2", math.Atan2, unpackRegularArgs),
+		"atan2": newBinaryBuiltin("atan2", math.Atan2),
 		"cos":   newUnaryBuiltin("cos", math.Cos),
-		"hypot": newBinaryFunction("hypot", math.Hypot, unpackRegularArgs),
+		"hypot": newBinaryBuiltin("hypot", math.Hypot),
 		"sin":   newUnaryBuiltin("sin", math.Sin),
 		"tan":   newUnaryBuiltin("tan", math.Tan),
 
@@ -89,6 +99,8 @@ var Module = &starlarkstruct.Module{
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
 		"log": newBinaryFunction("log", log, unpackLogArgs),
+
+		"gamma": newUnaryBuiltin("gamma", math.Gamma),
 
 		"e":  starlark.Float(math.E),
 		"pi": starlark.Float(math.Pi),
@@ -107,7 +119,6 @@ func (p *floatOrInt) Unpack(v starlark.Value) error {
 		*p = floatOrInt(v)
 		return nil
 	}
-
 	return fmt.Errorf("got %s, want float or int", v.Type())
 }
 
@@ -125,14 +136,30 @@ func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 
 // newBinaryFunction wraps a binary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
-func newBinaryFunction(name string, fn func(float64, float64) float64, unpackAgsFn func(string, starlark.Tuple, []starlark.Tuple) (floatOrInt, floatOrInt, error)) *starlark.Builtin {
+func newBinaryFunction(name string, fn func(float64, float64) (float64, error), unpackArgsFn func(string, starlark.Tuple, []starlark.Tuple) (floatOrInt, floatOrInt, error)) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		x, y, err := unpackAgsFn(name, args, kwargs)
+		x, y, err := unpackArgsFn(name, args, kwargs)
 		if err != nil {
 			return nil, err
 		}
-		return starlark.Float(fn(float64(x), float64(y))), nil
+		result, err := fn(float64(x), float64(y))
+		if err != nil {
+			return nil, err
+		}
+		return starlark.Float(result), nil
 	})
+}
+
+//  newBinaryBuiltin wraps a regular binary floating-point Go function
+// as a Starlark built-in that accepts int or float arguments.
+func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
+	return newBinaryFunction(
+		name,
+		func(x float64, y float64) (float64, error) {
+			return fn(x, y), nil
+		},
+		unpackRegularArgs,
+	)
 }
 
 // unpackRegularArgs unpacks the arguments of a regular binary function.
@@ -164,13 +191,10 @@ func radians(x float64) float64 {
 	return 2 * math.Pi * x / 360
 }
 
-func log(x float64, base float64) float64 {
+func log(x float64, base float64) (float64, error) {
 	num := math.Log(x)
 	if base == 1 {
-		if num < 0 {
-			return math.Inf(-1)
-		}
-		return math.Inf(1)
+		return 0, errors.New("division by zero")
 	}
-	return num / math.Log(base)
+	return num / math.Log(base), nil
 }
