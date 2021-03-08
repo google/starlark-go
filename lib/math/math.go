@@ -48,16 +48,14 @@ import (
 //     sinh(x) - Returns the hyperbolic sine of x.
 //     tanh(x) - Returns the hyperbolic tangent of x.
 //
-//     log(x) - Returns the natural logarithm of x.
-//     log2(x) - Returns the decimal logarithm of x. The special cases are the same as for Log.
-//     log10(x) - Returns the natural logarithm of 1 plus its argument x. It is more accurate than Log(1 + x) when x is near.
+//     log(x, base=e) - Returns the logarithm of x in the given base.
+//                      The base is an optional parameter, by default the base of natural logarithms is used.
 //
 // All function accept both int and float values as arguments.
 //
 // The module also defines approximations of the following constants:
 //
 //     e - The base of natural logarithms, approximately 2.71828.
-//     phi - The golden ratio, (1 + sqrt(5)) / 2, approximately 1.61803.
 //     pi - The ratio of a circle's circumference to its diameter, approximately 3.14159.
 //
 var Module = &starlarkstruct.Module{
@@ -74,9 +72,9 @@ var Module = &starlarkstruct.Module{
 		"acos":  newUnaryBuiltin("acos", math.Acos),
 		"asin":  newUnaryBuiltin("asin", math.Asin),
 		"atan":  newUnaryBuiltin("atan", math.Atan),
-		"atan2": newBinaryFunction("atan2", math.Atan2),
+		"atan2": newBinaryFunction("atan2", math.Atan2, unpackRegularArgs),
 		"cos":   newUnaryBuiltin("cos", math.Cos),
-		"hypot": newBinaryFunction("hypot", math.Hypot),
+		"hypot": newBinaryFunction("hypot", math.Hypot, unpackRegularArgs),
 		"sin":   newUnaryBuiltin("sin", math.Sin),
 		"tan":   newUnaryBuiltin("tan", math.Tan),
 
@@ -90,20 +88,16 @@ var Module = &starlarkstruct.Module{
 		"sinh":  newUnaryBuiltin("sinh", math.Sinh),
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
-		"log":   newUnaryBuiltin("log", math.Log),
-		"log2":  newUnaryBuiltin("log2", math.Log2),
-		"log10": newUnaryBuiltin("log10", math.Log10),
+		"log": newBinaryFunction("log", log, unpackLogArgs),
 
-		"e":   starlark.Float(math.E),
-		"phi": starlark.Float(math.Phi),
-		"pi":  starlark.Float(math.Pi),
+		"e":  starlark.Float(math.E),
+		"pi": starlark.Float(math.Pi),
 	},
 }
 
 // floatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
 type floatOrInt float64
 
-// Unpack is a custom argument unpacker
 func (p *floatOrInt) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case starlark.Int:
@@ -131,14 +125,35 @@ func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 
 // newBinaryFunction wraps a binary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
-func newBinaryFunction(name string, fn func(float64, float64) float64) *starlark.Builtin {
+func newBinaryFunction(name string, fn func(float64, float64) float64, unpackAgsFn func(string, starlark.Tuple, []starlark.Tuple) (floatOrInt, floatOrInt, error)) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x, y floatOrInt
-		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
+		x, y, err := unpackAgsFn(name, args, kwargs)
+		if err != nil {
 			return nil, err
 		}
 		return starlark.Float(fn(float64(x), float64(y))), nil
 	})
+}
+
+// unpackRegularArgs unpacks the arguments of a regular binary function.
+func unpackRegularArgs(name string, args starlark.Tuple, kwargs []starlark.Tuple) (floatOrInt, floatOrInt, error) {
+	var x, y floatOrInt
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
+		return 0, 0, err
+	}
+	return x, y, nil
+}
+
+// unpackLogArgs unpacks the arguments of the log function.
+func unpackLogArgs(name string, args starlark.Tuple, kwargs []starlark.Tuple) (floatOrInt, floatOrInt, error) {
+	var (
+		x    floatOrInt
+		base = floatOrInt(math.E)
+	)
+	if err := starlark.UnpackArgs(name, args, kwargs, "x", &x, "base?", &base); err != nil {
+		return 0, 0, err
+	}
+	return x, base, nil
 }
 
 func degrees(x float64) float64 {
@@ -147,4 +162,15 @@ func degrees(x float64) float64 {
 
 func radians(x float64) float64 {
 	return 2 * math.Pi * x / 360
+}
+
+func log(x float64, base float64) float64 {
+	num := math.Log(x)
+	if base == 1 {
+		if num < 0 {
+			return math.Inf(-1)
+		}
+		return math.Inf(1)
+	}
+	return num / math.Log(base)
 }
