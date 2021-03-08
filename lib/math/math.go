@@ -14,7 +14,7 @@ import (
 )
 
 // Module math is a Starlark module of math-related functions and constants.
-// It defines the following functions:
+// The module defines the following functions:
 //
 //     abs(x) - Returns the absolute value of x.
 //     ceil(x) - Returns the ceiling of x, the smallest integer greater than or equal to x.
@@ -48,13 +48,17 @@ import (
 //     sinh(x) - Returns the hyperbolic sine of x.
 //     tanh(x) - Returns the hyperbolic tangent of x.
 //
+//     log(x) - Returns the natural logarithm of x.
+//     log2(x) - Returns the decimal logarithm of x. The special cases are the same as for Log.
+//     log10(x) - Returns the natural logarithm of 1 plus its argument x. It is more accurate than Log(1 + x) when x is near.
+//
 // All function accept both int and float values as arguments.
 //
-// It defines the following constants:
+// The module also defines approximations of the following constants:
 //
-//     e - The number e, also known as Euler's number, is a mathematical constant approximately equal to 2.71828.
-//     phi - The number phi, also known as the Golden Ratio, is a mathematical constant approximately equal to 1.61803.
-//     pi - The number pi, also known as Archimedes' constant, is a mathematical constant approximately equal to 3.14159.
+//     e - The base of natural logarithms, approximately 2.71828.
+//     phi - The golden ratio, (1 + sqrt(5)) / 2, approximately 1.61803.
+//     pi - The ratio of a circle's circumference to its diameter, approximately 3.14159.
 //
 var Module = &starlarkstruct.Module{
 	Name: "math",
@@ -76,8 +80,8 @@ var Module = &starlarkstruct.Module{
 		"sin":   newUnaryBuiltin("sin", math.Sin),
 		"tan":   newUnaryBuiltin("tan", math.Tan),
 
-		"degrees": newUnaryBuiltin("degrees", toDeg),
-		"radians": newUnaryBuiltin("radians", toRad),
+		"degrees": newUnaryBuiltin("degrees", degrees),
+		"radians": newUnaryBuiltin("radians", radians),
 
 		"acosh": newUnaryBuiltin("acosh", math.Acosh),
 		"asinh": newUnaryBuiltin("asinh", math.Asinh),
@@ -86,34 +90,38 @@ var Module = &starlarkstruct.Module{
 		"sinh":  newUnaryBuiltin("sinh", math.Sinh),
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
+		"log":   newUnaryBuiltin("log", math.Log),
+		"log2":  newUnaryBuiltin("log2", math.Log2),
+		"log10": newUnaryBuiltin("log10", math.Log10),
+
 		"e":   starlark.Float(math.E),
 		"phi": starlark.Float(math.Phi),
 		"pi":  starlark.Float(math.Pi),
 	},
 }
 
-// The funcParam type of all the math functions.
-type funcParam float64
+// floatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
+type floatOrInt float64
 
 // Unpack is a custom argument unpacker
-func (p *funcParam) Unpack(v starlark.Value) error {
-	switch x := v.(type) {
+func (p *floatOrInt) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
 	case starlark.Int:
-		*p = funcParam(x.Float())
+		*p = floatOrInt(v.Float())
 		return nil
 	case starlark.Float:
-		*p = funcParam(x)
+		*p = floatOrInt(v)
 		return nil
 	}
 
-	return fmt.Errorf("got %s, want a float or an int", v.Type())
+	return fmt.Errorf("got %s, want float or int", v.Type())
 }
 
 // newUnaryBuiltin wraps a unary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
 func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x funcParam
+		var x floatOrInt
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &x); err != nil {
 			return nil, err
 		}
@@ -125,7 +133,7 @@ func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 // as a Starlark built-in that accepts int or float arguments.
 func newBinaryFunction(name string, fn func(float64, float64) float64) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x, y funcParam
+		var x, y floatOrInt
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
 			return nil, err
 		}
@@ -133,10 +141,10 @@ func newBinaryFunction(name string, fn func(float64, float64) float64) *starlark
 	})
 }
 
-func toDeg(x float64) float64 {
+func degrees(x float64) float64 {
 	return 360 * x / (2 * math.Pi)
 }
 
-func toRad(x float64) float64 {
+func radians(x float64) float64 {
 	return 2 * math.Pi * x / 360
 }
