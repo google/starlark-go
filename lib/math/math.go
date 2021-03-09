@@ -98,7 +98,7 @@ var Module = &starlarkstruct.Module{
 		"sinh":  newUnaryBuiltin("sinh", math.Sinh),
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
-		"log": newBinaryFunction("log", log, unpackLogArgs),
+		"log": newLogFunction(),
 
 		"gamma": newUnaryBuiltin("gamma", math.Gamma),
 
@@ -134,53 +134,35 @@ func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 	})
 }
 
-// newBinaryFunction wraps a binary floating-point Go function
+// newBinaryBuiltin wraps a binary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
-func newBinaryFunction(name string, fn func(float64, float64) (float64, error), unpackArgsFn func(string, starlark.Tuple, []starlark.Tuple) (floatOrInt, floatOrInt, error)) *starlark.Builtin {
+func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		x, y, err := unpackArgsFn(name, args, kwargs)
-		if err != nil {
+		var x, y floatOrInt
+		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
 			return nil, err
 		}
-		result, err := fn(float64(x), float64(y))
+		return starlark.Float(fn(float64(x), float64(y))), nil
+	})
+}
+
+//  newLogFunction wraps the Log function
+// as a Starlark built-in that accepts int or float arguments.
+func newLogFunction() *starlark.Builtin {
+	return starlark.NewBuiltin("log", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var (
+			x    floatOrInt
+			base = floatOrInt(math.E)
+		)
+		if err := starlark.UnpackArgs("log", args, kwargs, "x", &x, "base?", &base); err != nil {
+			return nil, err
+		}
+		result, err := log(float64(x), float64(base))
 		if err != nil {
 			return nil, err
 		}
 		return starlark.Float(result), nil
 	})
-}
-
-//  newBinaryBuiltin wraps a regular binary floating-point Go function
-// as a Starlark built-in that accepts int or float arguments.
-func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
-	return newBinaryFunction(
-		name,
-		func(x float64, y float64) (float64, error) {
-			return fn(x, y), nil
-		},
-		unpackRegularArgs,
-	)
-}
-
-// unpackRegularArgs unpacks the arguments of a regular binary function.
-func unpackRegularArgs(name string, args starlark.Tuple, kwargs []starlark.Tuple) (floatOrInt, floatOrInt, error) {
-	var x, y floatOrInt
-	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
-		return 0, 0, err
-	}
-	return x, y, nil
-}
-
-// unpackLogArgs unpacks the arguments of the log function.
-func unpackLogArgs(name string, args starlark.Tuple, kwargs []starlark.Tuple) (floatOrInt, floatOrInt, error) {
-	var (
-		x    floatOrInt
-		base = floatOrInt(math.E)
-	)
-	if err := starlark.UnpackArgs(name, args, kwargs, "x", &x, "base?", &base); err != nil {
-		return 0, 0, err
-	}
-	return x, base, nil
 }
 
 func degrees(x float64) float64 {
@@ -192,9 +174,8 @@ func radians(x float64) float64 {
 }
 
 func log(x float64, base float64) (float64, error) {
-	num := math.Log(x)
 	if base == 1 {
 		return 0, errors.New("division by zero")
 	}
-	return num / math.Log(base), nil
+	return math.Log(x) / math.Log(base), nil
 }
