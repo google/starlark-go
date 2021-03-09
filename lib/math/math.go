@@ -53,7 +53,7 @@ import (
 //     sinh(x) - Returns the hyperbolic sine of x.
 //     tanh(x) - Returns the hyperbolic tangent of x.
 //
-//     log(x, base=e) - Returns the logarithm of x in the given base, or natural logarithm by default.
+//     log(x, base) - Returns the logarithm of x in the given base, or natural logarithm by default.
 //
 //     gamma(x) - Returns the Gamma function of x.
 //
@@ -98,7 +98,7 @@ var Module = &starlarkstruct.Module{
 		"sinh":  newUnaryBuiltin("sinh", math.Sinh),
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
-		"log": newLogFunction(),
+		"log": starlark.NewBuiltin("log", log),
 
 		"gamma": newUnaryBuiltin("gamma", math.Gamma),
 
@@ -146,23 +146,20 @@ func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.
 	})
 }
 
-//  newLogFunction wraps the Log function
+//  log wraps the Log function
 // as a Starlark built-in that accepts int or float arguments.
-func newLogFunction() *starlark.Builtin {
-	return starlark.NewBuiltin("log", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var (
-			x    floatOrInt
-			base = floatOrInt(math.E)
-		)
-		if err := starlark.UnpackArgs("log", args, kwargs, "x", &x, "base?", &base); err != nil {
-			return nil, err
-		}
-		result, err := log(float64(x), float64(base))
-		if err != nil {
-			return nil, err
-		}
-		return starlark.Float(result), nil
-	})
+func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		x    floatOrInt
+		base floatOrInt = math.E
+	)
+	if err := starlark.UnpackPositionalArgs("log", args, kwargs, 1, &x, &base); err != nil {
+		return nil, err
+	}
+	if base == 1 {
+		return nil, errors.New("division by zero")
+	}
+	return starlark.Float(math.Log(float64(x)) / math.Log(float64(base))), nil
 }
 
 func degrees(x float64) float64 {
@@ -171,11 +168,4 @@ func degrees(x float64) float64 {
 
 func radians(x float64) float64 {
 	return 2 * math.Pi * x / 360
-}
-
-func log(x float64, base float64) (float64, error) {
-	if base == 1 {
-		return 0, errors.New("division by zero")
-	}
-	return math.Log(x) / math.Log(base), nil
 }
