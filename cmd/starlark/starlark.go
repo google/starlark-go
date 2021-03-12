@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/lib/math"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
@@ -93,6 +94,7 @@ func doMain() int {
 	// TODO(adonovan): plumb predeclared env through to the REPL.
 	starlark.Universe["json"] = starlarkjson.Module
 	starlark.Universe["time"] = time.Module
+	starlark.Universe["math"] = math.Module
 
 	switch {
 	case flag.NArg() == 1 || *execprog != "":
