@@ -39,6 +39,7 @@ func init() {
 		"None":      None,
 		"True":      True,
 		"False":     False,
+		"abs":       NewBuiltin("abs", abs),
 		"any":       NewBuiltin("any", any),
 		"all":       NewBuiltin("all", all),
 		"bool":      NewBuiltin("bool", bool_),
@@ -159,6 +160,25 @@ func builtinAttrNames(methods map[string]*Builtin) []string {
 }
 
 // ---- built-in functions ----
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#abs
+func abs(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var x Value
+	if err := UnpackPositionalArgs("abs", args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+	switch x := x.(type) {
+	case Float:
+		return Float(math.Abs(float64(x))), nil
+	case Int:
+		if x.Sign() >= 0 {
+			return x, nil
+		}
+		return x.Unary(syntax.MINUS)
+	default:
+		return nil, fmt.Errorf("must be real number, not %s", x.Type())
+	}
+}
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#all
 func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
