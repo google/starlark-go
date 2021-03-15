@@ -17,9 +17,9 @@ import (
 // Module math is a Starlark module of math-related functions and constants.
 // The module defines the following functions:
 //
-//     abs(x) - Returns the absolute value of x.
 //     ceil(x) - Returns the ceiling of x, the smallest integer greater than or equal to x.
 //     copysign(x, y) - Returns a value with the magnitude of x and the sign of y.
+//     fabs(x) - Returns the absolute value of x as float.
 //     floor(x) - Returns the floor of x, the largest integer less than or equal to x.
 //     mod(x, y) - Returns the floating-point remainder of x/y. The magnitude of the result is less than y and its sign agrees with that of x.
 //     pow(x, y) - Returns x**y, the base-x exponential of y.
@@ -67,9 +67,9 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "math",
 	Members: starlark.StringDict{
-		"abs":       newUnaryBuiltin("abs", math.Abs),
 		"ceil":      newUnaryBuiltin("ceil", math.Ceil),
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
+		"fabs":      newUnaryBuiltin("fabs", math.Abs),
 		"floor":     newUnaryBuiltin("floor", math.Floor),
 		"mod":       newBinaryBuiltin("round", math.Mod),
 		"pow":       newBinaryBuiltin("pow", math.Pow),
