@@ -1,4 +1,9 @@
-package time
+// Copyright 2021 The Bazel Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Package time provides time-related constants and functions.
+package time // import "go.starlark.net/lib/time"
 
 import (
 	"fmt"
@@ -10,17 +15,54 @@ import (
 	"go.starlark.net/syntax"
 )
 
-// Module time is a Starlark module of time-related functions.
+// Module time is a Starlark module of time-related functions and constants.
+// The module defines the following functions:
+//
+//     from_timestamp(sec, nsec) - Converts the given Unix time corresponding to the total amount of seconds
+//                                 and nonoseconds since January 1, 1970 UTC into an object of type Time.
+//                                 The total amount of nonoseconds is optional.
+//                                 It is valid to pass nonoseconds outside the range [0, 999999999].
+//                                 Not all sec values have a corresponding time value. One such
+//                                 value is 1<<63-1 (the largest int64 value).
+//
+//     is_valid_timezone(loc) - Indicates whether the given name of location is valid or not.
+//                              Returns true if it is valid, false otherwise.
+//
+//     now() - Returns the current local time.
+//
+//     parse_duration(d) - Parses the given duration string.
+//                         A duration string is a possibly signed sequence of decimal numbers,
+//                         each with optional fraction and a unit suffix, such as "300ms", "-1.5h" or "2h45m".
+//                         Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+//
+//     parseTime(x, format, location) - Parses the given time string using a specific time format and location.
+//                                      The expected arguments are a time string (mandatory), a time format
+//                                      (optional, set to RFC3339 by default) and a name of location
+//                                      (optional set to UTC by default).
+//
+//     time(year, month, day, hour, minute, second, nanosecond, location) - Returns the Time corresponding to
+//	                                                                        yyyy-mm-dd hh:mm:ss + nsec nanoseconds
+//                                                                          in the appropriate zone for that time
+//                                                                          in the given location. All the parameters
+//                                                                          are optional.
+// The module also defines the following constants:
+//
+// nanosecond - A duration representing one nanosecond.
+// microsecond - A duration representing one microsecond.
+// millisecond - A duration representing one millisecond.
+// second - A duration representing one second.
+// minute - A duration representing one minute.
+// hour - A duration representing one hour.
+//
 var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
-		"parse_duration":    starlark.NewBuiltin("parse_duration", parseDuration),
+		"from_timestamp":    starlark.NewBuiltin("from_timestamp", fromTimestamp),
 		"is_valid_timezone": starlark.NewBuiltin("is_valid_timezone", isValidTimezone),
 		"now":               starlark.NewBuiltin("now", now),
-		"time":              starlark.NewBuiltin("time", newTime),
+		"parse_duration":    starlark.NewBuiltin("parse_duration", parseDuration),
 		"parse_time":        starlark.NewBuiltin("parse_time", parseTime),
-		"from_timestamp":    starlark.NewBuiltin("from_timestamp", fromTimestamp),
-		"from_timestamp_ns": starlark.NewBuiltin("from_timestamp_ns", fromTimestampNanos),
+		"time":              starlark.NewBuiltin("time", newTime),
 
 		"nanosecond":  Duration(time.Nanosecond),
 		"microsecond": Duration(time.Microsecond),
@@ -36,19 +78,12 @@ var Module = &starlarkstruct.Module{
 // Starlark scripts to be fully deterministic.
 var NowFunc = time.Now
 
-// Parses the given duration string.
-// A duration string is a possibly signed sequence of
-// decimal numbers, each with optional fraction and a unit suffix,
-// such as "300ms", "-1.5h" or "2h45m".
-// Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
 	err := starlark.UnpackPositionalArgs("parse_duration", args, kwargs, 1, &d)
 	return d, err
 }
 
-// Indicates whether the given name of location is valid or not.
-// Returns true if it is valid, false otherwise.
 func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var s string
 	if err := starlark.UnpackPositionalArgs("is_valid_timezone", args, kwargs, 1, &s); err != nil {
@@ -58,9 +93,6 @@ func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark
 	return starlark.Bool(err == nil), nil
 }
 
-// The expected arguments are a time string (mandatory), a time format (optional, set to RFC3339 by default)
-// and a name of location (optional set to UTC by default).
-// Parses the given time string using a specific time format and location.
 func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		x        string
@@ -90,27 +122,17 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	return Time(t), nil
 }
 
-// Converts the given timestamp corresponding to the total amount of seconds
-// since January 1, 1970 UTC into an object of type Time.
 func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x int64
-	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &x); err != nil {
+	var (
+		sec  int64
+		nsec int64 = 0
+	)
+	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &sec, &nsec); err != nil {
 		return nil, err
 	}
-	return Time(time.Unix(x, 0)), nil
+	return Time(time.Unix(sec, nsec)), nil
 }
 
-// Converts the given timestamp corresponding to the total amount of nanoseconds
-// since January 1, 1970 UTC into an object of type Time.
-func fromTimestampNanos(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x int64
-	if err := starlark.UnpackPositionalArgs("from_timestamp_ns", args, kwargs, 1, &x); err != nil {
-		return nil, err
-	}
-	return Time(time.Unix(x/1e9, x%1e9)), nil
-}
-
-// Generates the current time current time.
 func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return Time(NowFunc()), nil
 }
