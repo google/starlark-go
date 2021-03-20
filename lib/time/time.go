@@ -20,6 +20,7 @@ var Module = &starlarkstruct.Module{
 		"time":              starlark.NewBuiltin("time", newTime),
 		"parse_time":        starlark.NewBuiltin("parse_time", parseTime),
 		"from_timestamp":    starlark.NewBuiltin("from_timestamp", fromTimestamp),
+		"from_timestamp_ns": starlark.NewBuiltin("from_timestamp_ns", fromTimestampNanos),
 
 		"nanosecond":  Duration(time.Nanosecond),
 		"microsecond": Duration(time.Microsecond),
@@ -89,14 +90,24 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	return Time(t), nil
 }
 
-// Parses the given timestamp string corresponding to
-// the total amount of seconds since January 1, 1970 UTC.
+// Converts the given timestamp corresponding to the total amount of seconds
+// since January 1, 1970 UTC into an object of type Time.
 func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x int64
 	if err := starlark.UnpackPositionalArgs("from_timestamp", args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
 	return Time(time.Unix(x, 0)), nil
+}
+
+// Converts the given timestamp corresponding to the total amount of nanoseconds
+// since January 1, 1970 UTC into an object of type Time.
+func fromTimestampNanos(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x int64
+	if err := starlark.UnpackPositionalArgs("from_timestamp_ns", args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+	return Time(time.Unix(x/1e9, x%1e9)), nil
 }
 
 // Generates the current time current time.

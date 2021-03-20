@@ -4,6 +4,7 @@ load('assert.star', 'assert')
 load('time.star', 'time')
 
 assert.eq(time.parse_time("2020-06-26T17:38:36Z"), time.from_timestamp(1593193116))
+assert.eq(time.parse_time("2020-06-26T17:38:36.123456789", format="2006-01-02T15:04:05.999999999"), time.from_timestamp_ns(1593193116123456789))
 
 assert.eq(time.parse_time("1970-01-01T00:00:00Z").unix, 0)
 assert.eq(time.parse_time("1970-01-01T00:00:00Z").unix_nano, 0)
