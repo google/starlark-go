@@ -18,27 +18,22 @@ import (
 // Module time is a Starlark module of time-related functions and constants.
 // The module defines the following functions:
 //
-//     from_timestamp(sec, nsec) - Converts the given Unix time corresponding to the total amount of seconds
-//                                 and nonoseconds since January 1, 1970 UTC into an object of type Time.
-//                                 The total amount of nonoseconds is optional.
-//                                 It is valid to pass nonoseconds outside the range [0, 999999999].
-//                                 Not all sec values have a corresponding time value. One such
-//                                 value is 1<<63-1 (the largest int64 value).
+//     from_timestamp(sec, nsec) - Converts the given Unix time corresponding to the number of seconds
+//                                 and (optionally) nanoseconds since January 1, 1970 UTC into an object
+//                                 of type Time. For more details, refer to https://pkg.go.dev/time#Unix.
 //
-//     is_valid_timezone(loc) - Indicates whether the given name of location is valid or not.
-//                              Returns true if it is valid, false otherwise.
+//     is_valid_timezone(loc) - Reports whether loc is a valid time zone name.
 //
-//     now() - Returns the current local time.
+//     now() - Returns the current local time. Applications may replace this function by a deterministic one.
 //
-//     parse_duration(d) - Parses the given duration string.
-//                         A duration string is a possibly signed sequence of decimal numbers,
-//                         each with optional fraction and a unit suffix, such as "300ms", "-1.5h" or "2h45m".
-//                         Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+//     parse_duration(d) - Parses the given duration string. For more details, refer to
+//                         https://pkg.go.dev/time#ParseDuration.
 //
 //     parseTime(x, format, location) - Parses the given time string using a specific time format and location.
 //                                      The expected arguments are a time string (mandatory), a time format
-//                                      (optional, set to RFC3339 by default) and a name of location
-//                                      (optional set to UTC by default).
+//                                      (optional, set to RFC3339 by default, e.g. "2021-03-22T23:20:50.52Z")
+//                                      and a name of location (optional, set to UTC by default). For more details,
+//                                      refer to https://pkg.go.dev/time#Parse and https://pkg.go.dev/time#ParseInLocation.
 //
 //     time(year, month, day, hour, minute, second, nanosecond, location) - Returns the Time corresponding to
 //	                                                                        yyyy-mm-dd hh:mm:ss + nsec nanoseconds
@@ -47,12 +42,12 @@ import (
 //                                                                          are optional.
 // The module also defines the following constants:
 //
-// nanosecond - A duration representing one nanosecond.
-// microsecond - A duration representing one microsecond.
-// millisecond - A duration representing one millisecond.
-// second - A duration representing one second.
-// minute - A duration representing one minute.
-// hour - A duration representing one hour.
+//     nanosecond - A duration representing one nanosecond.
+//     microsecond - A duration representing one microsecond.
+//     millisecond - A duration representing one millisecond.
+//     second - A duration representing one second.
+//     minute - A duration representing one minute.
+//     hour - A duration representing one hour.
 //
 var Module = &starlarkstruct.Module{
 	Name: "time",
