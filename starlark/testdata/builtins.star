@@ -28,13 +28,10 @@ assert.eq(abs(-2), 2)
 assert.eq(abs(float("inf")), float("inf"))
 assert.eq(abs(float("-inf")), float("inf"))
 assert.eq(abs(float("nan")), float("nan"))
-assert.fails(lambda: abs("0"), "must be real number, not string")
-def abs_bigint():
-	maxint32 = (1 << 31) - 1
-	assert.eq(abs(+123 * maxint32), +123 * maxint32)
-	assert.eq(abs(-123 * maxint32), +123 * maxint32)
-
-abs_bigint()
+assert.fails(lambda: abs("0"), "got string, want int or float")
+maxint32 = (1 << 31) - 1
+assert.eq(abs(+123 * maxint32), +123 * maxint32)
+assert.eq(abs(-123 * maxint32), +123 * maxint32)
 
 # any, all
 assert.true(all([]))

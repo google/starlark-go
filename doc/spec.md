@@ -3027,8 +3027,8 @@ application-specific dialect) without breaking existing programs.
 
 ### abs
 
-`abs(x)` returns the absolute value of the same type.
-Execution terminates if `x` is not a real number.
+`abs(x)` returns the absolute value of its argument `x`, which must be an int or float.
+The result has the same type as `x`.
 
 ### any
 

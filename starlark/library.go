@@ -174,9 +174,9 @@ func abs(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 		if x.Sign() >= 0 {
 			return x, nil
 		}
-		return x.Unary(syntax.MINUS)
+		return zero.Sub(x), nil
 	default:
-		return nil, fmt.Errorf("must be real number, not %s", x.Type())
+		return nil, fmt.Errorf("got %s, want int or float", x.Type())
 	}
 }
 
