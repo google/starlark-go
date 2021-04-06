@@ -4,7 +4,7 @@ load('math.star', 'math')
 load('assert.star', 'assert')
 
 def near(got, want, threshold):
-  return math.abs(got-want) < threshold 
+  return math.fabs(got-want) < threshold
 
 inf, nan = float("inf"), float("nan")
 
@@ -28,17 +28,17 @@ assert.eq(math.ceil(-1), -1.0)
 assert.eq(math.ceil(-10), -10.0)
 assert.eq(math.ceil(-inf), -inf)
 assert.fails(lambda: math.ceil("0"), "got string, want float or int")
-# abs
-assert.eq(math.abs(2.0), 2.0)
-assert.eq(math.abs(0.0), 0.0)
-assert.eq(math.abs(-2.0), 2.0)
-assert.eq(math.abs(2), 2)
-assert.eq(math.abs(0), 0)
-assert.eq(math.abs(-2), 2)
-assert.eq(math.abs(inf), inf)
-assert.eq(math.abs(-inf), inf)
-assert.eq(math.abs(nan), nan)
-assert.fails(lambda: math.abs("0"), "got string, want float or int")
+# fabs
+assert.eq(math.fabs(2.0), 2.0)
+assert.eq(math.fabs(0.0), 0.0)
+assert.eq(math.fabs(-2.0), 2.0)
+assert.eq(math.fabs(2), 2)
+assert.eq(math.fabs(0), 0)
+assert.eq(math.fabs(-2), 2)
+assert.eq(math.fabs(inf), inf)
+assert.eq(math.fabs(-inf), inf)
+assert.eq(math.fabs(nan), nan)
+assert.fails(lambda: math.fabs("0"), "got string, want float or int")
 # floor
 assert.eq(math.floor(0.0), 0.0)
 assert.eq(math.floor(0.4), 0.0)

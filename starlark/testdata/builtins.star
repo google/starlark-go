@@ -18,6 +18,21 @@ none = None
 _1 = none and none[0]      # rhs is not evaluated
 _2 = (not none) or none[0] # rhs is not evaluated
 
+# abs
+assert.eq(abs(2.0), 2.0)
+assert.eq(abs(0.0), 0.0)
+assert.eq(abs(-2.0), 2.0)
+assert.eq(abs(2), 2)
+assert.eq(abs(0), 0)
+assert.eq(abs(-2), 2)
+assert.eq(abs(float("inf")), float("inf"))
+assert.eq(abs(float("-inf")), float("inf"))
+assert.eq(abs(float("nan")), float("nan"))
+assert.fails(lambda: abs("0"), "got string, want int or float")
+maxint32 = (1 << 31) - 1
+assert.eq(abs(+123 * maxint32), +123 * maxint32)
+assert.eq(abs(-123 * maxint32), +123 * maxint32)
+
 # any, all
 assert.true(all([]))
 assert.true(all([1, True, "foo"]))

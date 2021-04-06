@@ -3025,6 +3025,11 @@ application-specific dialect) without breaking existing programs.
 
 `True` and `False` are the two values of type `bool`.
 
+### abs
+
+`abs(x)` returns the absolute value of its argument `x`, which must be an int or float.
+The result has the same type as `x`.
+
 ### any
 
 `any(x)` returns `True` if any element of the iterable sequence x has a truth value of true.
