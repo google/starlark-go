@@ -18,10 +18,10 @@ import (
 	"os"
 	"strings"
 
+	"go.starlark.net/lib/json"
 	starlarkproto "go.starlark.net/lib/proto"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -88,7 +88,7 @@ func main() {
 	starlarkproto.SetPool(thread, pool)
 	predeclared := starlark.StringDict{
 		"proto": starlarkproto.Module,
-		"json":  starlarkjson.Module,
+		"json":  json.Module,
 	}
 	globals, err := starlark.ExecFile(thread, filename, nil, predeclared)
 	if err != nil {

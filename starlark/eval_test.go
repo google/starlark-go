@@ -16,11 +16,11 @@ import (
 	"testing"
 
 	"go.starlark.net/internal/chunkedfile"
+	"go.starlark.net/lib/json"
 	starlarkmath "go.starlark.net/lib/math"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
@@ -195,7 +195,7 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		return starlarktest.LoadAssertModule()
 	}
 	if module == "json.star" {
-		return starlark.StringDict{"json": starlarkjson.Module}, nil
+		return starlark.StringDict{"json": json.Module}, nil
 	}
 	if module == "time.star" {
 		return starlark.StringDict{"time": time.Module}, nil
