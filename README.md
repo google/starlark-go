@@ -164,7 +164,8 @@ John Field,
 Laurent Le Brun,
 Dmitry Lomov,
 Damien Martin-Guillerez,
-Vladimir Moskva, and
+Vladimir Moskva,
+François-René Rideau, and
 Florian Weikert,
 standing on the shoulders of the Python community.
 The Go implementation was written by Alan Donovan and Jay Conrod;
