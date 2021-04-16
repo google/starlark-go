@@ -16,12 +16,12 @@ import (
 	"strings"
 
 	"go.starlark.net/internal/compile"
+	"go.starlark.net/lib/json"
 	"go.starlark.net/lib/math"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 )
 
 // flags
@@ -92,7 +92,7 @@ func doMain() int {
 
 	// Ideally this statement would update the predeclared environment.
 	// TODO(adonovan): plumb predeclared env through to the REPL.
-	starlark.Universe["json"] = starlarkjson.Module
+	starlark.Universe["json"] = json.Module
 	starlark.Universe["time"] = time.Module
 	starlark.Universe["math"] = math.Module
 
