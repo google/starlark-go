@@ -67,7 +67,7 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "math",
 	Members: starlark.StringDict{
-		"ceil":      newUnaryBuiltin("ceil", math.Ceil),
+		"ceil":      starlark.NewBuiltin("ceil", ceil),
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
 		"fabs":      newUnaryBuiltin("fabs", math.Abs),
 		"floor":     newUnaryBuiltin("floor", math.Floor),
@@ -160,6 +160,37 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 		return nil, errors.New("division by zero")
 	}
 	return starlark.Float(math.Log(float64(x)) / math.Log(float64(base))), nil
+}
+
+// ceil wraps the Ceil function as a Starlark built-in that
+// returns the ceiling as an Integral.
+func ceil(
+	thread *starlark.Thread,
+	_ *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	var x floatOrInt
+
+	if err := starlark.UnpackPositionalArgs(
+		"ceil", args, kwargs, 1, &x,
+	); err != nil {
+		return nil, err
+	}
+
+	result := math.Ceil(float64(x))
+
+	// Python's math.ceil raises an error for inf and nan.
+	// This is because it always returns an integral and cannot convert
+	// any of these to an integral.
+	if math.IsInf(result, 0) {
+		return nil, fmt.Errorf("cannot convert float infinity to integer")
+	}
+	if math.IsNaN(result) {
+		return nil, fmt.Errorf("cannot convert float NaN to integer")
+	}
+
+	return starlark.MakeInt64(int64(result)), nil
 }
 
 func degrees(x float64) float64 {
