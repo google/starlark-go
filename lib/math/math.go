@@ -164,12 +164,7 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 
 // ceil wraps the Ceil function as a Starlark built-in that
 // returns the ceiling as an Integral.
-func ceil(
-	thread *starlark.Thread,
-	_ *starlark.Builtin,
-	args starlark.Tuple,
-	kwargs []starlark.Tuple,
-) (starlark.Value, error) {
+func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x floatOrInt
 
 	if err := starlark.UnpackPositionalArgs(
