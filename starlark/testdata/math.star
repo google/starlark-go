@@ -29,8 +29,7 @@ assert.eq(type(math.ceil(0.4)), "int")
 assert.eq(type(math.ceil(10)), "int")
 assert.eq(type(math.ceil(-10.0)), "int")
 assert.eq(type(math.ceil(-0.5)), "int")
-f = 1.8446744073709552e+19
-assert.eq(math.ceil(f), f)
+assert.eq(math.ceil(1.8446744073709552e+19), 1.8446744073709552e+19)
 assert.fails(
   lambda: math.ceil(inf), "cannot convert float infinity to integer")
 assert.fails(
@@ -55,14 +54,23 @@ assert.eq(math.floor(0.4), 0.0)
 assert.eq(math.floor(0.5), 0.0)
 assert.eq(math.floor(1.0), 1.0)
 assert.eq(math.floor(10.0), 10.0)
-assert.eq(math.floor(inf), inf)
-assert.eq(math.floor(nan), nan)
 assert.eq(math.floor(-0.0), 0.0)
 assert.eq(math.floor(-0.4), -1.0)
 assert.eq(math.floor(-0.5), -1.0)
 assert.eq(math.floor(-1.0), -1.0)
 assert.eq(math.floor(-10.0), -10.0)
-assert.eq(math.floor(-inf), -inf)
+assert.eq(type(math.floor(0)), "int")
+assert.eq(type(math.floor(0.4)), "int")
+assert.eq(type(math.floor(10)), "int")
+assert.eq(type(math.floor(-10.0)), "int")
+assert.eq(type(math.floor(-0.5)), "int")
+assert.eq(math.floor(1.8446744073709552e+19), 1.8446744073709552e+19)
+assert.fails(
+  lambda: math.floor(inf), "cannot convert float infinity to integer")
+assert.fails(
+  lambda: math.floor(-inf), "cannot convert float infinity to integer")
+assert.fails(
+  lambda: math.floor(nan), "cannot convert float NaN to integer")
 assert.fails(lambda: math.floor("0"), "got string, want float or int")
 # mod
 assert.eq(math.mod(5, 3), 2)
