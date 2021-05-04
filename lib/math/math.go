@@ -70,7 +70,7 @@ var Module = &starlarkstruct.Module{
 		"ceil":      starlark.NewBuiltin("ceil", ceil),
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
 		"fabs":      newUnaryBuiltin("fabs", math.Abs),
-		"floor":     newUnaryBuiltin("floor", math.Floor),
+		"floor":     starlark.NewBuiltin("floor", floor),
 		"mod":       newBinaryBuiltin("round", math.Mod),
 		"pow":       newBinaryBuiltin("pow", math.Pow),
 		"remainder": newBinaryBuiltin("remainder", math.Remainder),
@@ -178,6 +178,31 @@ func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 		return t, nil
 	case starlark.Float:
 		result, err := starlark.NumberToInt(starlark.Float(math.Ceil(float64(t))))
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("got %s, want float or int", x.Type())
+}
+
+// floor wraps the Floor function as a Starlark built-in that
+// returns the floor as an Integral.
+func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+
+	if err := starlark.UnpackPositionalArgs(
+		"floor", args, kwargs, 1, &x,
+	); err != nil {
+		return nil, err
+	}
+
+	switch t := x.(type) {
+	case starlark.Int:
+		return t, nil
+	case starlark.Float:
+		result, err := starlark.NumberToInt(starlark.Float(math.Floor(float64(t))))
 		if err != nil {
 			return nil, err
 		}
