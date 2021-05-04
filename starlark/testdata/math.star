@@ -29,6 +29,8 @@ assert.eq(type(math.ceil(0.4)), "int")
 assert.eq(type(math.ceil(10)), "int")
 assert.eq(type(math.ceil(-10.0)), "int")
 assert.eq(type(math.ceil(-0.5)), "int")
+f = 1.8446744073709552e+19
+assert.eq(math.ceil(f), f)
 assert.fails(
   lambda: math.ceil(inf), "cannot convert float infinity to integer")
 assert.fails(
