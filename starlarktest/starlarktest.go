@@ -67,6 +67,10 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"module":  starlark.NewBuiltin("module", starlarkstruct.MakeModule),
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
+		// TODO(adonovan): embed the file using embed.FS when we can rely on go1.16,
+		// and stop using DataFile. Otherwise this reaches from the application's working
+		// directory into the starlarktest package's directory, which is not compatible
+		// with modules.
 		filename := DataFile("starlarktest", "assert.star")
 		thread := new(starlark.Thread)
 		assert, assertErr = starlark.ExecFile(thread, filename, nil, predeclared)
