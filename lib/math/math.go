@@ -177,11 +177,7 @@ func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 	case starlark.Int:
 		return t, nil
 	case starlark.Float:
-		result, err := starlark.NumberToInt(starlark.Float(math.Ceil(float64(t))))
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+		return starlark.NumberToInt(starlark.Float(math.Ceil(float64(t))))
 	}
 
 	return nil, fmt.Errorf("got %s, want float or int", x.Type())
@@ -202,11 +198,7 @@ func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kw
 	case starlark.Int:
 		return t, nil
 	case starlark.Float:
-		result, err := starlark.NumberToInt(starlark.Float(math.Floor(float64(t))))
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+		return starlark.NumberToInt(starlark.Float(math.Floor(float64(t))))
 	}
 
 	return nil, fmt.Errorf("got %s, want float or int", x.Type())
