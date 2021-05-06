@@ -55,6 +55,10 @@ assert.eq(float(p53+6), p53+6)
 assert.eq(float(p53+7), p53+8) #
 assert.eq(float(p53+8), p53+8)
 
+# Regression test for https://github.com/google/starlark-go/issues/375.
+maxint64 = (1<<63)-1
+assert.eq(int(float(maxint64)), 9223372036854775808)
+
 assert.true(float(p53+1) != p53+1) # comparisons are exact
 assert.eq(float(p53+1) - (p53+1), 0) # arithmetic entails rounding
 
