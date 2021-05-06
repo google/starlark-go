@@ -162,8 +162,6 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 	return starlark.Float(math.Log(float64(x)) / math.Log(float64(base))), nil
 }
 
-// ceil wraps the Ceil function as a Starlark built-in that
-// returns the ceiling as an Integral.
 func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
 
@@ -181,8 +179,6 @@ func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 	return nil, fmt.Errorf("got %s, want float or int", x.Type())
 }
 
-// floor wraps the Floor function as a Starlark built-in that
-// returns the floor as an Integral.
 func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
 
