@@ -29,7 +29,7 @@ assert.eq(type(math.ceil(0.4)), "int")
 assert.eq(type(math.ceil(10)), "int")
 assert.eq(type(math.ceil(-10.0)), "int")
 assert.eq(type(math.ceil(-0.5)), "int")
-assert.eq(math.ceil(9223372036854775807 + 0.5), 9223372036854775807 + 1)
+assert.eq(math.ceil((1<<63) + 0.5), int(float((1<<63) + 1)))
 assert.fails(
   lambda: math.ceil(inf), "cannot convert float infinity to integer")
 assert.fails(
@@ -64,7 +64,7 @@ assert.eq(type(math.floor(0.4)), "int")
 assert.eq(type(math.floor(10)), "int")
 assert.eq(type(math.floor(-10.0)), "int")
 assert.eq(type(math.floor(-0.5)), "int")
-assert.eq(math.floor(float(1<<64) + 0.5), 1<<64)
+assert.eq(math.floor((1<<63) + 0.5), int(float(1<<63)))
 assert.fails(
   lambda: math.floor(inf), "cannot convert float infinity to integer")
 assert.fails(
