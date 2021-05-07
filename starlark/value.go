@@ -9,6 +9,7 @@
 //
 //      NoneType        -- NoneType
 //      Bool            -- bool
+//      Bytes           -- bytes
 //      Int             -- int
 //      Float           -- float
 //      String          -- string
