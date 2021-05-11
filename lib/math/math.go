@@ -67,10 +67,10 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "math",
 	Members: starlark.StringDict{
-		"ceil":      newUnaryBuiltin("ceil", math.Ceil),
+		"ceil":      starlark.NewBuiltin("ceil", ceil),
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
 		"fabs":      newUnaryBuiltin("fabs", math.Abs),
-		"floor":     newUnaryBuiltin("floor", math.Floor),
+		"floor":     starlark.NewBuiltin("floor", floor),
 		"mod":       newBinaryBuiltin("round", math.Mod),
 		"pow":       newBinaryBuiltin("pow", math.Pow),
 		"remainder": newBinaryBuiltin("remainder", math.Remainder),
@@ -160,6 +160,40 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 		return nil, errors.New("division by zero")
 	}
 	return starlark.Float(math.Log(float64(x)) / math.Log(float64(base))), nil
+}
+
+func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+
+	if err := starlark.UnpackPositionalArgs("ceil", args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+
+	switch t := x.(type) {
+	case starlark.Int:
+		return t, nil
+	case starlark.Float:
+		return starlark.NumberToInt(starlark.Float(math.Ceil(float64(t))))
+	}
+
+	return nil, fmt.Errorf("got %s, want float or int", x.Type())
+}
+
+func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+
+	if err := starlark.UnpackPositionalArgs("floor", args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+
+	switch t := x.(type) {
+	case starlark.Int:
+		return t, nil
+	case starlark.Float:
+		return starlark.NumberToInt(starlark.Float(math.Floor(float64(t))))
+	}
+
+	return nil, fmt.Errorf("got %s, want float or int", x.Type())
 }
 
 func degrees(x float64) float64 {
