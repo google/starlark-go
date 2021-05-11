@@ -421,15 +421,12 @@ func NumberToInt(x Value) (Int, error) {
 	return zero, fmt.Errorf("cannot convert %s to int", x.Type())
 }
 
-// maxint64f is the largest float value that converts to int64 without overflow.
-// float64(MaxInt64) is numerically equal to MaxInt64+1.
-// See https://github.com/google/starlark-go/issues/375.
-var maxint64f = Float(math.Nextafter(math.MaxInt64, 0))
-
 // finiteFloatToInt converts f to an Int, truncating towards zero.
 // f must be finite.
 func finiteFloatToInt(f Float) Int {
-	if math.MinInt64 <= f && f <= maxint64f {
+	// We avoid '<= MaxInt64' so that both constants are exactly representable as floats.
+	// See https://github.com/google/starlark-go/issues/375.
+	if math.MinInt64 <= f && f < math.MaxInt64+1 {
 		// small values
 		return MakeInt64(int64(f))
 	}
