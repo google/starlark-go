@@ -157,14 +157,13 @@ we will be more rigorous with interface stability.
 ### Credits
 
 Starlark was designed and implemented in Java by
-Ulf Adams,
-Lukács Berki,
 Jon Brandvein,
-John Field,
+Alan Donovan,
 Laurent Le Brun,
 Dmitry Lomov,
-Damien Martin-Guillerez,
-Vladimir Moskva, and
+Vladimir Moskva,
+François-René Rideau,
+Gergely Svigruha, and
 Florian Weikert,
 standing on the shoulders of the Python community.
 The Go implementation was written by Alan Donovan and Jay Conrod;
