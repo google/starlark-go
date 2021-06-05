@@ -47,6 +47,23 @@ func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 	return f, nil
 }
 
+// ScanAndDiscard tokenizes the input data and discards the tokens.
+// Parameters are as for Parse.
+// It exists only for internal benchmarking purposes.
+func ScanAndDiscard(filename string, src interface{}, mode Mode) error {
+	in, err := newScanner(filename, src, mode&RetainComments != 0)
+	if err != nil {
+		return err
+	}
+	p := parser{in: in}
+	defer p.in.recover(&err)
+	p.nextToken() // read first lookahead token
+	for p.tok != EOF {
+		p.nextToken()
+	}
+	return nil
+}
+
 // ParseCompoundStmt parses a single compound statement:
 // a blank line, a def, for, while, or if statement, or a
 // semicolon-separated list of simple statements followed
