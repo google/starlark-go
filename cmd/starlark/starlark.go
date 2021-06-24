@@ -18,6 +18,7 @@ import (
 	"go.starlark.net/internal/compile"
 	"go.starlark.net/lib/json"
 	"go.starlark.net/lib/math"
+	"go.starlark.net/lib/regexp"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
@@ -95,6 +96,7 @@ func doMain() int {
 	starlark.Universe["json"] = json.Module
 	starlark.Universe["time"] = time.Module
 	starlark.Universe["math"] = math.Module
+	starlark.Universe["regexp"] = regexp.Module
 
 	switch {
 	case flag.NArg() == 1 || *execprog != "":

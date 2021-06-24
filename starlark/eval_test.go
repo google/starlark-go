@@ -18,6 +18,7 @@ import (
 	"go.starlark.net/internal/chunkedfile"
 	"go.starlark.net/lib/json"
 	starlarkmath "go.starlark.net/lib/math"
+	"go.starlark.net/lib/regexp"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -127,6 +128,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/list.star",
 		"testdata/math.star",
 		"testdata/misc.star",
+		"testdata/regexp.star",
 		"testdata/set.star",
 		"testdata/string.star",
 		"testdata/time.star",
@@ -202,6 +204,9 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	}
 	if module == "math.star" {
 		return starlark.StringDict{"math": starlarkmath.Module}, nil
+	}
+	if module == "regexp.star" {
+		return starlark.StringDict{"regexp": regexp.Module}, nil
 	}
 
 	// TODO(adonovan): test load() using this execution path.
