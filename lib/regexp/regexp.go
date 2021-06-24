@@ -61,9 +61,6 @@ var Module = &starlarkstruct.Module{
 // The regular expression used to indentify all the backreferences in a replacement pattern.
 var backreferenceRe = regexp.MustCompile(`((\\\\)*)\\(\d)`)
 
-// The regular expression used to identify the forbidden patterns.
-var forbiddenPatternRe = regexp.MustCompile(`([^\\]|^)(\\\\)*\\C`)
-
 func compile(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern string
@@ -71,10 +68,6 @@ func compile(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwarg
 
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &pattern); err != nil {
 		return nil, err
-	}
-
-	if forbiddenPatternRe.MatchString(pattern) {
-		return nil, fmt.Errorf(`The byte-oriented pattern \C is not supported`)
 	}
 
 	re, err := regexp.Compile(pattern)
@@ -103,7 +96,7 @@ func (r *Regexp) String() string { return r.re.String() }
 // Type returns a short string describing the value's type.
 func (r *Regexp) Type() string { return "regexp" }
 
-// Freeze renders time immutable. required by starlark.Value interface.
+// Freeze renders r immutable. Required by starlark.Value interface.
 // The interface regex presents to the Starlark runtime renders it immutable,
 // making this a no-op.
 func (r *Regexp) Freeze() {}
@@ -216,13 +209,13 @@ func replaceAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 			res, err := starlark.Call(thread, repl, starlark.Tuple{starlark.String(matched)}, nil)
 			if err != nil {
 				// Save the error to be able to return it to the caller
-				fnErr = fmt.Errorf("%s: An error occured while executing the callable: %s", x.Name(), err.Error())
+				fnErr = err
 				return ""
 			}
 			resp, ok := res.(starlark.String)
 			if !ok {
 				// Save the error to be able to return it to the caller
-				fnErr = fmt.Errorf("%s: A string is expected as return type of the callable but was %s", x.Name(), res.Type())
+				fnErr = fmt.Errorf("%s returned %s, want string", x.Name(), res.Type())
 				return ""
 			}
 			return string(resp)

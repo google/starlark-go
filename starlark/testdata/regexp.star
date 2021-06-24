@@ -4,13 +4,13 @@ load("assert.star", "assert")
 # bad regular expression
 assert.fails(lambda: regexp.compile("a(b"), "error parsing regexp")
 # regular expression with the forbidden byte-oriented feature
-assert.fails(lambda: regexp.compile(".\\C+"), "not supported")
-assert.fails(lambda: regexp.compile('.\\C+'), "not supported")
-assert.fails(lambda: regexp.compile(r'.\C+'), "not supported")
-assert.fails(lambda: regexp.compile(r'.\\\C+'), "not supported")
+assert.fails(lambda: regexp.compile(".\\C+"), "error parsing regexp")
+assert.fails(lambda: regexp.compile('.\\C+'), "error parsing regexp")
+assert.fails(lambda: regexp.compile(r'.\C+'), "error parsing regexp")
+assert.fails(lambda: regexp.compile(r'.\\\C+'), "error parsing regexp")
 assert.fails(lambda: regexp.compile("""
 .\\C+
-"""), "not supported")
+"""), "error parsing regexp")
 
 re_abs = regexp.compile("ab+")
 re_ax = regexp.compile("a.")
@@ -22,6 +22,7 @@ re_mls = regexp.compile("(?m)(\\w+):\\s+(\\w+)$")
 re_3no = regexp.compile(r'^\d{3}$')
 re_bc = regexp.compile(r'\\C')
 re_mgroups = regexp.compile(r'(\w+)-(\d+)-(\w+)')
+re_ds = regexp.compile(r"\d*")
 
 # matches
 assert.true(re_3no.matches("123"))
@@ -72,6 +73,9 @@ assert.eq("-W-xxW-", re_axsb.replace_all("-ab-axxb-", r"\1W"))
 assert.eq("none", re_axsb.replace_all("none", "X"))
 assert.eq("-T-T-", re_bc.replace_all(r'-\C-\C-', "T"))
 assert.eq("-$RTY&AZE#123@-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'$\3&\1#\2@'))
+assert.eq("-$RTY$AZE$123$-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'$\3$\1$\2$'))
+assert.eq("-$$RTY$$AZE$$123$$-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'$$\3$$\1$$\2$$'))
+assert.eq("-$$$RTY$$$AZE$$$123$$$-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'$$$\3$$$\1$$$\2$$$'))
 assert.eq(r"-RTYAZE123-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'\3\1\2'))
 assert.eq(r"-\3\1\2-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'\\3\\1\\2'))
 assert.eq(r"-\RTY\AZE\123-", re_mgroups.replace_all(r'-AZE-123-RTY-', r'\\\3\\\1\\\2'))
@@ -82,8 +86,8 @@ def toUpperCase(src):
 # replace_all with function
 assert.eq("cABcAXXBc", re_axsb.replace_all("cabcaxxbc", toUpperCase))
 assert.eq("cABcAXXBc", re_axsb.replace_all("cabcaxxbc", lambda src: src.upper()))
-assert.fails(lambda: re_axsb.replace_all("cabcaxxbc", lambda src: src.none), "error occured")
-assert.fails(lambda: re_axsb.replace_all("cabcaxxbc", lambda src: 1), "string is expected")
+assert.fails(lambda: re_axsb.replace_all("cabcaxxbc", lambda src: src.none), "string has no .none")
+assert.fails(lambda: re_axsb.replace_all("cabcaxxbc", lambda src: 1), "returned int, want string")
 
 # split
 assert.eq(["b", "n", "n", ""], re_a.split("banana"))
@@ -99,3 +103,4 @@ assert.eq([], re_zs.split("pizza", 0))
 assert.eq(["pizza"], re_zs.split("pizza", 1))
 assert.eq(["pi", "a"], re_zs.split("pizza", 2))
 assert.eq(["pi", "a"], re_zs.split("pizza", 20))
+assert.eq(["b", "a", "n", "a", "n", "a"], re_ds.split("banana", -1))
