@@ -381,6 +381,34 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 		return nil
 	}
 
+	if fdesc.IsMap() {
+		// TODO: support lists of entries
+		value, ok := value.(starlark.IterableMapping)
+		if !ok {
+			return fmt.Errorf("got %s for .%s field, want iterable mapping", value.Type(), fdesc.Name())
+		}
+
+		msgmap := msg.Mutable(fdesc).Map()
+		kfdesc := fdesc.MapKey()
+		vfdesc := fdesc.MapValue()
+
+		items := value.Items()
+		for i, item := range items {
+			key, err := toProto(kfdesc, item[0])
+			if err != nil {
+				return fmt.Errorf("index %d: %v", i, err)
+			}
+
+			val, err := toProto(vfdesc, item[1])
+			if err != nil {
+				return fmt.Errorf("key %s: %v", key.String(), err)
+			}
+
+			msgmap.Set(key.MapKey(), val)
+		}
+		return nil
+	}
+
 	// Assigning to a repeated field must make a copy,
 	// because the fields.Set doesn't specify whether
 	// it aliases the list or not, so we cannot assume.
@@ -395,7 +423,6 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 		}
 		defer iter.Done()
 
-		// TODO(adonovan): handle maps
 		list := msg.Mutable(fdesc).List()
 		var x starlark.Value
 		for i := 0; iter.Next(&x); i++ {
@@ -555,6 +582,14 @@ func toStarlark(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen *
 		return &RepeatedField{
 			typ:    typ,
 			list:   list,
+			frozen: frozen,
+		}
+	}
+	if m, ok := x.Interface().(protoreflect.Map); ok {
+		return &MapField{
+			kfdesc: typ.MapKey(),
+			vfdesc: typ.MapValue(),
+			m:      m,
 			frozen: frozen,
 		}
 	}
@@ -936,6 +971,53 @@ func writeString(buf *bytes.Buffer, fdesc protoreflect.FieldDescriptor, v protor
 	var frozen bool // ignored
 	x := toStarlark(fdesc, v, &frozen)
 	buf.WriteString(x.String())
+}
+
+type MapField struct {
+	m      protoreflect.Map
+	kfdesc protoreflect.FieldDescriptor // only for type information, not field name
+	vfdesc protoreflect.FieldDescriptor // only for type information, not field name
+
+	frozen    *bool
+}
+
+func (mf *MapField) Freeze()               { *mf.frozen = true }
+func (mf *MapField) Truth() starlark.Bool  { return true }
+func (mf *MapField) Type() string          { return "" }
+func (mf *MapField) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", mf.Type()) }
+func (mf *MapField) String() string {
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
+	if mf.m.IsValid() {
+		for i, item := range mf.Items() {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			k, v := item[0], item[1]
+
+			buf.WriteString(k.String())
+			buf.WriteString(": ")
+			buf.WriteString(v.String())
+		}
+	}
+	buf.WriteByte('}')
+	return buf.String()
+}
+
+func (mf *MapField) Len() int {
+	return mf.m.Len()
+}
+
+func (mf *MapField) Items() []starlark.Tuple {
+	v := make([]starlark.Tuple, 0, mf.Len())
+	mf.m.Range(func(key protoreflect.MapKey, val protoreflect.Value) bool {
+		v = append(v, starlark.Tuple{
+			toStarlark(mf.kfdesc, key.Value(), mf.frozen),
+			toStarlark(mf.vfdesc, val, mf.frozen),
+		})
+		return true
+	})
+	return v
 }
 
 // -------- descriptor values --------
