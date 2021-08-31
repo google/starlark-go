@@ -3,8 +3,8 @@
 
 # Starlark in Go
 
-[![Travis CI](https://travis-ci.org/google/starlark-go.svg)](https://travis-ci.org/google/starlark-go)
-[![GoDoc](https://godoc.org/go.starlark.net/starlark?status.svg)](https://godoc.org/go.starlark.net/starlark)
+[![Go Tests](https://github.com/google/starlark-go/actions/workflows/tests.yml/badge.svg)](https://github.com/google/starlark-go/actions/workflows/tests.yml)
+[![Go Reference](https://pkg.go.dev/badge/go.starlark.net/starlark.svg)](https://pkg.go.dev/go.starlark.net/starlark)
 
 This is the home of the _Starlark in Go_ project.
 Starlark in Go is an interpreter for Starlark, implemented in Go.
@@ -40,7 +40,7 @@ languages and compilers.
 
 * About the Go implementation: [doc/impl.md](doc/impl.md)
 
-* API documentation: [godoc.org/go.starlark.net/starlark](https://godoc.org/go.starlark.net/starlark)
+* API documentation: [pkg.go.dev/go.starlark.net/starlark](https://pkg.go.dev/go.starlark.net/starlark)
 
 * Mailing list: [starlark-go](https://groups.google.com/forum/#!forum/starlark-go)
 
