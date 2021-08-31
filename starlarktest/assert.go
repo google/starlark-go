@@ -1,3 +1,9 @@
+package starlarktest
+
+// assertStar contains the logical data file assert.star.
+// TODO(adonovan): move it back into an actual file,
+// when fs.Embed is more than two releases old.
+const assertStar = `
 # Predeclared built-ins for this module:
 #
 # error(msg): report an error in Go's test framework without halting execution.
@@ -49,3 +55,4 @@ assert = module(
     contains = _contains,
     fails = _fails,
 )
+`

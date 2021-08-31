@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -61,7 +62,13 @@ func Read(filename string, report Reporter) (chunks []Chunk) {
 		return
 	}
 	linenum := 1
-	for i, chunk := range strings.Split(string(data), "\n---\n") {
+
+	eol := "\n"
+	if runtime.GOOS == "windows" {
+		eol = "\r\n"
+	}
+
+	for i, chunk := range strings.Split(string(data), eol+"---"+eol) {
 		if debug {
 			fmt.Printf("chunk %d at line %d: %s\n", i, linenum, chunk)
 		}
