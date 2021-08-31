@@ -14,7 +14,6 @@ package starlarktest // import "go.starlark.net/starlarktest"
 
 import (
 	"fmt"
-	"go/build"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -68,12 +67,9 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
 		// TODO(adonovan): embed the file using embed.FS when we can rely on go1.16,
-		// and stop using DataFile. Otherwise this reaches from the application's working
-		// directory into the starlarktest package's directory, which is not compatible
-		// with modules.
-		filename := DataFile("starlarktest", "assert.star")
+		// and make the apparent filename reference that file.
 		thread := new(starlark.Thread)
-		assert, assertErr = starlark.ExecFile(thread, filename, nil, predeclared)
+		assert, assertErr = starlark.ExecFile(thread, "builtins/assert.star", assertStar, predeclared)
 	})
 	return assert, assertErr
 }
@@ -147,5 +143,7 @@ var DataFile = func(pkgdir, filename string) string {
 		return filepath.Join(testSrcdir, "net_starlark_go", pkgdir, filename)
 	}
 
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+	// Under go test, ignore pkgdir, which is the directory of the
+	// current package relative to the module root.
+	return filename
 }
