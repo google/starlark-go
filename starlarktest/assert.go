@@ -2,7 +2,7 @@ package starlarktest
 
 // assertStar contains the logical data file assert.star.
 // TODO(adonovan): move it back into an actual file,
-// when use fs.Embed is more than two releases old.
+// when fs.Embed is more than two releases old.
 const assertStar = `
 # Predeclared built-ins for this module:
 #

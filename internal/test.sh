@@ -10,8 +10,9 @@ set -eu
 cp go.mod go.mod.orig
 cp go.sum go.sum.orig
 go mod tidy
-diff go.mod.orig go.mod
-diff go.sum.orig go.sum
+# Use -w to ignore differences in OS newlines.
+diff -w  go.mod.orig go.mod
+diff -w go.sum.orig go.sum
 rm go.mod.orig go.sum.orig
 
 # Run tests
