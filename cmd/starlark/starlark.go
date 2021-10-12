@@ -37,11 +37,13 @@ func init() {
 	flag.BoolVar(&compile.Disassemble, "disassemble", compile.Disassemble, "show disassembly during compilation of each function")
 
 	// non-standard dialect flags
-	flag.BoolVar(&resolve.AllowFloat, "float", resolve.AllowFloat, "obsolete; no effect")
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
-	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
 	flag.BoolVar(&resolve.AllowRecursion, "recursion", resolve.AllowRecursion, "allow while statements and recursive functions")
 	flag.BoolVar(&resolve.AllowGlobalReassign, "globalreassign", resolve.AllowGlobalReassign, "allow reassignment of globals, and if/for/while statements at top level")
+
+	// flags that are now standard
+	flag.BoolVar(&resolve.AllowFloat, "float", resolve.AllowFloat, "obsolete; no effect")
+	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "obsolete; no effect")
 }
 
 func main() {

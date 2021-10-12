@@ -398,10 +398,6 @@ func (x *DictEntry) Span() (start, end Position) {
 }
 
 // A LambdaExpr represents an inline function abstraction.
-//
-// Although they may be added in future, lambda expressions are not
-// currently part of the Starlark spec, so their use is controlled by the
-// resolver.AllowLambda flag.
 type LambdaExpr struct {
 	commentsRef
 	Lambda Position

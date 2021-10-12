@@ -143,7 +143,6 @@ func TestExecFile(t *testing.T) {
 			}
 
 			setOptions(chunk.Source)
-			resolve.AllowLambda = true // used extensively
 
 			_, err := starlark.ExecFile(thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {

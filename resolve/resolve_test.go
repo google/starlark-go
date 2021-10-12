@@ -66,7 +66,6 @@ func TestDefVarargsAndKwargsSet(t *testing.T) {
 }
 
 func TestLambdaVarargsAndKwargsSet(t *testing.T) {
-	resolve.AllowLambda = true
 	source := "f = lambda *args, **kwargs: 0\n"
 	file, err := syntax.Parse("foo.star", source, 0)
 	if err != nil {

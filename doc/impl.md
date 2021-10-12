@@ -55,7 +55,7 @@ environment.
 
 Not all features of the Go implementation are "standard" (that is,
 supported by Bazel's Java implementation), at least for now, so
-non-standard features such as `lambda`, `float`, and `set`
+non-standard features such as `set`
 are flag-controlled.  The resolver reports
 any uses of dialect features that have not been enabled.
 
