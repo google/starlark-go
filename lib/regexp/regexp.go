@@ -7,6 +7,7 @@ package regexp // import "go.starlark.net/lib/regexp"
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -22,17 +23,41 @@ import (
 //                        Each call to compile returns a distinct regexp value.
 //                        A regexp value can be used for matching using its matches, find, find_all and other methods.
 //
-//     regexp.find(src) - Returns a string holding the text of the leftmost match in the given string of the regular expression regexp.
-//                         The result is "" if there is no match or if the pattern successfully matches an empty string.
+//     regexp.find(src) - Returns a string holding the first match in the given string for the regular expression regexp.
+//                        Knowing that a first match is a match that starts from the lowest postion in the given string.
+//                        In case several patterns in the regular expression match at the same position in the given string, the match
+//                        of the first matching pattern starting from the left is returned.
+//                        The result is None if there is no match or if the pattern successfully matches an empty string.
 //
-//     regexp.find_all(src, max) - Returns a new, mutable list of all successive matches of the regular expression regexp. An empty list indicates
-//                                 no match. If max > 0, at most max strings are returned. If max == 0,
-//                                 an empty list is returned. If max < 0, all strings are returned.
-//                                 The parameter max is optional: by default no limit is applied.
+//     regexp.find_index(src) - Returns a new, mutable list holding the start and end index of the first match in the given string for the regular expression regexp.
+//                              Knowing that a first match is a match that starts from the lowest postion in the given string.
+//                              In case several patterns in the regular expression match at the same position in the given string, the match
+//                              of the first matching pattern starting from the left is returned.
+//                              The result is None if there is no match or if the pattern successfully matches an empty string.
 //
-//     regexp.find_submatches(src) - Returns a new, mutable list of strings holding the text of the leftmost match of the regular expression regexp
-//                                   in the given string and the matches, if any, of its subexpressions. An empty list indicates
-//                                   no match.
+//     regexp.find_all(src) - Returns a new, mutable list of all successive matches for the regular expression regexp.
+//                            Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                            An empty list indicates no match.
+//
+//     regexp.find_all_index(src) - Returns a new, mutable list of mutable lists holding the start and end index of each successive match for the regular expression regexp.
+//                                  Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                  An empty list indicates no match.
+//
+//     regexp.find_submatch(src) - Returns a new, mutable list of strings holding the first match in the given string for the regular expression regexp
+//                                 and the matches, if any, of its subexpressions also known as groups. None indicates no match.
+//
+//     regexp.find_submatch_index(src) - Returns a new, mutable list holding the start and end index of the first match in the given string for the regular expression regexp
+//                                       and the start and end index of the matches, if any, of its subexpressions also known as groups. None indicates no match.
+//
+//     regexp.find_all_submatch(src) - Returns a new, mutable list of mutable lists holding each successive match in the given string for the regular expression regexp
+//                                     and the matches, if any, of its subexpressions also known as groups.
+//                                     Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                     An empty list indicates no match.
+//
+//     regexp.find_all_submatch_index(src) - Returns a new, mutable list of mutable lists holding the start and end index of each successive match in the given string for the regular expression regexp
+//                                           and the start and end index of the matches, if any, of its subexpressions also known as groups.
+//                                           Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                           An empty list indicates no match.
 //
 //     regexp.matches(src) - Reports whether the given string contains any match of the regular expression regexp.
 //
@@ -45,7 +70,7 @@ import (
 //                                         have been replaced by the return value of the replacement function applied to the
 //                                         matched substring.
 //
-//     regexp.split(src, max) - Returns a new, mutable list of strings between all the matches of the regular expression regexp.
+//     regexp.split(src, max=-1) - Returns a new, mutable list of strings between all the matches of the regular expression regexp.
 //                              If max > 0, at most max strings are returned knowing that the last string is
 //                              the unsplit remainder. If max == 0, an empty list is returned. If max < 0,
 //                              all strings are returned. The parameter max is optional: by default no limit
@@ -77,10 +102,18 @@ func compile(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwarg
 	return &Regexp{re: re}, nil
 }
 
-func toList(strs []string) *starlark.List {
-	elems := make([]starlark.Value, len(strs))
-	for i, s := range strs {
-		elems[i] = starlark.String(s)
+func toList(slice interface{}) *starlark.List {
+	values := reflect.ValueOf(slice)
+	elems := make([]starlark.Value, values.Len())
+	for i := 0; i < values.Len(); i++ {
+		switch v := values.Index(i).Interface().(type) {
+		case string:
+			elems[i] = starlark.String(v)
+		case int:
+			elems[i] = starlark.MakeInt(v)
+		case []int, []string:
+			elems[i] = toList(v)
+		}
 	}
 	return starlark.NewList(elems)
 }
@@ -119,12 +152,17 @@ func (r *Regexp) Attr(name string) (starlark.Value, error) {
 func (r *Regexp) AttrNames() []string { return builtinAttrNames(regexMethods) }
 
 var regexMethods = map[string]*starlark.Builtin{
-	"find":            starlark.NewBuiltin("find", find),
-	"find_all":        starlark.NewBuiltin("find_all", findAll),
-	"find_submatches": starlark.NewBuiltin("find_submatches", findSubmatches),
-	"matches":         starlark.NewBuiltin("matches", matches),
-	"replace_all":     starlark.NewBuiltin("replace_all", replaceAll),
-	"split":           starlark.NewBuiltin("split", split),
+	"find":                    starlark.NewBuiltin("find", find),
+	"find_all":                starlark.NewBuiltin("find_all", findAll),
+	"find_submatch":           starlark.NewBuiltin("find_submatch", findSubmatch),
+	"find_all_submatch":       starlark.NewBuiltin("find_all_submatch", findAllSubmatch),
+	"find_index":              starlark.NewBuiltin("find_index", findIndex),
+	"find_all_index":          starlark.NewBuiltin("find_all_index", findAllIndex),
+	"find_submatch_index":     starlark.NewBuiltin("find_submatch_index", findSubmatchIndex),
+	"find_all_submatch_index": starlark.NewBuiltin("find_all_submatch_index", findAllSubmatchIndex),
+	"matches":                 starlark.NewBuiltin("matches", matches),
+	"replace_all":             starlark.NewBuiltin("replace_all", replaceAll),
+	"split":                   starlark.NewBuiltin("split", split),
 }
 
 func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
@@ -163,24 +201,13 @@ func find(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs [
 	}
 
 	re := b.Receiver().(*Regexp).re
-	return starlark.String(re.FindString(src)), nil
-}
-
-func findAll(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var (
-		src string
-		max int = -1
-	)
-
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src, &max); err != nil {
-		return nil, err
+	if result := re.FindString(src); result != "" {
+		return starlark.String(result), nil
 	}
-
-	re := b.Receiver().(*Regexp).re
-	return toList(re.FindAllString(src, max)), nil
+	return starlark.None, nil
 }
 
-func findSubmatches(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func findIndex(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var src string
 
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
@@ -188,7 +215,86 @@ func findSubmatches(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	}
 
 	re := b.Receiver().(*Regexp).re
-	return toList(re.FindStringSubmatch(src)), nil
+	if result := re.FindStringIndex(src); result != nil {
+		return toList(result), nil
+	}
+	return starlark.None, nil
+}
+
+func findAll(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		src string
+	)
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	return toList(re.FindAllString(src, -1)), nil
+}
+
+func findAllIndex(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		src string
+	)
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	return toList(re.FindAllStringIndex(src, -1)), nil
+}
+
+func findSubmatch(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var src string
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	if result := re.FindStringSubmatch(src); len(result) > 0 {
+		return toList(result), nil
+	}
+	return starlark.None, nil
+}
+
+func findSubmatchIndex(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var src string
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	if result := re.FindStringSubmatchIndex(src); len(result) > 0 {
+		return toList(result), nil
+	}
+	return starlark.None, nil
+}
+
+func findAllSubmatch(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var src string
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	return toList(re.FindAllStringSubmatch(src, -1)), nil
+}
+
+func findAllSubmatchIndex(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var src string
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	return toList(re.FindAllStringSubmatchIndex(src, -1)), nil
 }
 
 func replaceAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -237,7 +343,7 @@ func split(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs 
 		max int = -1
 	)
 
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &src, &max); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "src", &src, "max?", &max); err != nil {
 		return nil, err
 	}
 
