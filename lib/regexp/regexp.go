@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
-	"strings"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -37,10 +36,14 @@ import (
 //
 //     regexp.find_all(src) - Returns a new, mutable list of all successive matches for the regular expression regexp.
 //                            Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                            In case several patterns in the regular expression match at the same position in the given string, the match
+//                            of the first matching pattern starting from the left is returned.
 //                            An empty list indicates no match.
 //
 //     regexp.find_all_index(src) - Returns a new, mutable list of mutable lists holding the start and end index of each successive match for the regular expression regexp.
 //                                  Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                  In case several patterns in the regular expression match at the same position in the given string, the match
+//                                  of the first matching pattern starting from the left is returned.
 //                                  An empty list indicates no match.
 //
 //     regexp.find_submatch(src) - Returns a new, mutable list of strings holding the first match in the given string for the regular expression regexp
@@ -52,29 +55,45 @@ import (
 //     regexp.find_all_submatch(src) - Returns a new, mutable list of mutable lists holding each successive match in the given string for the regular expression regexp
 //                                     and the matches, if any, of its subexpressions also known as groups.
 //                                     Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                     In case several patterns in the regular expression match at the same position in the given string, the match
+//                                     of the first matching pattern starting from the left is returned.
 //                                     An empty list indicates no match.
 //
 //     regexp.find_all_submatch_index(src) - Returns a new, mutable list of mutable lists holding the start and end index of each successive match in the given string for the regular expression regexp
 //                                           and the start and end index of the matches, if any, of its subexpressions also known as groups.
 //                                           Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                           In case several patterns in the regular expression match at the same position in the given string, the match
+//                                           of the first matching pattern starting from the left is returned.
 //                                           An empty list indicates no match.
 //
 //     regexp.matches(src) - Reports whether the given string contains any match of the regular expression regexp.
 //
-//     regexp.replace_all(src, repl) - Returns a copy of the given string, replacing matches of the regular expression regexp
-//                                     with the replacement string repl. Inside repl, backslash-escaped digits (\1 to \9) can be
-//                                     used to insert text matching corresponding parenthesized group from the pattern.
-//                                     \0 in repl refers to the entire matching text.
+//     regexp.replace_all(src, repl) - Returns a copy of the given string, replacing all successive matches of the regular expression regexp
+//                                     with the replacement string repl.
+//                                     Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                     In case several patterns in the regular expression match at the same position in the given string, the match
+//                                     of the first matching pattern starting from the left is returned.
+//                                     Inside repl, $ signs can be used to insert text matching
+//                                     the corresponding parenthesized group from the pattern.
+//                                     $0 in repl refers to the entire matching text.
 //
-//     regexp.replace_all(src, replFunc) - Returns a copy of the given string in which all matches of the regular expression regexp
-//                                         have been replaced by the return value of the replacement function applied to the
-//                                         matched substring.
+//     regexp.replace_all(src, replFunc) - Returns a copy of the given string in which all successive matches of the regular expression regexp
+//                                         have been replaced by the result of the replacement function.
+//                                         Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                         In case several patterns in the regular expression match at the same position in the given string, the match
+//                                         of the first matching pattern starting from the left is returned.
+//
+//     regexp.replace_all_literal(src, repl) - Returns a copy of the given string, replacing all successive matches of the regular expression regexp
+//                                             with the replacement string repl.
+//                                             Knowing that successive matches are non-overlapping matches sorted according to their position in the given string.
+//                                             In case several patterns in the regular expression match at the same position in the given string, the match
+//                                             of the first matching pattern starting from the left is returned.
+//                                             The replacement repl is substituted directly.
 //
 //     regexp.split(src, max=-1) - Returns a new, mutable list of strings between all the matches of the regular expression regexp.
 //                              If max > 0, at most max strings are returned knowing that the last string is
-//                              the unsplit remainder. If max == 0, an empty list is returned. If max < 0,
-//                              all strings are returned. The parameter max is optional: by default no limit
-//                              is applied.
+//                              the unsplit remainder. If max <= 0, all strings are returned.
+//                              The parameter max is optional: by default no limit is applied.
 //
 var Module = &starlarkstruct.Module{
 	Name: "regexp",
@@ -82,9 +101,6 @@ var Module = &starlarkstruct.Module{
 		"compile": starlark.NewBuiltin("compile", compile),
 	},
 }
-
-// The regular expression used to indentify all the backreferences in a replacement pattern.
-var backreferenceRe = regexp.MustCompile(`((\\\\)*)\\(\d)`)
 
 func compile(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
@@ -162,6 +178,7 @@ var regexMethods = map[string]*starlark.Builtin{
 	"find_all_submatch_index": starlark.NewBuiltin("find_all_submatch_index", findAllSubmatchIndex),
 	"matches":                 starlark.NewBuiltin("matches", matches),
 	"replace_all":             starlark.NewBuiltin("replace_all", replaceAll),
+	"replace_all_literal":     starlark.NewBuiltin("replace_all_literal", replaceAllLiteral),
 	"split":                   starlark.NewBuiltin("split", split),
 }
 
@@ -297,6 +314,19 @@ func findAllSubmatchIndex(_ *starlark.Thread, b *starlark.Builtin, args starlark
 	return toList(re.FindAllStringSubmatchIndex(src, -1)), nil
 }
 
+func replaceAllLiteral(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		src, repl string
+	)
+
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &src, &repl); err != nil {
+		return nil, err
+	}
+
+	re := b.Receiver().(*Regexp).re
+	return starlark.String(re.ReplaceAllLiteralString(src, repl)), nil
+}
+
 func replaceAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		src  string
@@ -332,7 +362,7 @@ func replaceAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 		}
 		return starlark.String(result), nil
 	case starlark.String:
-		return starlark.String(re.ReplaceAllString(src, convertReplacementPattern(string(x)))), nil
+		return starlark.String(re.ReplaceAllString(src, string(x))), nil
 	}
 	return nil, fmt.Errorf("got %s, want a string or callable", repl.Type())
 }
@@ -346,44 +376,9 @@ func split(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs 
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "src", &src, "max?", &max); err != nil {
 		return nil, err
 	}
-
+	if max == 0 {
+		max = -1
+	}
 	re := b.Receiver().(*Regexp).re
 	return toList(re.Split(src, max)), nil
-}
-
-// Converts the replacement pattern to make it compatible with what the regexp package expects.
-func convertReplacementPattern(repl string) string {
-	// Escapes the specifal dollar characters if any
-	repl = strings.ReplaceAll(repl, "$", "$$")
-	startIdx := 0
-	var sb strings.Builder
-	// Replaces the backreferences represented by backslash-escaped digits (\1 to \9) with their
-	// counter parts (${1} to ${9}).
-	for _, match := range backreferenceRe.FindAllStringSubmatchIndex(repl, -1) {
-		startIdxMatch := match[0]
-		endIdxMatch := match[1]
-		if startIdxMatch > 0 && repl[startIdxMatch-1] == '\\' {
-			// The preceding character is a slash so we don't have a real match let's skip it
-			// Unescapes slashes to get the expected result
-			sb.WriteString(strings.ReplaceAll(repl[startIdx:endIdxMatch], `\\`, `\`))
-			startIdx = endIdxMatch
-			continue
-
-		}
-		endIdxGroup1 := match[3]
-		if startIdx < endIdxGroup1 {
-			// Adds the slashes of the first group and unscapes them
-			sb.WriteString(strings.ReplaceAll(repl[startIdx:endIdxGroup1], `\\`, `\`))
-		}
-		// Builds the backreference from the third group
-		sb.WriteString("${")
-		sb.WriteString(repl[match[6]:match[7]])
-		sb.WriteString("}")
-		startIdx = endIdxMatch
-	}
-	if startIdx < len(repl) {
-		// Adds the remaining characters if any
-		sb.WriteString(repl[startIdx:])
-	}
-	return sb.String()
 }
