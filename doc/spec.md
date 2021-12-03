@@ -11,7 +11,7 @@ and [Bazel's build language](https://docs.bazel.build/versions/main/skylark/lang
 This document describes the Go implementation of Starlark
 at go.starlark.net/starlark.
 The language it defines is similar but not identical to
-[the Java-based implementation](https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/starlark/Starlark.java)
+[the Java-based implementation](https://github.com/bazelbuild/bazel/blob/master/src/main/java/net/starlark/java/eval/Starlark.java)
 used by Bazel.
 We identify places where their behaviors differ, and an
 [appendix](#dialect-differences) provides a summary of those
