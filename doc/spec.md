@@ -6,7 +6,7 @@ application, and this application may define additional
 domain-specific functions and data types beyond those provided by the
 core language.  For example, Starlark is embedded within (and was
 originally developed for) the [Bazel build tool](https://bazel.build),
-and [Bazel's build language](https://docs.bazel.build/versions/master/starlark/language.html) is based on Starlark.
+and [Bazel's build language](https://docs.bazel.build/versions/main/skylark/language.html) is based on Starlark.
 
 This document describes the Go implementation of Starlark
 at go.starlark.net/starlark.
