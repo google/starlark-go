@@ -1220,14 +1220,16 @@ func pathContains(path []Value, x Value) bool {
 	return false
 }
 
-const maxdepth = 10
+// CompareLimit is the depth limit on recursive comparison operations such as == and <.
+// Comparison of data structures deeper than this limit may fail.
+var CompareLimit = 10
 
 // Equal reports whether two Starlark values are equal.
 func Equal(x, y Value) (bool, error) {
 	if x, ok := x.(String); ok {
 		return x == y, nil // fast path for an important special case
 	}
-	return EqualDepth(x, y, maxdepth)
+	return EqualDepth(x, y, CompareLimit)
 }
 
 // EqualDepth reports whether two Starlark values are equal.
@@ -1246,7 +1248,7 @@ func EqualDepth(x, y Value, depth int) (bool, error) {
 // Recursive comparisons by implementations of Value.CompareSameType
 // should use CompareDepth to prevent infinite recursion.
 func Compare(op syntax.Token, x, y Value) (bool, error) {
-	return CompareDepth(op, x, y, maxdepth)
+	return CompareDepth(op, x, y, CompareLimit)
 }
 
 // CompareDepth compares two Starlark values.
