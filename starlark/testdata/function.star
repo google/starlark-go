@@ -321,3 +321,9 @@ b(1, y=2, )
 #c(1, *[], )
 #d(1, *[], z=None, )
 #e(1, *[], z=None, *{}, )
+
+---
+# Unpack provides spell check for argument names.
+load("assert.star", "assert")
+
+assert.fails(lambda: min([], keg=1), ".+did you mean key\\?")
