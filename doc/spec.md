@@ -175,6 +175,8 @@ reproducibility is paramount, such as build tools.
     * [string·lower](#string·lower)
     * [string·lstrip](#string·lstrip)
     * [string·partition](#string·partition)
+    * [string·removeprefix](#string·removeprefix)
+    * [string·removesuffix](#string·removesuffix)
     * [string·replace](#string·replace)
     * [string·rfind](#string·rfind)
     * [string·rindex](#string·rindex)
@@ -680,6 +682,8 @@ Strings have several built-in methods:
 * [`lstrip`](#string·lstrip)
 * [`partition`](#string·partition)
 * [`replace`](#string·replace)
+* [`removeprefix`](#string·removeprefix)
+* [`removesuffix`](#string·removesuffix)
 * [`rfind`](#string·rfind)
 * [`rindex`](#string·rindex)
 * [`rpartition`](#string·rpartition)
@@ -4024,6 +4028,30 @@ If S does not contain `x`, `partition` returns `(S, "", "")`.
 
 ```python
 "one/two/three".partition("/")		# ("one", "/", "two/three")
+```
+
+<a id='string·removeprefix'></a>
+### string·removeprefix
+
+`S.removeprefix(prefix)` returns a copy of string S with the prefix `prefix`
+removed if S starts with `prefix`, otherwise it returns S.
+
+```python
+"banana".removeprefix("ban")          # "ana"
+"banana".removeprefix("foo")          # "banana"
+"foofoobar".removeprefix("foo")       # "foobar"
+```
+
+<a id='string·removesuffix'></a>
+### string·removesuffix
+
+`S.removesuffix(suffix)` returns a copy of string S with the suffix `suffix`
+removed if S ends with `suffix`, otherwise it returns S.
+
+```python
+"banana".removesuffix("nana")         # "ba"
+"banana".removesuffix("foo")          # "banana"
+"banana".removesuffix("na")           # "bana"
 ```
 
 <a id='string·replace'></a>

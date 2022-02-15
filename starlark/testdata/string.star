@@ -470,3 +470,24 @@ assert.true(not "Ǆenan Ǉubović".istitle())
 assert.fails(lambda: "".starts_with, "no .starts_with field.*did you mean .startswith")
 assert.fails(lambda: "".StartsWith, "no .StartsWith field.*did you mean .startswith")
 assert.fails(lambda: "".fin, "no .fin field.*.did you mean .find")
+
+
+# removesuffix
+assert.eq("Apricot".removesuffix("cot"), "Apri")
+assert.eq("Apricot".removesuffix("Cot"), "Apricot")
+assert.eq("Apricot".removesuffix("t"), "Aprico")
+assert.eq("a".removesuffix(""), "a")
+assert.eq("".removesuffix(""), "")
+assert.eq("".removesuffix("a"), "")
+assert.eq("Apricot".removesuffix("co"), "Apricot")
+assert.eq("Apricotcot".removesuffix("cot"), "Apricot")
+
+# removeprefix
+assert.eq("Apricot".removeprefix("Apr"), "icot")
+assert.eq("Apricot".removeprefix("apr"), "Apricot")
+assert.eq("Apricot".removeprefix("A"), "pricot")
+assert.eq("a".removeprefix(""), "a")
+assert.eq("".removeprefix(""), "")
+assert.eq("".removeprefix("a"), "")
+assert.eq("Apricot".removeprefix("pr"), "Apricot")
+assert.eq("AprApricot".removeprefix("Apr"), "Apricot")
