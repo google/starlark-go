@@ -1,5 +1,6 @@
 //+build linux darwin dragonfly freebsd netbsd solaris
 //+build amd64 arm64,!darwin mips64x ppc64x
+//+build !starlark_int_generic
 
 package starlark
 
@@ -71,7 +72,7 @@ var smallints = reserveAddresses(1 << 32)
 func reserveAddresses(len int) uintptr {
 	b, err := unix.Mmap(-1, 0, len, unix.PROT_READ, unix.MAP_PRIVATE|unix.MAP_ANON)
 	if err != nil {
-		log.Fatalf("mmap: %v", err)
+		log.Fatalf("mmap: %v (check ulimit or use the starlark_int_generic build tag)", err)
 	}
 	return uintptr(unsafe.Pointer(&b[0]))
 }

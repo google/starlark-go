@@ -1,4 +1,4 @@
-//+build !linux,!darwin,!dragonfly,!freebsd,!netbsd,!solaris darwin,arm64 !amd64,!arm64,!mips64x,!ppc64x
+//+build starlark_int_generic !linux,!darwin,!dragonfly,!freebsd,!netbsd,!solaris darwin,arm64 !amd64,!arm64,!mips64x,!ppc64x
 
 package starlark
 
