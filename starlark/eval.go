@@ -1031,6 +1031,12 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			if y, ok := y.(Int); ok {
 				return x.Or(y), nil
 			}
+
+		case *Dict: // union
+			if y, ok := y.(*Dict); ok {
+				return x.Union(y), nil
+			}
+
 		case *Set: // union
 			if y, ok := y.(*Set); ok {
 				iter := Iterate(y)

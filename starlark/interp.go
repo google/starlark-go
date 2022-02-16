@@ -220,6 +220,34 @@ loop:
 			stack[sp] = z
 			sp++
 
+		case compile.INPLACE_PIPE:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+
+			// It's possible that y is not Dict but
+			// nonetheless defines x|y, in which case we
+			// should fall back to the general case.
+			var z Value
+			if xdict, ok := x.(*Dict); ok {
+				if ydict, ok := y.(*Dict); ok {
+					if err = xdict.ht.checkMutable("apply |= to"); err != nil {
+						break loop
+					}
+					xdict.ht.addAll(&ydict.ht) // can't fail
+					z = xdict
+				}
+			}
+			if z == nil {
+				z, err = Binary(syntax.PIPE, x, y)
+				if err != nil {
+					break loop
+				}
+			}
+
+			stack[sp] = z
+			sp++
+
 		case compile.NONE:
 			stack[sp] = None
 			sp++
