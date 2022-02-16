@@ -16,7 +16,7 @@ import (
 	"go.starlark.net/starlarktest"
 )
 
-func Benchmark(b *testing.B) {
+func BenchmarkStarlark(b *testing.B) {
 	defer setOptions("")
 
 	testdata := starlarktest.DataFile("starlark", ".")
