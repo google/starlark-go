@@ -1899,7 +1899,7 @@ func string_removefix(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value,
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &fix); err != nil {
 		return nil, err
 	}
-	if b.name[6] == 'p' {
+	if b.name[len("remove")] == 'p' {
 		recv = strings.TrimPrefix(recv, fix)
 	} else {
 		recv = strings.TrimSuffix(recv, fix)
