@@ -14,7 +14,7 @@ assert.eq(type(s), "struct")
 assert.eq(str(s), 'struct(host = "localhost", port = 80)')
 assert.eq(s.host, "localhost")
 assert.eq(s.port, 80)
-assert.fails(lambda : s.protocol, "struct has no .protocol attribute")
+assert.fails(lambda: s.protocol, "struct has no .protocol attribute")
 assert.eq(dir(s), ["host", "port"])
 
 # Use gensym to create "branded" struct types.
@@ -31,7 +31,7 @@ assert.eq(http, hostport(host = "localhost", port = 80))
 assert.ne(http, hostport(host = "localhost", port = 443))
 assert.eq(http.host, "localhost")
 assert.eq(http.port, 80)
-assert.fails(lambda : http.protocol, "hostport struct has no .protocol attribute")
+assert.fails(lambda: http.protocol, "hostport struct has no .protocol attribute")
 
 person = gensym(name = "person")
 bob = person(name = "bob", age = 50)
@@ -58,6 +58,15 @@ assert.eq(getattr(alice, "city"), "NYC")
 assert.eq(bob + bob, bob)
 assert.eq(bob + alice, person(age = 50, city = "NYC", name = "alice"))
 assert.eq(alice + bob, person(age = 50, city = "NYC", name = "bob"))  # not commutative! a misfeature
-assert.fails(lambda : alice + 1, "struct \\+ int")
+assert.fails(lambda: alice + 1, "struct \\+ int")
 assert.eq(http + http, http)
-assert.fails(lambda : http + bob, "different constructors: hostport \\+ person")
+assert.fails(lambda: http + bob, "different constructors: hostport \\+ person")
+
+# setfield
+alice.city = "LA"
+assert.eq(getattr(alice, "city"), "LA")
+
+def set_fail():
+    alice.unknown = "unknown"
+
+assert.fails(set_fail, "unknown")

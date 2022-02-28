@@ -7,6 +7,7 @@ package starlarkstruct_test
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -67,3 +68,29 @@ func (sym *symbol) CallInternal(thread *starlark.Thread, args starlark.Tuple, kw
 	}
 	return starlarkstruct.FromKeywords(sym, kwargs), nil
 }
+
+func benchmarkAttrSmall(b *testing.B, size int) {
+	var keys []string
+	m := make(starlark.StringDict)
+	for i := 0; i < size; i++ {
+		key := strconv.Itoa(i)
+		m[key] = starlark.Bool(true)
+		keys = append(keys, key)
+	}
+	s := starlarkstruct.FromStringDict(starlarkstruct.Default, m)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		key := keys[i%len(keys)]
+		_, err := s.Attr(key)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkAttr_4(b *testing.B)   { benchmarkAttrSmall(b, 4) }
+func BenchmarkAttr_8(b *testing.B)   { benchmarkAttrSmall(b, 8) }
+func BenchmarkAttr_16(b *testing.B)  { benchmarkAttrSmall(b, 16) }
+func BenchmarkAttr_32(b *testing.B)  { benchmarkAttrSmall(b, 32) }
+func BenchmarkAttr_64(b *testing.B)  { benchmarkAttrSmall(b, 64) }
+func BenchmarkAttr_128(b *testing.B) { benchmarkAttrSmall(b, 128) }
