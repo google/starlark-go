@@ -1,5 +1,5 @@
 //+build linux darwin dragonfly freebsd netbsd solaris
-//+build amd64 arm64,!darwin mips64x ppc64x
+//+build amd64 arm64,!darwin mips64x ppc64x loong64
 
 package starlark
 
