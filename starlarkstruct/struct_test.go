@@ -13,6 +13,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 func Test(t *testing.T) {
@@ -94,3 +95,27 @@ func BenchmarkAttr_16(b *testing.B)  { benchmarkAttrSmall(b, 16) }
 func BenchmarkAttr_32(b *testing.B)  { benchmarkAttrSmall(b, 32) }
 func BenchmarkAttr_64(b *testing.B)  { benchmarkAttrSmall(b, 64) }
 func BenchmarkAttr_128(b *testing.B) { benchmarkAttrSmall(b, 128) }
+
+func benchmarkEqual(b *testing.B, size int) {
+	m := make(starlark.StringDict)
+	for i := 0; i < size; i++ {
+		key := strconv.Itoa(i)
+		m[key] = starlark.Bool(true)
+	}
+	x := starlarkstruct.FromStringDict(starlarkstruct.Default, m)
+	y := starlarkstruct.FromStringDict(starlarkstruct.Default, m)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := x.CompareSameType(syntax.EQL, y, 40)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEqual_4(b *testing.B)   { benchmarkEqual(b, 4) }
+func BenchmarkEqual_8(b *testing.B)   { benchmarkEqual(b, 8) }
+func BenchmarkEqual_16(b *testing.B)  { benchmarkEqual(b, 16) }
+func BenchmarkEqual_32(b *testing.B)  { benchmarkEqual(b, 32) }
+func BenchmarkEqual_64(b *testing.B)  { benchmarkEqual(b, 64) }
+func BenchmarkEqual_128(b *testing.B) { benchmarkEqual(b, 128) }

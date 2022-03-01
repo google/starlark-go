@@ -16,10 +16,8 @@ package starlarkstruct // import "go.starlark.net/starlarkstruct"
 // 2) the efficiency gain of direct struct field access is rather
 //    marginal: finding the index of a field by map access is O(1)
 //    and is quite fast compared to the other overheads.
-// 3) the gains in compactness and spatial locality are also rather
-//    marginal: the map behind the field members is (due to field name
-//    strings) only a factor of 2 larger than the corresponding Go struct
-//    would be, and, like the Go struct, requires only a single allocation.
+// Such an implementation is likely to be more compact than
+// the current map-based representation, though.
 
 import (
 	"fmt"
@@ -237,7 +235,8 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 		return false, nil
 	}
 
-	for k, xv := range x.members {
+	for _, k := range x.members.Keys() {
+		xv := x.members[k]
 		yv, ok := y.members[k]
 		if !ok {
 			return false, nil
