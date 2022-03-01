@@ -223,6 +223,8 @@ func (x *Struct) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) 
 	}
 }
 
+var errNotEqual = fmt.Errorf("not equal")
+
 func structsEqual(x, y *Struct, depth int) (bool, error) {
 	if x.len() != y.len() {
 		return false, nil
@@ -235,18 +237,37 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 		return false, nil
 	}
 
-	for _, k := range x.members.Keys() {
-		xv := x.members[k]
+	// Loop over every key returning the lowest error by key, if any.
+	var (
+		key string
+		err error
+	)
+	setErr := func(k string, e error) {
+		if err == nil || k < key {
+			key = k
+			err = e
+		}
+	}
+	for k, xv := range x.members {
 		yv, ok := y.members[k]
 		if !ok {
-			return false, nil
+			setErr(k, errNotEqual)
+			continue
 		}
 
 		if eq, err := starlark.EqualDepth(xv, yv, depth-1); err != nil {
-			return false, err
+			setErr(k, err)
+			continue
 		} else if !eq {
+			setErr(k, errNotEqual)
+			continue
+		}
+	}
+	if err != nil {
+		if err == errNotEqual {
 			return false, nil
 		}
+		return false, err
 	}
 	return true, nil
 }
