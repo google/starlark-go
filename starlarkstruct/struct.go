@@ -242,18 +242,12 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 		}
 	}
 	for k, xv := range x.members {
-		yv, ok := y.members[k]
-		if !ok {
+		if yv, ok := y.members[k]; !ok {
 			setErr(k, errNotEqual)
-			continue
-		}
-
-		if eq, err := starlark.EqualDepth(xv, yv, depth-1); err != nil {
+		} else if eq, err := starlark.EqualDepth(xv, yv, depth-1); err != nil {
 			setErr(k, err)
-			continue
 		} else if !eq {
 			setErr(k, errNotEqual)
-			continue
 		}
 	}
 	if err != nil {
