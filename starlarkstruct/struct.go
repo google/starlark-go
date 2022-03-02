@@ -95,7 +95,6 @@ func FromStringDict(constructor starlark.Value, d starlark.StringDict) *Struct {
 type Struct struct {
 	constructor starlark.Value
 	members     starlark.StringDict
-	frozen      bool
 }
 
 // Default is the default constructor for structs.
@@ -157,13 +156,7 @@ func (s *Struct) Hash() (uint32, error) {
 	}
 	return x, nil
 }
-func (s *Struct) Freeze() {
-	if s.frozen {
-		return
-	}
-	s.members.Freeze()
-	s.frozen = true
-}
+func (s *Struct) Freeze() { s.members.Freeze() }
 
 func (x *Struct) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	if y, ok := y.(*Struct); ok && op == syntax.PLUS {
