@@ -60,3 +60,11 @@ def bench_mix(b):
             if i:
                 x += 1
             a = [x for x in range(i)]
+
+largedict = {str(v): v for v in range(1000)}
+
+def bench_dict_equal(b):
+    "Benchmark of dict equality operation."
+    for _ in range(b.n):
+        if largedict != largedict:
+            fail("invalid comparison")

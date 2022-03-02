@@ -816,8 +816,8 @@ func dictsEqual(x, y *Dict, depth int) (bool, error) {
 	if x.Len() != y.Len() {
 		return false, nil
 	}
-	for _, xitem := range x.Items() {
-		key, xval := xitem[0], xitem[1]
+	for e := x.ht.head; e != nil; e = e.next {
+		key, xval := e.key, e.value
 
 		if yval, found, _ := y.Get(key); !found {
 			return false, nil
@@ -1185,8 +1185,8 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 			out.WriteString("...") // dict contains itself
 		} else {
 			sep := ""
-			for _, item := range x.Items() {
-				k, v := item[0], item[1]
+			for e := x.ht.head; e != nil; e = e.next {
+				k, v := e.key, e.value
 				out.WriteString(sep)
 				writeValue(out, k, path)
 				out.WriteString(": ")
