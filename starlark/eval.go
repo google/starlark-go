@@ -1066,14 +1066,17 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // intersection
 			if y, ok := y.(*Set); ok {
-				set := new(Set)
-				if x.Len() > y.Len() {
+				var set *Set
+				if xl, yl := x.Len(), y.Len(); xl > yl {
 					x, y = y, x // opt: range over smaller set
+					set = NewSet(xl)
+				} else {
+					set = NewSet(yl)
 				}
-				for _, xelem := range x.elems() {
+				for xe := x.ht.head; xe != nil; xe = xe.next {
 					// Has, Insert cannot fail here.
-					if found, _ := y.Has(xelem); found {
-						set.Insert(xelem)
+					if found, _ := y.Has(xe.key); found {
+						set.Insert(xe.key)
 					}
 				}
 				return set, nil
@@ -1088,15 +1091,15 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // symmetric difference
 			if y, ok := y.(*Set); ok {
-				set := new(Set)
-				for _, xelem := range x.elems() {
-					if found, _ := y.Has(xelem); !found {
-						set.Insert(xelem)
+				set := NewSet(x.Len() + y.Len())
+				for xe := x.ht.head; xe != nil; xe = xe.next {
+					if found, _ := y.Has(xe.key); !found {
+						set.Insert(xe.key)
 					}
 				}
-				for _, yelem := range y.elems() {
-					if found, _ := x.Has(yelem); !found {
-						set.Insert(yelem)
+				for ye := y.ht.head; ye != nil; ye = ye.next {
+					if found, _ := x.Has(ye.key); !found {
+						set.Insert(ye.key)
 					}
 				}
 				return set, nil

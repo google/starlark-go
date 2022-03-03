@@ -1093,7 +1093,6 @@ func (s *Set) Len() int                               { return int(s.ht.len) }
 func (s *Set) Iterate() Iterator                      { return s.ht.iterate() }
 func (s *Set) String() string                         { return toString(s) }
 func (s *Set) Type() string                           { return "set" }
-func (s *Set) elems() []Value                         { return s.ht.keys() }
 func (s *Set) Freeze()                                { s.ht.freeze() }
 func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
@@ -1119,8 +1118,8 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 	if x.Len() != y.Len() {
 		return false, nil
 	}
-	for _, elem := range x.elems() {
-		if found, _ := y.Has(elem); !found {
+	for e := x.ht.head; e != nil; e = e.next {
+		if found, _ := y.Has(e.key); !found {
 			return false, nil
 		}
 	}
@@ -1128,9 +1127,9 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 }
 
 func (s *Set) Union(iter Iterator) (Value, error) {
-	set := new(Set)
-	for _, elem := range s.elems() {
-		set.Insert(elem) // can't fail
+	set := NewSet(s.Len())
+	for e := s.ht.head; e != nil; e = e.next {
+		set.Insert(e.key) // can't fail
 	}
 	var x Value
 	for iter.Next(&x) {
@@ -1234,11 +1233,11 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 
 	case *Set:
 		out.WriteString("set([")
-		for i, elem := range x.elems() {
-			if i > 0 {
+		for e := x.ht.head; e != nil; e = e.next {
+			if e != x.ht.head {
 				out.WriteString(", ")
 			}
-			writeValue(out, elem, path)
+			writeValue(out, e.key, path)
 		}
 		out.WriteString("])")
 
