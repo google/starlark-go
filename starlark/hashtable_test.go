@@ -208,16 +208,6 @@ func benchmarkOrderedStringDict(b *testing.B, size int) {
 			}
 		}
 	})
-	b.Run("orderRange", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			osd.Range(func(_ string, v Value) bool {
-				if v != want {
-					b.Fatal("invalid value")
-				}
-				return true
-			})
-		}
-	})
 	b.Run("orderIter", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			for j := 0; j < osd.Len(); j++ {
