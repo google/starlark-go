@@ -7,6 +7,7 @@ package starlark
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
 	"testing"
 )
@@ -54,6 +55,8 @@ var (
 		Int   Int
 		goInt int
 	}
+	testStrings    [3 * testIters]string
+	testStringDict StringDict = make(StringDict)
 )
 
 func makeTestInts() {
@@ -62,6 +65,9 @@ func makeTestInts() {
 		r := int(zipf.Uint64())
 		testInts[i].goInt = r
 		testInts[i].Int = MakeInt(r)
+		s := strconv.Itoa(r)
+		testStrings[i] = s
+		testStringDict[s] = None
 	}
 }
 
@@ -123,3 +129,109 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 		}
 	}
 }
+
+func TestOrderedStringDict(t *testing.T) {
+	makeTestIntsOnce.Do(makeTestInts)
+	testOrderedStringDict(t, make(StringDict))
+}
+
+func testOrderedStringDict(tb testing.TB, sane StringDict) {
+	var i int // index into testInts
+
+	// Build the maps
+	// Insert 10000 random ints into the map.
+	d := OrderStringDict(testStringDict)
+	for k, v := range testStringDict {
+		sane[k] = v
+	}
+
+	// Do 10000 random lookups in the map.
+	for j := 0; j < testIters; j++ {
+		k := testStrings[i]
+		i++
+		_, found := d.Get(k)
+		if sane != nil {
+			_, found2 := sane[k]
+			if found != found2 {
+				tb.Fatal("sanity check failed")
+			}
+		}
+	}
+
+	// Do 10000 random sets from the map.
+	for j := 0; j < testIters; j++ {
+		k := testStrings[i]
+		i++
+		if !d.Set(k, None) {
+			tb.Fatal("set failed")
+		}
+	}
+
+	if sane != nil {
+		if len(d.entries) != len(sane) {
+			tb.Fatal("sanity check failed")
+		}
+	}
+}
+
+func benchmarkOrderedStringDict(b *testing.B, size int) {
+	want := Bool(true)
+	keys := testStringDict.Keys()
+	sd := make(StringDict)
+	for i := 0; i < size; i++ {
+		key := keys[i]
+		sd[key] = want
+	}
+	osd := OrderStringDict(sd)
+	b.Run("map", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			key := keys[i%size]
+			if sd[key] != want {
+				b.Fatal("invalid value")
+			}
+		}
+	})
+	b.Run("order", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			key := keys[i%size]
+			if val, _ := osd.Get(key); val != want {
+				b.Fatal("invalid value")
+			}
+		}
+	})
+	b.Run("mapRange", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, v := range sd {
+				if v != want {
+					b.Fatal("invalid value")
+				}
+			}
+		}
+	})
+	b.Run("orderRange", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			osd.Range(func(_ string, v Value) bool {
+				if v != want {
+					b.Fatal("invalid value")
+				}
+				return true
+			})
+		}
+	})
+	b.Run("orderIter", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < osd.Len(); j++ {
+				if v := osd.Index(j); v != want {
+					b.Fatal("invalid value")
+				}
+			}
+		}
+	})
+}
+
+func BenchmarkOrderedStringDict_4(b *testing.B)   { benchmarkOrderedStringDict(b, 4) }
+func BenchmarkOrderedStringDict_8(b *testing.B)   { benchmarkOrderedStringDict(b, 8) }
+func BenchmarkOrderedStringDict_16(b *testing.B)  { benchmarkOrderedStringDict(b, 16) }
+func BenchmarkOrderedStringDict_32(b *testing.B)  { benchmarkOrderedStringDict(b, 32) }
+func BenchmarkOrderedStringDict_64(b *testing.B)  { benchmarkOrderedStringDict(b, 64) }
+func BenchmarkOrderedStringDict_128(b *testing.B) { benchmarkOrderedStringDict(b, 128) }

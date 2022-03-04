@@ -55,16 +55,9 @@ func (ht *hashtable) init(size int) {
 func (ht *hashtable) freeze() {
 	if !ht.frozen {
 		ht.frozen = true
-		for i := range ht.table {
-			for p := &ht.table[i]; p != nil; p = p.next {
-				for i := range p.entries {
-					e := &p.entries[i]
-					if e.hash != 0 {
-						e.key.Freeze()
-						e.value.Freeze()
-					}
-				}
-			}
+		for e := ht.head; e != nil; e = e.next {
+			e.key.Freeze()
+			e.value.Freeze()
 		}
 	}
 }
@@ -126,7 +119,7 @@ retry:
 	}
 
 	if insert == nil {
-		// No space in existing buckets.  Add a new one to the bucket list.
+		// No space in existing buckets. Add a new one to the bucket list.
 		b := new(bucket)
 		p.next = b
 		insert = &b.entries[0]
@@ -370,4 +363,176 @@ func softHashString(s string) uint32 {
 		h *= 16777619
 	}
 	return h
+}
+
+// An OrderedStringDict is a mapping from names to values with support
+// for fast indexing and range operations. Once created keys cannot be
+// added or removed but values can be mutated.
+// It is not a true starlark.Value.
+type OrderedStringDict struct {
+	// Implementation based on the above hashtable.
+	table   []osdBucket  // len is zero or a power of two
+	bucket0 [1]osdBucket // inline allocation for small maps.
+	entries []osdEntry   // sorted list of entries
+}
+
+type osdBucket struct {
+	entries [bucketSize]*osdEntry
+	next    *osdBucket // linked list of buckets
+}
+
+type osdEntry struct {
+	hash  uint32 // nonzero => in use
+	key   string
+	value Value
+}
+
+func (d *OrderedStringDict) init(size int) {
+	if size < 0 {
+		panic("size < 0")
+	}
+	nb := 1
+	for overloaded(size, nb) {
+		nb = nb << 1
+	}
+	if nb < 2 {
+		d.table = d.bucket0[:1]
+	} else {
+		d.table = make([]osdBucket, nb)
+	}
+	d.entries = make([]osdEntry, 0, size)
+}
+
+func (d *OrderedStringDict) getEntry(h uint32, k string) *osdEntry {
+	if d.table == nil {
+		return nil // empty
+	}
+
+	// Inspect each bucket in the bucket list.
+	for p := &d.table[h&(uint32(len(d.table)-1))]; p != nil; p = p.next {
+		for _, e := range p.entries {
+			if e == nil {
+				break
+			}
+			if e.hash == h && k == e.key {
+				return e // found
+			}
+		}
+	}
+	return nil // not found
+}
+
+func (d *OrderedStringDict) grow() {
+	// Double the number of buckets and rehash.
+	d.table = make([]osdBucket, len(d.table)<<1)
+	oldEntries := d.entries
+	d.entries = make([]osdEntry, 0, len(d.entries)<<1)
+	for _, e := range oldEntries {
+		d.append(e.hash, e.key, e.value) // can't error
+	}
+	d.bucket0[0] = osdBucket{} // clear out unused initial bucket
+}
+
+func (d *OrderedStringDict) append(h uint32, k string, v Value) error {
+	if d.table == nil {
+		d.init(1)
+	}
+
+	// Does the number of elements exceed the buckets' load factor?
+	for overloaded(len(d.entries), len(d.table)) {
+		d.grow()
+	}
+
+	// Find the bucket position for the new entry.
+	position := -1
+
+	p := &d.table[h&(uint32(len(d.table)-1))]
+	for {
+		for i, e := range p.entries {
+			if e == nil {
+				position = i
+				break
+			}
+			if k == e.key {
+				return fmt.Errorf("duplicate key %s", k)
+			}
+		}
+		if p.next == nil || position != -1 {
+			break
+		}
+		p = p.next
+	}
+
+	if position == -1 {
+		// No space in existing buckets. Add a new one to the bucket list.
+		b := new(osdBucket)
+		p.next = b
+		p = b
+		position = 0
+	}
+
+	// Append value to entries, linking the bucket to the entires list.
+	d.entries = append(d.entries, osdEntry{
+		hash:  h,
+		key:   k,
+		value: v,
+	})
+	p.entries[position] = &d.entries[len(d.entries)-1]
+
+	return nil
+}
+
+func OrderStringDict(d StringDict) OrderedStringDict {
+	var osd OrderedStringDict
+	osd.init(len(d))
+
+	// Append values in key order.
+	for _, key := range d.Keys() {
+		h := hashString(key)
+		osd.append(h, key, d[key])
+	}
+	return osd
+}
+
+func (d *OrderedStringDict) Set(k string, v Value) (found bool) {
+	h := hashString(k)
+	if e := d.getEntry(h, k); e != nil {
+		e.value = v
+		return true
+	}
+	return false
+}
+
+func (d *OrderedStringDict) Get(k string) (v Value, found bool) {
+	h := hashString(k)
+	if e := d.getEntry(h, k); e != nil {
+		return e.value, true
+	}
+	return None, false
+}
+
+func (d *OrderedStringDict) Keys() []string {
+	keys := make([]string, 0, len(d.entries))
+	for _, e := range d.entries {
+		keys = append(keys, e.key)
+	}
+	return keys
+}
+
+func (d *OrderedStringDict) Index(i int) Value {
+	return d.entries[i].value
+}
+func (d *OrderedStringDict) Len() int {
+	return len(d.entries)
+}
+func (d *OrderedStringDict) KeyIndex(i int) (string, Value) {
+	e := &d.entries[i]
+	return e.key, e.value
+}
+func (d *OrderedStringDict) Range(f func(key string, value Value) bool) {
+	for _, e := range d.entries {
+		if !f(e.key, e.value) {
+			break
+		}
+	}
 }
