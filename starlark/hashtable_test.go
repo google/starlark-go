@@ -162,8 +162,20 @@ func testOrderedStringDict(tb testing.TB, sane StringDict) {
 	for j := 0; j < testIters; j++ {
 		k := testStrings[i]
 		i++
-		if !d.Set(k, None) {
-			tb.Fatal("set failed")
+		d.Insert(k, None)
+	}
+
+	// Do 10000 random deletes from the map.
+	for j := 0; j < testIters; j++ {
+		k := testStrings[i]
+		i++
+		_, found := d.Delete(k)
+		if sane != nil {
+			_, found2 := sane[k]
+			if found != found2 {
+				tb.Fatal("sanity check failed")
+			}
+			delete(sane, k)
 		}
 	}
 
