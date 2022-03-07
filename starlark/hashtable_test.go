@@ -140,10 +140,12 @@ func testOrderedStringDict(tb testing.TB, sane StringDict) {
 
 	// Build the maps
 	// Insert 10000 random ints into the map.
-	d := OrderStringDict(testStringDict)
+	d := NewOrderedStringDict(len(testStringDict))
 	for k, v := range testStringDict {
 		sane[k] = v
+		d.Insert(k, v)
 	}
+	d.Sort() // sort by key
 
 	// Do 10000 random lookups in the map.
 	for j := 0; j < testIters; j++ {
@@ -190,11 +192,12 @@ func benchmarkOrderedStringDict(b *testing.B, size int) {
 	want := Bool(true)
 	keys := testStringDict.Keys()
 	sd := make(StringDict)
+	osd := NewOrderedStringDict(len(keys))
 	for i := 0; i < size; i++ {
 		key := keys[i]
 		sd[key] = want
+		osd.Insert(key, want)
 	}
-	osd := OrderStringDict(sd)
 	b.Run("map", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			key := keys[i%size]

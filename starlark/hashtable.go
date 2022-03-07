@@ -6,6 +6,8 @@ package starlark
 
 import (
 	"fmt"
+	"math"
+	"sort"
 	_ "unsafe" // for go:linkname hack
 )
 
@@ -365,23 +367,31 @@ func softHashString(s string) uint32 {
 	return h
 }
 
-// An OrderedStringDict is a mapping from names to values with support
-// for fast indexing. Keys are stored in order of unique insertion.
+// An OrderedStringDict is a mutable mapping from names to values with
+// support for fast indexing. Keys are stored in order of unique insertion.
 // Keys are fast to add and access but slow to delete.
 // It is not a true starlark.Value.
 type OrderedStringDict struct {
-	// Implementation based on the above hashtable.
-	table   []osdBucket     // len is zero or a power of two
-	bucket0 [bucketSize]int //*osdEntry // inline allocation for small maps.
-	entries []osdEntry      // sorted list of entries
+	// Hash table that maps names to indicies within entries.
+	table   []osdBucket        // len is zero or a power of two
+	bucket0 [bucketSize]uint32 // inline allocation for small maps
+	entries []osdEntry         // entries in order of insertion
 }
 
-type osdBucket []int //*osdEntry
+// NewOrderedStringDict returns a dictionary with initial space for
+// at least size insertions before rehashing.
+func NewOrderedStringDict(size int) *OrderedStringDict {
+	dict := new(OrderedStringDict)
+	dict.init(size)
+	return dict
+}
+
+type osdBucket []uint32 // index to entries
 
 type osdEntry struct {
-	hash  uint32
 	key   string
 	value Value
+	hash  uint32
 }
 
 func (d *OrderedStringDict) init(size int) {
@@ -466,18 +476,11 @@ func (d *OrderedStringDict) insert(h uint32, k string, v Value) {
 		key:   k,
 		value: v,
 	})
-	d.table[n] = append(p, len(d.entries)-1)
-}
-
-func OrderStringDict(d StringDict) OrderedStringDict {
-	var osd OrderedStringDict
-	osd.init(len(d))
-
-	// Append values in key order.
-	for _, key := range d.Keys() {
-		osd.Insert(key, d[key])
+	i := len(d.entries) - 1
+	if i > math.MaxUint32 {
+		panic("max entries")
 	}
-	return osd
+	d.table[n] = append(p, uint32(i))
 }
 
 func (d *OrderedStringDict) Insert(k string, v Value) {
@@ -489,13 +492,24 @@ func (d *OrderedStringDict) Get(k string) (v Value, found bool) {
 	if d.table == nil {
 		return None, false // empty
 	}
+
+	if l := len(d.entries); l <= bucketSize {
+		for i := 0; i < l; i++ {
+			e := &d.entries[i]
+			if k == e.key {
+				return e.value, true // found
+			}
+		}
+		return None, false // not found
+	}
+
 	h := hashString(k)
 
 	// Inspect each entry in the bucket slice.
 	p := d.table[h&(uint32(len(d.table)-1))]
 	for i, l := 0, len(p); i < l; i++ {
 		e := &d.entries[p[i]]
-		if e.hash == h && k == e.key {
+		if h == e.hash && k == e.key {
 			return e.value, true // found
 		}
 	}
@@ -546,4 +560,16 @@ func (d *OrderedStringDict) Len() int {
 func (d *OrderedStringDict) KeyIndex(i int) (string, Value) {
 	e := &d.entries[i]
 	return e.key, e.value
+}
+
+type osdKeySorter []osdEntry
+
+func (d osdKeySorter) Len() int           { return len(d) }
+func (d osdKeySorter) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
+func (d osdKeySorter) Less(i, j int) bool { return d[i].key < d[j].key }
+
+// Sort the dict by name.
+func (d *OrderedStringDict) Sort() {
+	sort.Sort(osdKeySorter(d.entries))
+	d.rehash()
 }
