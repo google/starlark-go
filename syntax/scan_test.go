@@ -275,7 +275,7 @@ pass`, "pass newline pass EOF"}, // consecutive newlines are consolidated
 		if err != nil {
 			got = err.(Error).Error()
 		}
-		// Prefix match allows us to truncate errors in expecations.
+		// Prefix match allows us to truncate errors in expectations.
 		// Success cases all end in EOF.
 		if !strings.HasPrefix(got, test.want) {
 			t.Errorf("scan `%s` = [%s], want [%s]", test.input, got, test.want)

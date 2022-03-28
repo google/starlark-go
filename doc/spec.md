@@ -3197,7 +3197,7 @@ specified base, decimal by default.
 If `base` is zero, x is interpreted like an integer literal, the base
 being inferred from an optional base prefix such as `0b`, `0o`, or
 `0x` preceding the first digit.
-When the `base` is provided explictly, a matching base prefix is
+When the `base` is provided explicitly, a matching base prefix is
 also permitted, and has no effect.
 Irrespective of base, the string may start with an optional `+` or `-`
 sign indicating the sign of the result.

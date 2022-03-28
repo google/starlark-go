@@ -12,5 +12,5 @@ import (
 	"go.starlark.net/lib/json"
 )
 
-// Module is an alias of json.Module for backwards import compatibilty
+// Module is an alias of json.Module for backwards import compatibility
 var Module = json.Module
