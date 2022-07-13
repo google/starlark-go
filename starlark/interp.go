@@ -89,7 +89,11 @@ loop:
 	for {
 		thread.steps++
 		if thread.steps >= thread.maxSteps {
-			thread.Cancel("too many steps")
+			if thread.OnMaxSteps != nil {
+				thread.OnMaxSteps(thread)
+			} else {
+				thread.Cancel("too many steps")
+			}
 		}
 		if reason := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reason != nil {
 			err = fmt.Errorf("Starlark computation cancelled: %s", *(*string)(reason))
