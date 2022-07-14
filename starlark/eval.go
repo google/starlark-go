@@ -47,6 +47,10 @@ type Thread struct {
 	// See example_test.go for some example implementations of Load.
 	Load func(thread *Thread, module string) (StringDict, error)
 
+	// OnMaxSteps is called when the thread reaches the limit set by SetMaxExecutionSteps.
+	// The default behavior is to call thread.Cancel("too many steps").
+	OnMaxSteps func(thread *Thread)
+
 	// steps counts abstract computation steps executed by this thread.
 	steps, maxSteps uint64
 
@@ -74,7 +78,8 @@ func (thread *Thread) ExecutionSteps() uint64 {
 // SetMaxExecutionSteps sets a limit on the number of Starlark
 // computation steps that may be executed by this thread. If the
 // thread's step counter exceeds this limit, the interpreter calls
-// thread.Cancel("too many steps").
+// the optional OnMaxSteps function or the default behavior
+// of calling thread.Cancel("too many steps").
 func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 	thread.maxSteps = max
 }
