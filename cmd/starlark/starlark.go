@@ -120,9 +120,27 @@ func doMain() int {
 			return 1
 		}
 	case flag.NArg() == 0:
-		fmt.Println("Welcome to Starlark (go.starlark.net)")
+		si, err := os.Stdin.Stat()
+		if err != nil {
+			// not really sure how best to handle this error.
+			// in theory it shouldn't be possible, and if it
+			// does happen but we continue then repl will just
+			// fall over regardless. We're only checking the
+			// size to not output the welcome message if the
+			// program has come in via stdin, but a failure
+			// here shouldn't break or halt normal repl usage?
+			repl.PrintError(err)
+			return 1
+		}
+		fromStdin := si.Size() > 0
+		if !fromStdin {
+			fmt.Println("Welcome to Starlark (go.starlark.net)")
+		}
 		thread.Name = "REPL"
 		repl.REPL(thread, globals)
+		if !fromStdin {
+			fmt.Println()
+		}
 	default:
 		log.Print("want at most one Starlark file name")
 		return 1
