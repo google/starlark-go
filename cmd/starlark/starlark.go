@@ -22,6 +22,7 @@ import (
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"golang.org/x/term"
 )
 
 // flags
@@ -120,19 +121,7 @@ func doMain() int {
 			return 1
 		}
 	case flag.NArg() == 0:
-		si, err := os.Stdin.Stat()
-		if err != nil {
-			// not really sure how best to handle this error.
-			// in theory it shouldn't be possible, and if it
-			// does happen but we continue then repl will just
-			// fall over regardless. We're only checking the
-			// size to not output the welcome message if the
-			// program has come in via stdin, but a failure
-			// here shouldn't break or halt normal repl usage?
-			repl.PrintError(err)
-			return 1
-		}
-		fromStdin := si.Size() > 0
+		fromStdin := !term.IsTerminal(int(os.Stdin.Fd()))
 		if !fromStdin {
 			fmt.Println("Welcome to Starlark (go.starlark.net)")
 		}
