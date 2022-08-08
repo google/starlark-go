@@ -2582,7 +2582,7 @@ m.f = ""
 
 Compound targets may consist of a comma-separated list of
 subtargets, optionally surrounded by parentheses or square brackets,
-and targets may be nested arbitarily in this way.
+and targets may be nested arbitrarily in this way.
 An assignment to a compound target checks that the right-hand value is a
 sequence with the same number of elements as the target.
 Each element of the sequence is then assigned to the corresponding

@@ -123,7 +123,7 @@ def _emit_generate_params_action(cmds, ctx, fn):
 
 def _emit_go_asm_action(ctx, source, hdrs, out_obj):
     """Construct the command line for compiling Go Assembly code.
-    Constructs a symlink tree to accomodate for workspace name.
+    Constructs a symlink tree to accommodate for workspace name.
     Args:
       ctx: The starlark Context.
       source: a source code artifact
