@@ -53,7 +53,7 @@ Build the code:
 ```shell
 # check out the code and dependencies,
 # and install interpreter in $GOPATH/bin
-$ go get -u go.starlark.net/cmd/starlark
+$ go install go.starlark.net/cmd/starlark@latest
 ```
 
 Run the interpreter:
