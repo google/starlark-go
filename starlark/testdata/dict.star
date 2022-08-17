@@ -246,3 +246,76 @@ _ = {
         ("three", 3),
     ]
 }
+
+
+---
+# dict | dict (union)
+
+load("assert.star", "assert", "freeze")
+
+empty_dict = dict()
+dict_with_a_b = dict(a=1, b=[1, 2])
+dict_with_b = dict(b=[1, 2])
+dict_with_other_b = dict(b=[3, 4])
+
+assert.eq(empty_dict | dict_with_a_b, dict_with_a_b)
+# Verify iteration order.
+assert.eq((empty_dict | dict_with_a_b).items(), dict_with_a_b.items())
+assert.eq(dict_with_a_b | empty_dict, dict_with_a_b)
+assert.eq((dict_with_a_b | empty_dict).items(), dict_with_a_b.items())
+assert.eq(dict_with_b | dict_with_a_b, dict_with_a_b)
+assert.eq((dict_with_b | dict_with_a_b).items(), dict(b=[1, 2], a=1).items())
+assert.eq(dict_with_a_b | dict_with_b, dict_with_a_b)
+assert.eq((dict_with_a_b | dict_with_b).items(), dict_with_a_b.items())
+assert.eq(dict_with_b | dict_with_other_b, dict_with_other_b)
+assert.eq((dict_with_b | dict_with_other_b).items(), dict_with_other_b.items())
+assert.eq(dict_with_other_b | dict_with_b, dict_with_b)
+assert.eq((dict_with_other_b | dict_with_b).items(), dict_with_b.items())
+
+assert.eq(empty_dict, dict())
+assert.eq(dict_with_b, dict(b=[1,2]))
+
+assert.fails(lambda: dict() | [], "unknown binary op: dict [|] list")
+
+# dict |= dict (in-place union)
+
+def test_dict_union_assignment():
+    x = dict()
+    saved = x
+    x |= {"a": 1}
+    x |= {"b": 2}
+    x |= {"c": "3", 7: 4}
+    x |= {"b": "5", "e": 6}
+    want = {"a": 1, "b": "5", "c": "3", 7: 4, "e": 6}
+    assert.eq(x, want)
+    assert.eq(x.items(), want.items())
+    assert.eq(saved, x) # they are aliases
+
+    a = {8: 1, "b": 2}
+    b = {"b": 1, "c": 6}
+    c = {"d": 7}
+    d = {(5, "a"): ("c", 8)}
+    orig_a, orig_c = a, c
+    a |= b
+    c |= a
+    c |= d
+    expected_2 = {"d": 7, 8: 1, "b": 1, "c": 6, (5, "a"): ("c", 8)}
+    assert.eq(c, expected_2)
+    assert.eq(c.items(), expected_2.items())
+    assert.eq(b, {"b": 1, "c": 6})
+
+    # aliasing:
+    assert.eq(a, orig_a)
+    assert.eq(c, orig_c)
+    a.clear()
+    c.clear()
+    assert.eq(a, orig_a)
+    assert.eq(c, orig_c)
+
+test_dict_union_assignment()
+
+def dict_union_assignment_type_mismatch():
+    some_dict = dict()
+    some_dict |= []
+
+assert.fails(dict_union_assignment_type_mismatch, "unknown binary op: dict [|] list")
