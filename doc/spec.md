@@ -906,6 +906,20 @@ fail.
 A dictionary used in a Boolean context is considered true if it is
 non-empty.
 
+The binary `|` operation may be applied to two dictionaries.
+It yields a new dictionary whose set of keys is the union of the sets
+of keys of the two operands. The corresponding values are taken from
+the operands, where the value taken from the right operand takes
+precedence if both contain a given key.  Iterating over the keys in
+the resulting dictionary first yields all keys in the left operand in
+insertion order, then all keys in the right operand that were not
+present in the left operand, again in insertion order.
+
+There is also an augmented assignment version of the `|` operation.
+For two dictionaries `x` and `y`, the statement `x |= y` behaves
+similar to `x = x | y`, but updates `x` in place rather than assigning
+a new dictionary to it.
+
 Dictionaries may be compared for equality using `==` and `!=`.  Two
 dictionaries compare equal if they contain the same number of items
 and each key/value item (k, v) found in one dictionary is also present
@@ -2018,6 +2032,9 @@ Sets
       int & int                 # bitwise intersection (AND)
       set & set                 # set intersection
       set ^ set                 # set symmetric difference
+
+Dict
+      dict | dict               # ordered union
 ```
 
 The operands of the arithmetic operators `+`, `-`, `*`, `//`, and
@@ -2056,10 +2073,14 @@ For sets, it yields a new set containing the intersection of the
 elements of the operand sets, preserving the element order of the left
 operand.
 
-The `|` operator likewise computes bitwise or set unions.
+The `|` operator likewise computes bitwise, set, or dict unions.
 The result of `set | set` is a new set whose elements are the
 union of the operands, preserving the order of the elements of the
 operands, left before right.
+Similarly, the result of `dict | dict` is a new dict whose entries are
+the union of the operands, preserving the order in which keys first
+appear, but using the value from the right operand for each key
+common to both dicts.
 
 The `^` operator accepts operands of either `int` or `set` type.
 For integers, it yields the bitwise XOR (exclusive OR) of its operands.
@@ -2582,7 +2603,7 @@ m.f = ""
 
 Compound targets may consist of a comma-separated list of
 subtargets, optionally surrounded by parentheses or square brackets,
-and targets may be nested arbitarily in this way.
+and targets may be nested arbitrarily in this way.
 An assignment to a compound target checks that the right-hand value is a
 sequence with the same number of elements as the target.
 Each element of the sequence is then assigned to the corresponding

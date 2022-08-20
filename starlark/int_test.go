@@ -5,9 +5,15 @@
 package starlark
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -98,5 +104,52 @@ func TestImmutabilityBigInt(t *testing.T) {
 		if got != expect {
 			t.Errorf("expected %d, got %d", expect, got)
 		}
+	}
+}
+
+// TestIntFallback creates a small Int value in a child process with
+// limited address space to ensure that it still works, but prints a warning.
+func TestIntFallback(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skipf("test disabled on this platform (requires ulimit -v)")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("can't find file name of executable: %v", err)
+	}
+	// ulimit -v limits the address space in KB. Not portable.
+	// 1GB is enough for the Go runtime but not for the optimization.
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ulimit -v 1000000 && %q --entry=intfallback", exe))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("intfallback subcommand failed: %v\n%s", err, out)
+	}
+
+	// Check the warning was printed.
+	if !strings.Contains(string(out), "Integer performance may suffer") {
+		t.Errorf("expected warning was not printed. Output=<<%s>>", out)
+	}
+}
+
+// intfallback is called in a child process with limited address space.
+func intfallback() {
+	const want = 123
+	if got, _ := MakeBigInt(big.NewInt(want)).Int64(); got != want {
+		log.Fatalf("intfallback: got %d, want %d", got, want)
+	}
+}
+
+// The --entry flag invokes an alternate entry point, for use in subprocess tests.
+func TestMain(m *testing.M) {
+	var entry string
+	flag.StringVar(&entry, "entry", "", "child process entry-point")
+	flag.Parse()
+	switch entry {
+	case "":
+		os.Exit(m.Run()) // normal case
+	case "intfallback":
+		intfallback()
+	default:
+		log.Fatalf("unknown entry point: %s", entry)
 	}
 }

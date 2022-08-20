@@ -795,6 +795,14 @@ func (d *Dict) Freeze()                                         { d.ht.freeze() 
 func (d *Dict) Truth() Bool                                     { return d.Len() > 0 }
 func (d *Dict) Hash() (uint32, error)                           { return 0, fmt.Errorf("unhashable type: dict") }
 
+func (x *Dict) Union(y *Dict) *Dict {
+	z := new(Dict)
+	z.ht.init(x.Len()) // a lower bound
+	z.ht.addAll(&x.ht) // can't fail
+	z.ht.addAll(&y.ht) // can't fail
+	return z
+}
+
 func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, dictMethods) }
 func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
 
