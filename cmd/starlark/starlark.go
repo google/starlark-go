@@ -121,13 +121,13 @@ func doMain() int {
 			return 1
 		}
 	case flag.NArg() == 0:
-		stdinIsTerminal := !term.IsTerminal(int(os.Stdin.Fd()))
-		if !stdinIsTerminal {
+		stdinIsTerminal := term.IsTerminal(int(os.Stdin.Fd()))
+		if stdinIsTerminal {
 			fmt.Println("Welcome to Starlark (go.starlark.net)")
 		}
 		thread.Name = "REPL"
 		repl.REPL(thread, globals)
-		if !stdinIsTerminal {
+		if stdinIsTerminal {
 			fmt.Println()
 		}
 	default:
