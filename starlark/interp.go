@@ -20,7 +20,7 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - optimize position table.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
-func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
+func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (result Value, err error) {
 	// Postcondition: args is not mutated. This is stricter than required by Callable,
 	// but allows CALL to avoid a copy.
 
@@ -56,7 +56,7 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	stack := space[nlocals:]          // operand stack
 
 	// Digest arguments and set parameters.
-	err := setArgs(locals, fn, args, kwargs)
+	err = setArgs(locals, fn, args, kwargs)
 	if err != nil {
 		return nil, thread.evalError(err)
 	}
@@ -83,8 +83,20 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 
 	sp := 0
 	var pc uint32
-	var result Value
 	code := f.Code
+
+	defer func() {
+		if e := recover(); e != nil {
+			thread.stack = thread.stack[:len(thread.stack)-1]
+			err = fmt.Errorf(fmt.Sprint(e))
+			// ITERPOP the rest of the iterator stack.
+			for _, iter := range iterstack {
+				iter.Done()
+			}
+			fr.locals = nil
+		}
+	}()
+
 loop:
 	for {
 		thread.steps++
