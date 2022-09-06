@@ -1225,8 +1225,22 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	fr.callable = c
 
 	thread.beginProfSpan()
+
+	// Use defer to ensure that panics from built-ins
+	// pass through the interpreter without leaving
+	// it in a bad state.
+	defer func() {
+		thread.endProfSpan()
+
+		// clear out any references
+		// TODO(adonovan): opt: zero fr.Locals and
+		// reuse it if it is large enough.
+		*fr = frame{}
+
+		thread.stack = thread.stack[:len(thread.stack)-1] // pop
+	}()
+
 	result, err := c.CallInternal(thread, args, kwargs)
-	thread.endProfSpan()
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
@@ -1239,9 +1253,6 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 			err = thread.evalError(err)
 		}
 	}
-
-	*fr = frame{}                                     // clear out any references
-	thread.stack = thread.stack[:len(thread.stack)-1] // pop
 
 	return result, err
 }
