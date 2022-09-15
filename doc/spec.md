@@ -3467,7 +3467,7 @@ shortest of the input sequences.
 ```python
 zip()                                   # []
 zip(range(5))                           # [(0,), (1,), (2,), (3,), (4,)]
-zip(range(5), "abc")                    # [(0, "a"), (1, "b"), (2, "c")]
+zip(range(5), "abc".elems())            # [(0, "a"), (1, "b"), (2, "c")]
 ```
 
 ## Built-in methods
