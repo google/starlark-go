@@ -14,6 +14,7 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,6 +23,16 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
+
+func getPointer(i interface{}) (uintptr, bool) {
+	v := reflect.ValueOf(i)
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
+		return v.Pointer(), true
+	default:
+		return 0, false
+	}
+}
 
 // Module json is a Starlark module of JSON-related functions.
 //
@@ -100,8 +111,17 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		}
 	}
 
-	var emit func(x starlark.Value) error
-	emit = func(x starlark.Value) error {
+	var emit func(x starlark.Value, pointers map[uintptr]struct{}) error
+	emit = func(x starlark.Value, pointers map[uintptr]struct{}) error {
+		if ptr, ok := getPointer(x); ok {
+			if _, ok = pointers[ptr]; ok {
+				return fmt.Errorf("Detected cycle in json structure")
+			}
+
+			pointers[ptr] = struct{}{}
+			defer delete(pointers, ptr)
+		}
+
 		switch x := x.(type) {
 		case json.Marshaler:
 			// Application-defined starlark.Value types
@@ -153,7 +173,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 				k, _ := starlark.AsString(item[0])
 				quote(k)
 				buf.WriteByte(':')
-				if err := emit(item[1]); err != nil {
+				if err := emit(item[1], pointers); err != nil {
 					return fmt.Errorf("in %s key %s: %v", x.Type(), item[0], err)
 				}
 			}
@@ -169,7 +189,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 				if i > 0 {
 					buf.WriteByte(',')
 				}
-				if err := emit(elem); err != nil {
+				if err := emit(elem, pointers); err != nil {
 					return fmt.Errorf("at %s index %d: %v", x.Type(), i, err)
 				}
 			}
@@ -191,7 +211,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 				}
 				quote(name)
 				buf.WriteByte(':')
-				if err := emit(v); err != nil {
+				if err := emit(v, pointers); err != nil {
 					return fmt.Errorf("in field .%s: %v", name, err)
 				}
 			}
@@ -203,7 +223,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil
 	}
 
-	if err := emit(x); err != nil {
+	if err := emit(x, map[uintptr]struct{}{}); err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
