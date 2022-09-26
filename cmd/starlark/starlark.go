@@ -22,6 +22,7 @@ import (
 	"go.starlark.net/repl"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"golang.org/x/term"
 )
 
 // flags
@@ -120,9 +121,15 @@ func doMain() int {
 			return 1
 		}
 	case flag.NArg() == 0:
-		fmt.Println("Welcome to Starlark (go.starlark.net)")
+		stdinIsTerminal := term.IsTerminal(int(os.Stdin.Fd()))
+		if stdinIsTerminal {
+			fmt.Println("Welcome to Starlark (go.starlark.net)")
+		}
 		thread.Name = "REPL"
 		repl.REPL(thread, globals)
+		if stdinIsTerminal {
+			fmt.Println()
+		}
 	default:
 		log.Print("want at most one Starlark file name")
 		return 1

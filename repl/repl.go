@@ -53,7 +53,6 @@ func REPL(thread *starlark.Thread, globals starlark.StringDict) {
 			break
 		}
 	}
-	fmt.Println()
 }
 
 // rep reads, evaluates, and prints one item.
