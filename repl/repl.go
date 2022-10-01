@@ -33,7 +33,6 @@ var interrupted = make(chan os.Signal, 1)
 // variable named "context" to a context.Context that is cancelled by a
 // SIGINT (Control-C). Client-supplied global functions may use this
 // context to make long-running operations interruptable.
-//
 func REPL(thread *starlark.Thread, globals starlark.StringDict) {
 	signal.Notify(interrupted, os.Interrupt)
 	defer signal.Stop(interrupted)

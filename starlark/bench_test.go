@@ -60,9 +60,9 @@ func BenchmarkStarlark(b *testing.B) {
 // It provides b.n, the number of iterations that must be executed by the function,
 // which is typically of the form:
 //
-//   def bench_foo(b):
-//      for _ in range(b.n):
-//         ...work...
+//	def bench_foo(b):
+//	   for _ in range(b.n):
+//	      ...work...
 //
 // It also provides stop, start, and restart methods to stop the clock in case
 // there is significant set-up work that should not count against the measured

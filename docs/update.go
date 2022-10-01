@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 // The update command creates/updates the <html><head> elements of
 // each subpackage beneath docs so that "go get" requests redirect
@@ -6,9 +7,8 @@
 //
 // Usage:
 //
-//   $ cd $GOPATH/src/go.starlark.net
-//   $ go run docs/update.go
-//
+//	$ cd $GOPATH/src/go.starlark.net
+//	$ go run docs/update.go
 package main
 
 import (
