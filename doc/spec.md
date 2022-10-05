@@ -104,7 +104,7 @@ reproducibility is paramount, such as build tools.
     * [For loops](#for-loops)
     * [Break and Continue](#break-and-continue)
     * [Load statements](#load-statements)
-    * [Module execution](#module-execution)
+  * [Module execution](#module-execution)
   * [Built-in constants and functions](#built-in-constants-and-functions)
     * [None](#none)
     * [True and False](#true-and-false)
@@ -741,11 +741,9 @@ The concatenation operation `x + y` yields a new list containing all
 the elements of the two lists x and y.
 
 For most types, `x += y` is equivalent to `x = x + y`, except that it
-evaluates `x` only once, that is, it allocates a new list to hold
-the concatenation of `x` and `y`.
-However, if `x` refers to a list, the statement does not allocate a
-new list but instead mutates the original list in place, similar to
-`x.extend(y)`.
+evaluates `x` only once. However, if `x` refers to a list, the statement
+`x += y` does not allocate a new list as `x = x + y` would, but instead 
+mutates the original list in place, similar to `x.extend(y)`.
 
 Lists are not hashable, so may not be used in the keys of a dictionary.
 
@@ -1192,8 +1190,8 @@ The [type](#type) of a built-in function is `"builtin_function_or_method"`.
 
 A built-in function value used in a Boolean context is always considered true.
 
-Many built-in functions are predeclared in the environment
-(see [Name Resolution](#name-resolution)).
+Many [built-in functions](#built-in-constants-and-functions) are predeclared 
+in the environment (see [Name binding and variables](#name-binding-and-variables)).
 Some built-in functions such as `len` are _universal_, that is,
 available to all Starlark programs.
 The host application may predeclare additional built-in functions
@@ -2522,7 +2520,7 @@ Example:
 def map(f, list):
     return [f(x) for x in list]
 
-map(lambda x: 2*x, range(3))    # [2, 4, 6]
+map(lambda x: 2*x, range(3))    # [0, 2, 4]
 ```
 
 As with functions created by a `def` statement, a lambda function
@@ -3462,7 +3460,7 @@ type(0.0)               # "float"
 `zip()` returns a new list of n-tuples formed from corresponding
 elements of each of the n iterable sequences provided as arguments to
 `zip`.  That is, the first tuple contains the first element of each of
-the sequences, the second element contains the second element of each
+the sequences, the second tuple contains the second element of each
 of the sequences, and so on.  The result list is only as long as the
 shortest of the input sequences.
 
@@ -3903,7 +3901,7 @@ Currently it must be empty, but it is reserved for future use.
 "a{x}b{y}c{}".format(1, x=2, y=3)               # "a2b3c1"
 "a{}b{}c".format(1, 2)                          # "a1b2c"
 "({1}, {0})".format("zero", "one")              # "(one, zero)"
-"Is {0!r} {0!s}?".format('heterological')       # 'is "heterological" heterological?'
+"Is {0!r} {0!s}?".format('heterological')       # 'Is "heterological" heterological?'
 ```
 
 <a id='string·index'></a>
