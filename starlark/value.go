@@ -1248,6 +1248,9 @@ func EqualDepth(x, y Value, depth int) (bool, error) {
 	return CompareDepth(syntax.EQL, x, y, depth)
 }
 
+// Compare is the default implementation of the compare operation and is used by current package. You can override this field.
+var Compare = DefaultCompare
+
 // Compare compares two Starlark values.
 // The comparison operation must be one of EQL, NEQ, LT, LE, GT, or GE.
 // Compare returns an error if an ordered comparison was
@@ -1255,7 +1258,7 @@ func EqualDepth(x, y Value, depth int) (bool, error) {
 //
 // Recursive comparisons by implementations of Value.CompareSameType
 // should use CompareDepth to prevent infinite recursion.
-func Compare(op syntax.Token, x, y Value) (bool, error) {
+func DefaultCompare(op syntax.Token, x, y Value) (bool, error) {
 	return CompareDepth(op, x, y, CompareLimit)
 }
 
