@@ -1146,10 +1146,6 @@ unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
 }
 
-func init() {
-	// Binary = BinaryDefault
-}
-
 // It's always possible to overeat in small bites but we'll
 // try to stop someone swallowing the world in one gulp.
 const maxAlloc = 1 << 30
