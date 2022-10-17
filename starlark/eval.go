@@ -84,6 +84,12 @@ func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 	thread.maxSteps = max
 }
 
+// ResetStepsAndCancelReason reset steps counts and cancel reason
+func (thread *Thread) ResetStepsAndCancelReason() {
+	thread.steps = 0
+	thread.cancelReason = nil
+}
+
 // Cancel causes execution of Starlark code in the specified thread to
 // promptly fail with an EvalError that includes the specified reason.
 // There may be a delay before the interpreter observes the cancellation

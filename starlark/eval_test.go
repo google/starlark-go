@@ -972,6 +972,12 @@ func TestExecutionSteps(t *testing.T) {
 	if fmt.Sprint(err) != "Starlark computation cancelled: too many steps" {
 		t.Errorf("execution returned error %q, want cancellation", err)
 	}
+
+	thread.ResetStepsAndCancelReason()
+	_, err = countSteps(1)
+	if err != nil {
+		t.Errorf("execution returned error %q, want nil", err)
+	}
 }
 
 // TestDeps fails if the interpreter proper (not the REPL, etc) sprouts new external dependencies.
