@@ -70,7 +70,7 @@ type Thread struct {
 	proftime time.Duration
 }
 
-// returns the current value of Steps.
+// ExecutionSteps returns the current value of Steps.
 func (thread *Thread) ExecutionSteps() uint64 {
 	return thread.Steps
 }
@@ -84,7 +84,7 @@ func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 	thread.maxSteps = max
 }
 
-// Uncancel reset the cancellation state.
+// Uncancel resets the cancellation state.
 //
 // Unlike most methods of Thread, it is safe to call Uncancel from any
 // goroutine, even if the thread is actively executing.
