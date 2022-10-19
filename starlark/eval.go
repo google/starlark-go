@@ -51,8 +51,13 @@ type Thread struct {
 	// The default behavior is to call thread.Cancel("too many steps").
 	OnMaxSteps func(thread *Thread)
 
-	// steps counts abstract computation steps executed by this thread.
-	steps, maxSteps uint64
+	// Steps a count of abstract computation steps executed
+	// by this thread. It is incremented by the interpreter. It may be used
+	// as a measure of the approximate cost of Starlark execution, by
+	// computing the difference in its value before and after a computation.
+	//
+	// The precise meaning of "step" is not specified and may change.
+	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
 	cancelReason *string
@@ -65,14 +70,9 @@ type Thread struct {
 	proftime time.Duration
 }
 
-// ExecutionSteps returns a count of abstract computation steps executed
-// by this thread. It is incremented by the interpreter. It may be used
-// as a measure of the approximate cost of Starlark execution, by
-// computing the difference in its value before and after a computation.
-//
-// The precise meaning of "step" is not specified and may change.
+// ExecutionSteps returns the current value of Steps.
 func (thread *Thread) ExecutionSteps() uint64 {
-	return thread.steps
+	return thread.Steps
 }
 
 // SetMaxExecutionSteps sets a limit on the number of Starlark
@@ -84,12 +84,20 @@ func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 	thread.maxSteps = max
 }
 
+// Uncancel resets the cancellation state.
+//
+// Unlike most methods of Thread, it is safe to call Uncancel from any
+// goroutine, even if the thread is actively executing.
+func (thread *Thread) Uncancel() {
+	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil)
+}
+
 // Cancel causes execution of Starlark code in the specified thread to
 // promptly fail with an EvalError that includes the specified reason.
 // There may be a delay before the interpreter observes the cancellation
 // if the thread is currently in a call to a built-in function.
 //
-// Cancellation cannot be undone.
+// Call [Uncancel] to reset the cancellation state.
 //
 // Unlike most methods of Thread, it is safe to call Cancel from any
 // goroutine, even if the thread is actively executing.
