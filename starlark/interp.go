@@ -87,8 +87,8 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	code := f.Code
 loop:
 	for {
-		thread.steps++
-		if thread.steps >= thread.maxSteps {
+		thread.Steps++
+		if thread.Steps >= thread.maxSteps {
 			if thread.OnMaxSteps != nil {
 				thread.OnMaxSteps(thread)
 			} else {

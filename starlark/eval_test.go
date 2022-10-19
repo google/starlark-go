@@ -973,7 +973,8 @@ func TestExecutionSteps(t *testing.T) {
 		t.Errorf("execution returned error %q, want cancellation", err)
 	}
 
-	thread.ResetStepsAndCancelReason()
+	thread.Steps = 0
+	thread.Uncancel()
 	_, err = countSteps(1)
 	if err != nil {
 		t.Errorf("execution returned error %q, want nil", err)
