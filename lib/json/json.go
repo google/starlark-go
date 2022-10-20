@@ -106,9 +106,13 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 
 	var emit func(x starlark.Value) error
 	emit = func(x starlark.Value) error {
+
+		// It is only necessary to push/pop the item when it might contain
+		// itself (i.e. the last three switch cases), but omitting it in the other
+		// cases did not show significant improvement on the benchmarks.
 		if ptr := pointer(x); ptr != nil {
 			if pathContains(path, ptr) {
-				return fmt.Errorf("Detected cycle in json structure")
+				return fmt.Errorf("cycle in json structure")
 			}
 
 			path = append(path, ptr)
