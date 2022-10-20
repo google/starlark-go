@@ -12,12 +12,15 @@ import (
 	"strings"
 	"testing"
 
+	"go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
 )
 
 func BenchmarkStarlark(b *testing.B) {
 	defer setOptions("")
+
+	starlark.Universe["json"] = json.Module
 
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := new(starlark.Thread)

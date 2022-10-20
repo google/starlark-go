@@ -68,3 +68,52 @@ def bench_dict_equal(b):
     for _ in range(b.n):
         if largedict != largedict:
             fail("invalid comparison")
+
+flat = { "int": 1, "float": 0.2, "string": "string", "list": [], "bool": True, "nil": None, "tuple": (1, 2, 3) }
+deep = {
+    "type": "int",
+    "value": 1, 
+    "next": {
+        "type": "float",
+        "value": 0.2,
+        "next": {
+            "type": "string", 
+            "value": "string",
+            "next": {
+                "type": "list", 
+                "value": [ 1, "", True, None, (1, 2) ],
+                "next": {
+                    "type": "bool",
+                    "value": True,
+                    "next": {
+                        "type": "tuple",
+                        "value": (1, 2.0, "3"),
+                        "next": None
+                    }
+                }
+            }
+        }
+    }
+}
+
+deep_list = [ deep for _ in range(100) ]
+
+def bench_to_json_flat_mixed(b):
+    "Benchmark json.encode builtin with flat mixed input"
+    for _ in range(b.n):
+        json.encode(flat)
+
+def bench_to_json_flat_big(b):
+    "Benchmark json.encode builtin with big flat integer input"
+    for _ in range(b.n):
+        json.encode(largedict)
+
+def bench_to_json_deep(b):
+    "Benchmark json.encode builtin with deep input"
+    for _ in range(b.n):
+        json.encode(deep)
+
+def bench_to_json_deep_list(b):
+    "Benchmark json.encode builtin with a list of deep input"
+    for _ in range(b.n):
+        json.encode(deep)

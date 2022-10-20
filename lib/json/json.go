@@ -14,10 +14,12 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+	"unsafe"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -100,8 +102,23 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		}
 	}
 
+	path := make([]unsafe.Pointer, 0, 8)
+
 	var emit func(x starlark.Value) error
 	emit = func(x starlark.Value) error {
+
+		// It is only necessary to push/pop the item when it might contain
+		// itself (i.e. the last three switch cases), but omitting it in the other
+		// cases did not show significant improvement on the benchmarks.
+		if ptr := pointer(x); ptr != nil {
+			if pathContains(path, ptr) {
+				return fmt.Errorf("cycle in json structure")
+			}
+
+			path = append(path, ptr)
+			defer func() { path = path[0 : len(path)-1] }()
+		}
+
 		switch x := x.(type) {
 		case json.Marshaler:
 			// Application-defined starlark.Value types
@@ -207,6 +224,26 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
+}
+
+func pointer(i interface{}) unsafe.Pointer {
+	v := reflect.ValueOf(i)
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
+		return v.UnsafePointer()
+	default:
+		return nil
+	}
+}
+
+func pathContains(path []unsafe.Pointer, item unsafe.Pointer) bool {
+	for _, p := range path {
+		if p == item {
+			return true
+		}
+	}
+
+	return false
 }
 
 // isPrintableASCII reports whether s contains only printable ASCII.
