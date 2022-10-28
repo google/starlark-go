@@ -1002,3 +1002,52 @@ func TestDeps(t *testing.T) {
 		}
 	}
 }
+
+// TestPanicSafety ensures that a panic from an application-defined
+// built-in may traverse the interpreter safely; see issue #411.
+func TestPanicSafety(t *testing.T) {
+	predeclared := starlark.StringDict{
+		"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			panic(args[0])
+		}),
+		"list": starlark.NewList([]starlark.Value{starlark.MakeInt(0)}),
+	}
+
+	// This program is executed twice, using the same Thread,
+	// and panics both times, with values 1 and 2, while
+	// main is on the stack and a for-loop is active.
+	//
+	// It mutates list, a predeclared variable.
+	// This operation would fail if the previous
+	// for-loop failed to close its iterator during the panic.
+	//
+	// It also calls main a second time without recursion enabled.
+	// This operation would fail if the previous
+	// call failed to pop main from the stack during the panic.
+	const src = `
+list[0] += 1
+
+def main():
+    for x in list:
+        panic(x)
+
+main()
+`
+	thread := new(starlark.Thread)
+	for _, i := range []int{1, 2} {
+		// Use a func to limit the scope of recover.
+		func() {
+			defer func() {
+				if got := fmt.Sprint(recover()); got != fmt.Sprint(i) {
+					t.Fatalf("recover: got %v, want %v", got, i)
+				}
+			}()
+			v, err := starlark.ExecFile(thread, "panic.star", src, predeclared)
+			if err != nil {
+				t.Fatalf("ExecFile returned error %q, expected panic", err)
+			} else {
+				t.Fatalf("ExecFile returned %v, expected panic", v)
+			}
+		}()
+	}
+}

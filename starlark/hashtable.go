@@ -372,6 +372,8 @@ func (it *keyIterator) Done() {
 	}
 }
 
+// TODO(adonovan): use go1.19's maphash.String.
+
 // hashString computes the hash of s.
 func hashString(s string) uint32 {
 	if len(s) >= 12 {
