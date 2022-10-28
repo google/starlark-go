@@ -39,15 +39,15 @@ encode_error({1: 2}, 'dict has int key, want string')
 
 recursive_map = {}
 recursive_map["r"] = recursive_map
-encode_error(recursive_map, 'json.encode: in dict key "r": Detected cycle in json structure')
+encode_error(recursive_map, 'json.encode: in dict key "r": cycle in JSON structure')
 
 recursive_list = []
 recursive_list.append(recursive_list)
-encode_error(recursive_list, 'json.encode: at list index 0: Detected cycle in json structure')
+encode_error(recursive_list, 'json.encode: at list index 0: cycle in JSON structure')
 
 recursive_tuple = (1, 2, [])
 recursive_tuple[2].append(recursive_tuple)
-encode_error(recursive_tuple, 'json.encode: at tuple index 2: at list index 0: Detected cycle in json structure')
+encode_error(recursive_tuple, 'json.encode: at tuple index 2: at list index 0: cycle in JSON structure')
 
 ## json.decode
 

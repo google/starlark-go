@@ -112,7 +112,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		// cases did not show significant improvement on the benchmarks.
 		if ptr := pointer(x); ptr != nil {
 			if pathContains(path, ptr) {
-				return fmt.Errorf("cycle in json structure")
+				return fmt.Errorf("cycle in JSON structure")
 			}
 
 			path = append(path, ptr)
