@@ -204,6 +204,11 @@ func (x Int) CompareSameType(op syntax.Token, v Value, depth int) (bool, error) 
 func (i Int) Float() Float {
 	iSmall, iBig := i.get()
 	if iBig != nil {
+		// Avoid bad allocation pattern
+		if iBig.BitLen() <= 64 {
+			return Float(iBig.Sign()) * Float(iBig.Uint64())
+		}
+
 		f, _ := new(big.Float).SetInt(iBig).Float64()
 		return Float(f)
 	}
