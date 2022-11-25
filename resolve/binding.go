@@ -61,10 +61,11 @@ type Module struct {
 // A Function contains resolver information about a named or anonymous function.
 // The resolver populates the Function field of each syntax.DefStmt and syntax.LambdaExpr.
 type Function struct {
-	Pos    syntax.Position // of DEF or LAMBDA
-	Name   string          // name of def, or "lambda"
-	Params []syntax.Expr   // param = ident | ident=expr | * | *ident | **ident
-	Body   []syntax.Stmt   // contains synthetic 'return expr' for lambda
+	Pos        syntax.Position // of DEF or LAMBDA
+	Name       string          // name of def, or "lambda"
+	Params     []syntax.Expr   // param = ident | ident=expr | * | *ident | **ident
+	Body       []syntax.Stmt   // contains synthetic 'return expr' for lambda
+	ReturnType syntax.Expr     // can be nil, type hint expression after '->'
 
 	HasVarargs      bool       // whether params includes *args (convenience)
 	HasKwargs       bool       // whether params includes **kwargs (convenience)

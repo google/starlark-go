@@ -177,6 +177,9 @@ else:
 			`(DefStmt Name=f Params=(x (UnaryExpr Op=* X=args) (UnaryExpr Op=** X=kwargs)) Body=((BranchStmt Token=pass)))`},
 		{`def f(**kwargs, *args): pass`,
 			`(DefStmt Name=f Params=((UnaryExpr Op=** X=kwargs) (UnaryExpr Op=* X=args)) Body=((BranchStmt Token=pass)))`},
+		{`def f(x, y: str, z: list[str]=None) -> int:
+	pass`,
+			`(DefStmt Name=f Params=(x y (BinaryExpr X=z Op== Y=None)) Body=((BranchStmt Token=pass)) ReturnType=int)`},
 		{`def f(a, b, c=d): pass`,
 			`(DefStmt Name=f Params=(a b (BinaryExpr X=c Op== Y=d)) Body=((BranchStmt Token=pass)))`},
 		{`def f(a, b=c, d): pass`,

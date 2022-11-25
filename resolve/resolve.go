@@ -98,10 +98,11 @@ const doesnt = "this Starlark dialect does not "
 // These features are either not standard Starlark (yet), or deprecated
 // features of the BUILD language, so we put them behind flags.
 var (
-	AllowSet            = false // allow the 'set' built-in
-	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
-	AllowRecursion      = false // allow while statements and recursive functions
-	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
+	AllowSet              = false // allow the 'set' built-in
+	AllowGlobalReassign   = false // allow reassignment to top-level names; also, allow if/for/while at top-level
+	AllowRecursion        = false // allow while statements and recursive functions
+	ResolveTypeHintIdents = false // resolve identifiers in type hints
+	LoadBindsGlobally     = false // load creates global not file-local bindings (deprecated)
 
 	// obsolete flags for features that are now standard. No effect.
 	AllowNestedDef = true
@@ -510,10 +511,11 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 	case *syntax.DefStmt:
 		r.bind(stmt.Name)
 		fn := &Function{
-			Name:   stmt.Name.Name,
-			Pos:    stmt.Def,
-			Params: stmt.Params,
-			Body:   stmt.Body,
+			Name:       stmt.Name.Name,
+			Pos:        stmt.Def,
+			Params:     stmt.Params,
+			Body:       stmt.Body,
+			ReturnType: stmt.ReturnType,
 		}
 		stmt.Function = fn
 		r.function(fn, stmt.Def)
@@ -801,6 +803,29 @@ func (r *resolver) function(function *Function, pos syntax.Position) {
 	for _, param := range function.Params {
 		if binary, ok := param.(*syntax.BinaryExpr); ok {
 			r.expr(binary.Y)
+		}
+	}
+
+	// Resolve function type hints in enclosing environment.
+	if ResolveTypeHintIdents {
+		if function.ReturnType != nil {
+			r.expr(function.ReturnType)
+		}
+		for _, param := range function.Params {
+			switch param := param.(type) {
+			case *syntax.Ident:
+				if param.TypeHint != nil {
+					r.expr(param.TypeHint)
+				}
+			case *syntax.BinaryExpr:
+				if param.X.(*syntax.Ident).TypeHint != nil {
+					r.expr(param.X.(*syntax.Ident).TypeHint)
+				}
+			case *syntax.UnaryExpr:
+				if param.X.(*syntax.Ident).TypeHint != nil {
+					r.expr(param.X.(*syntax.Ident).TypeHint)
+				}
+			}
 		}
 	}
 
