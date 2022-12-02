@@ -18,12 +18,16 @@ import (
 	"go.starlark.net/internal/chunkedfile"
 	"go.starlark.net/lib/json"
 	starlarkmath "go.starlark.net/lib/math"
+	"go.starlark.net/lib/proto"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
+	"google.golang.org/protobuf/reflect/protoregistry"
+
+	_ "google.golang.org/protobuf/types/descriptorpb" // example descriptor needed for lib/proto tests
 )
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
@@ -113,6 +117,7 @@ func TestExecFile(t *testing.T) {
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
+	proto.SetPool(thread, protoregistry.GlobalFiles)
 	for _, file := range []string{
 		"testdata/assign.star",
 		"testdata/bool.star",
@@ -127,6 +132,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/list.star",
 		"testdata/math.star",
 		"testdata/misc.star",
+		"testdata/proto.star",
 		"testdata/set.star",
 		"testdata/string.star",
 		"testdata/time.star",
@@ -201,6 +207,9 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	}
 	if module == "math.star" {
 		return starlark.StringDict{"math": starlarkmath.Module}, nil
+	}
+	if module == "proto.star" {
+		return starlark.StringDict{"proto": proto.Module}, nil
 	}
 
 	// TODO(adonovan): test load() using this execution path.

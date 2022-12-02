@@ -397,6 +397,7 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 
 		// TODO(adonovan): handle maps
 		list := msg.Mutable(fdesc).List()
+		list.Truncate(0)
 		var x starlark.Value
 		for i := 0; iter.Next(&x); i++ {
 			v, err := toProto(fdesc, x)
