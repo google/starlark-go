@@ -116,6 +116,8 @@ assert.eq(10, t1.second)
 assert.eq(99, t1.nanosecond)
 assert.eq(1244822770, t1.unix)
 assert.eq(1244822770000000099, t1.unix_nano)
+assert.true(not time.parse_time("0001-01-01T00:00:00Z"))
+assert.true(time.parse_time("2022-01-01T00:00:00Z"))
 
 # time type
 assert.eq("time.time", type(refTime))
