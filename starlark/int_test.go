@@ -140,16 +140,18 @@ func intfallback() {
 }
 
 // The --entry flag invokes an alternate entry point, for use in subprocess tests.
+var testEntry = flag.String("entry", "", "child process entry-point")
+
 func TestMain(m *testing.M) {
-	var entry string
-	flag.StringVar(&entry, "entry", "", "child process entry-point")
+	// In some build systems, notably Blaze, flag.Parse is called before TestMain,
+	// in violation of the TestMain contract, making this second call a no-op.
 	flag.Parse()
-	switch entry {
+	switch *testEntry {
 	case "":
 		os.Exit(m.Run()) // normal case
 	case "intfallback":
 		intfallback()
 	default:
-		log.Fatalf("unknown entry point: %s", entry)
+		log.Fatalf("unknown entry point: %s", *testEntry)
 	}
 }
