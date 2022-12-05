@@ -348,7 +348,7 @@ func (t Time) Hash() (uint32, error) {
 
 // Truth returns the truth value of an object required by starlark.Value
 // interface.
-func (t Time) Truth() starlark.Bool { return starlark.Bool(time.Time(t).IsZero()) }
+func (t Time) Truth() starlark.Bool { return !starlark.Bool(time.Time(t).IsZero()) }
 
 // Attr gets a value for a string attribute, implementing dot expression support
 // in starklark. required by starlark.HasAttrs interface.
