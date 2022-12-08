@@ -27,29 +27,30 @@ import (
 
 // Module json is a Starlark module of JSON-related functions.
 //
-//   json = module(
-//      encode,
-//      decode,
-//      indent,
-//   )
+//	json = module(
+//	   encode,
+//	   decode,
+//	   indent,
+//	)
 //
 // def encode(x):
 //
 // The encode function accepts one required positional argument,
 // which it converts to JSON by cases:
-// - A Starlark value that implements Go's standard json.Marshal
-//   interface defines its own JSON encoding.
-// - None, True, and False are converted to null, true, and false, respectively.
-// - Starlark int values, no matter how large, are encoded as decimal integers.
-//   Some decoders may not be able to decode very large integers.
-// - Starlark float values are encoded using decimal point notation,
-//   even if the value is an integer.
-//   It is an error to encode a non-finite floating-point value.
-// - Starlark strings are encoded as JSON strings, using UTF-16 escapes.
-// - a Starlark IterableMapping (e.g. dict) is encoded as a JSON object.
-//   It is an error if any key is not a string.
-// - any other Starlark Iterable (e.g. list, tuple) is encoded as a JSON array.
-// - a Starlark HasAttrs (e.g. struct) is encoded as a JSON object.
+//   - A Starlark value that implements Go's standard json.Marshal
+//     interface defines its own JSON encoding.
+//   - None, True, and False are converted to null, true, and false, respectively.
+//   - Starlark int values, no matter how large, are encoded as decimal integers.
+//     Some decoders may not be able to decode very large integers.
+//   - Starlark float values are encoded using decimal point notation,
+//     even if the value is an integer.
+//     It is an error to encode a non-finite floating-point value.
+//   - Starlark strings are encoded as JSON strings, using UTF-16 escapes.
+//   - a Starlark IterableMapping (e.g. dict) is encoded as a JSON object.
+//     It is an error if any key is not a string.
+//   - any other Starlark Iterable (e.g. list, tuple) is encoded as a JSON array.
+//   - a Starlark HasAttrs (e.g. struct) is encoded as a JSON object.
+//
 // It an application-defined type matches more than one the cases describe above,
 // (e.g. it implements both Iterable and HasFields), the first case takes precedence.
 // Encoding any other value yields an error.
@@ -58,10 +59,11 @@ import (
 //
 // The decode function accepts one positional parameter, a JSON string.
 // It returns the Starlark value that the string denotes.
-// - Numbers are parsed as int or float, depending on whether they
-//   contain a decimal point.
-// - JSON objects are parsed as new unfrozen Starlark dicts.
-// - JSON arrays are parsed as new unfrozen Starlark lists.
+//   - Numbers are parsed as int or float, depending on whether they
+//     contain a decimal point.
+//   - JSON objects are parsed as new unfrozen Starlark dicts.
+//   - JSON arrays are parsed as new unfrozen Starlark lists.
+//
 // Decoding fails if x is not a valid JSON string.
 //
 // def indent(str, *, prefix="", indent="\t"):
@@ -71,7 +73,6 @@ import (
 // It accepts one required positional parameter, the JSON string,
 // and two optional keyword-only string parameters, prefix and indent,
 // that specify a prefix of each new line, and the unit of indentation.
-//
 var Module = &starlarkstruct.Module{
 	Name: "json",
 	Members: starlark.StringDict{
@@ -81,12 +82,8 @@ var Module = &starlarkstruct.Module{
 	},
 }
 
-func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
-		return nil, err
-	}
-
+// Encodes the given Starlark value as a string in JSON format.
+func EncodeJSON(x starlark.Value) (string, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -221,9 +218,21 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 
 	if err := emit(x); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+	s, err := EncodeJSON(x)
+	if err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
-	return starlark.String(buf.String()), nil
+	return starlark.String(s), nil
 }
 
 func pointer(i interface{}) unsafe.Pointer {
