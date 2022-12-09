@@ -82,7 +82,7 @@ var Module = &starlarkstruct.Module{
 }
 
 // Encodes the given Starlark value as a string in JSON format.
-func EncodeJSON(x starlark.Value) (string, error) {
+func Encode(x starlark.Value) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -217,9 +217,9 @@ func EncodeJSON(x starlark.Value) (string, error) {
 	}
 
 	if err := emit(x); err != nil {
-		return "", err
+		return nil, err
 	}
-	return buf.String(), nil
+	return buf.Bytes(), nil
 }
 
 func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -227,11 +227,11 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
-	s, err := EncodeJSON(x)
+	bytes, err := Encode(x)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
-	return starlark.String(s), nil
+	return starlark.String(string(bytes[:])), nil
 }
 
 func pointer(i interface{}) unsafe.Pointer {
@@ -291,7 +291,7 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	return starlark.String(buf.String()), nil
 }
 
-// Decodes the given JSON string into a Starlark value.
+// Decodes the given JSON-encoded string into a Starlark value.
 func Decode(s string) (_ starlark.Value, err error) {
 	// The decoder necessarily makes certain representation choices
 	// such as list vs tuple, struct vs dict, int vs float.
