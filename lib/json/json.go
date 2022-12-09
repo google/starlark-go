@@ -292,12 +292,8 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	return starlark.String(buf.String()), nil
 }
 
-func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (_ starlark.Value, err error) {
-	var s string
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
-		return nil, err
-	}
-
+// Decodes the given JSON string into a Starlark value.
+func Decode(s string) (_ starlark.Value, err error) {
 	// The decoder necessarily makes certain representation choices
 	// such as list vs tuple, struct vs dict, int vs float.
 	// In principle, we could parameterize it to allow the caller to
@@ -517,6 +513,14 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		fail("unexpected character %q after value", s[i])
 	}
 	return x, nil
+}
+
+func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (_ starlark.Value, err error) {
+	var s string
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
+		return nil, err
+	}
+	return Decode(s)
 }
 
 func isdigit(b byte) bool {
