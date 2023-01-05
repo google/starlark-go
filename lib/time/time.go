@@ -29,7 +29,7 @@ import (
 //     parse_duration(d) - Parses the given duration string. For more details, refer to
 //                         https://pkg.go.dev/time#ParseDuration.
 //
-//     parseTime(x, format, location) - Parses the given time string using a specific time format and location.
+//     parse_time(x, format, location) - Parses the given time string using a specific time format and location.
 //                                      The expected arguments are a time string (mandatory), a time format
 //                                      (optional, set to RFC3339 by default, e.g. "2021-03-22T23:20:50.52Z")
 //                                      and a name of location (optional, set to UTC by default). For more details,
