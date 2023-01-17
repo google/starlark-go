@@ -711,6 +711,21 @@ func (fn *Function) Param(i int) (string, syntax.Position) {
 	id := fn.funcode.Locals[i]
 	return id.Name, id.Pos
 }
+
+// ParamDefault returns the default value the ith optional parameter, where
+// 0 <= i < number of optional params. Returns nil for required keyword-only
+// parameters.
+func (fn *Function) ParamDefault(i int) Value {
+	if i < 0 || i >= len(fn.defaults) {
+		panic(i)
+	}
+	dflt := fn.defaults[i]
+	if _, ok := dflt.(mandatory); ok {
+		return nil
+	}
+	return dflt
+}
+
 func (fn *Function) HasVarargs() bool { return fn.funcode.HasVarargs }
 func (fn *Function) HasKwargs() bool  { return fn.funcode.HasKwargs }
 
