@@ -717,7 +717,7 @@ func (fn *Function) Param(i int) (string, syntax.Position) {
 // 0 <= i < NumParamDefaults(). Returns nil for required keyword-only
 // parameters.
 func (fn *Function) ParamDefault(i int) Value {
-	if i < 0 || i >= len(fn.defaults) {
+	if i < 0 || i >= fn.NumParamDefaults() {
 		panic(i)
 	}
 	dflt := fn.defaults[i]
