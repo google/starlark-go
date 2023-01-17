@@ -698,6 +698,7 @@ func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
+func (fn *Function) NumParamDefaults() int     { return len(fn.defaults) }
 func (fn *Function) NumKwonlyParams() int      { return fn.funcode.NumKwonlyParams }
 
 // Param returns the name and position of the ith parameter,
@@ -713,7 +714,7 @@ func (fn *Function) Param(i int) (string, syntax.Position) {
 }
 
 // ParamDefault returns the default value the ith optional parameter, where
-// 0 <= i < number of optional params. Returns nil for required keyword-only
+// 0 <= i < NumParamDefaults(). Returns nil for required keyword-only
 // parameters.
 func (fn *Function) ParamDefault(i int) Value {
 	if i < 0 || i >= len(fn.defaults) {
