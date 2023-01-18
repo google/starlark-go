@@ -13,9 +13,8 @@
 package starlarktest // import "go.starlark.net/starlarktest"
 
 import (
+	_ "embed"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -50,9 +49,11 @@ func GetReporter(thread *starlark.Thread) Reporter {
 }
 
 var (
-	once      sync.Once
-	assert    starlark.StringDict
-	assertErr error
+	once   sync.Once
+	assert starlark.StringDict
+	//go:embed assert.star
+	assertFileSrc string
+	assertErr     error
 )
 
 // LoadAssertModule loads the assert module.
@@ -66,10 +67,8 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"module":  starlark.NewBuiltin("module", starlarkstruct.MakeModule),
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
-		// TODO(adonovan): embed the file using embed.FS when we can rely on go1.16,
-		// and make the apparent filename reference that file.
 		thread := new(starlark.Thread)
-		assert, assertErr = starlark.ExecFile(thread, "builtins/assert.star", assertStar, predeclared)
+		assert, assertErr = starlark.ExecFile(thread, "assert.star", assertFileSrc, predeclared)
 	})
 	return assert, assertErr
 }
@@ -128,22 +127,4 @@ func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	}
 	args[0].Freeze()
 	return args[0], nil
-}
-
-// DataFile returns the effective filename of the specified
-// test data resource.  The function abstracts differences between
-// 'go build', under which a test runs in its package directory,
-// and Blaze, under which a test runs in the root of the tree.
-var DataFile = func(pkgdir, filename string) string {
-	// Check if we're being run by Bazel and change directories if so.
-	// TEST_SRCDIR and TEST_WORKSPACE are set by the Bazel test runner, so that makes a decent check
-	testSrcdir := os.Getenv("TEST_SRCDIR")
-	testWorkspace := os.Getenv("TEST_WORKSPACE")
-	if testSrcdir != "" && testWorkspace != "" {
-		return filepath.Join(testSrcdir, "net_starlark_go", pkgdir, filename)
-	}
-
-	// Under go test, ignore pkgdir, which is the directory of the
-	// current package relative to the module root.
-	return filename
 }
