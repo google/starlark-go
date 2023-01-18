@@ -13,6 +13,7 @@
 package starlarktest // import "go.starlark.net/starlarktest"
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,9 +51,11 @@ func GetReporter(thread *starlark.Thread) Reporter {
 }
 
 var (
-	once      sync.Once
-	assert    starlark.StringDict
-	assertErr error
+	once   sync.Once
+	assert starlark.StringDict
+	//go:embed assert.star
+	assertFileSrc string
+	assertErr     error
 )
 
 // LoadAssertModule loads the assert module.
@@ -66,10 +69,8 @@ func LoadAssertModule() (starlark.StringDict, error) {
 			"module":  starlark.NewBuiltin("module", starlarkstruct.MakeModule),
 			"_freeze": starlark.NewBuiltin("freeze", freeze),
 		}
-		// TODO(adonovan): embed the file using embed.FS when we can rely on go1.16,
-		// and make the apparent filename reference that file.
 		thread := new(starlark.Thread)
-		assert, assertErr = starlark.ExecFile(thread, "builtins/assert.star", assertStar, predeclared)
+		assert, assertErr = starlark.ExecFile(thread, "assert.star", assertFileSrc, predeclared)
 	})
 	return assert, assertErr
 }
