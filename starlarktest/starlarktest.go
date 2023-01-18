@@ -15,6 +15,8 @@ package starlarktest // import "go.starlark.net/starlarktest"
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -127,4 +129,22 @@ func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	}
 	args[0].Freeze()
 	return args[0], nil
+}
+
+// DataFile returns the effective filename of the specified
+// test data resource.  The function abstracts differences between
+// 'go build', under which a test runs in its package directory,
+// and Blaze, under which a test runs in the root of the tree.
+var DataFile = func(pkgdir, filename string) string {
+	// Check if we're being run by Bazel and change directories if so.
+	// TEST_SRCDIR and TEST_WORKSPACE are set by the Bazel test runner, so that makes a decent check
+	testSrcdir := os.Getenv("TEST_SRCDIR")
+	testWorkspace := os.Getenv("TEST_WORKSPACE")
+	if testSrcdir != "" && testWorkspace != "" {
+		return filepath.Join(testSrcdir, "net_starlark_go", pkgdir, filename)
+	}
+
+	// Under go test, ignore pkgdir, which is the directory of the
+	// current package relative to the module root.
+	return filename
 }
