@@ -110,7 +110,9 @@ func TestImmutabilityBigInt(t *testing.T) {
 // TestIntFallback creates a small Int value in a child process with
 // limited address space to ensure that it still works, but prints a warning.
 func TestIntFallback(t *testing.T) {
-	if runtime.GOOS != "linux" {
+
+	if (runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" && runtime.GOARCH != "mips64x" && runtime.GOARCH != "ppc64x" && runtime.GOARCH != "loong64") ||
+		(runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "dragonfly" && runtime.GOOS != "freebsd" && runtime.GOOS != "netbsd" && runtime.GOOS != "solaris") {
 		t.Skipf("test disabled on this platform (requires ulimit -v)")
 	}
 	exe, err := os.Executable()
