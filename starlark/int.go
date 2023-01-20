@@ -15,9 +15,57 @@ import (
 )
 
 // Int is the type of a Starlark int.
-//
-// The zero value is not a legal value; use MakeInt(0).
-type Int struct{ impl intImpl }
+type Int interface {
+	Value
+
+	// Private part
+	finiteFloat() (Float, error)
+	rational() *big.Rat
+
+	CompareSameType(op syntax.Token, y Value, depth int) (bool, error)
+
+	// Int64 returns the value as an int64.
+	// If it is not exactly representable the result is undefined and ok is false.
+	Int64() (int64, bool)
+
+	// BigInt returns a new big.Int with the same value as the Int.
+	BigInt() *big.Int
+
+	// bigInt returns the value as a big.Int.
+	// It differs from BigInt in that this method returns the actual
+	// reference and any modification will change the state of i.
+	bigInt() *big.Int
+
+	// Uint64 returns the value as a uint64.
+	// If it is not exactly representable the result is undefined and ok is false.
+	Uint64() (uint64, bool)
+
+	Float() Float
+	Format(s fmt.State, ch rune)
+	Not() Int
+	Sign() int
+	Add(y Int) Int
+	Sub(y Int) Int
+	Mul(y Int) Int
+	Or(y Int) Int
+	Xor(y Int) Int
+	And(y Int) Int
+	Lsh(y uint) Int
+	Rsh(y uint) Int
+	// Precondition: y is nonzero.
+	Div(y Int) Int
+
+	// Precondition: y is nonzero.
+	Mod(y Int) Int
+
+	// Unary implements the operations +int, -int, and ~int.
+	Unary(op syntax.Token) (Value, error)
+}
+
+var (
+	_ HasUnary   = Int(nil)
+	_ Comparable = Int(nil)
+)
 
 // --- high-level accessors ---
 
@@ -61,73 +109,7 @@ func isSmall(x *big.Int) bool {
 var (
 	zero, one = makeSmallInt(0), makeSmallInt(1)
 	oneBig    = big.NewInt(1)
-
-	_ HasUnary = Int{}
 )
-
-// Unary implements the operations +int, -int, and ~int.
-func (i Int) Unary(op syntax.Token) (Value, error) {
-	switch op {
-	case syntax.MINUS:
-		return zero.Sub(i), nil
-	case syntax.PLUS:
-		return i, nil
-	case syntax.TILDE:
-		return i.Not(), nil
-	}
-	return nil, nil
-}
-
-// Int64 returns the value as an int64.
-// If it is not exactly representable the result is undefined and ok is false.
-func (i Int) Int64() (_ int64, ok bool) {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		x, acc := bigintToInt64(iBig)
-		if acc != big.Exact {
-			return // inexact
-		}
-		return x, true
-	}
-	return iSmall, true
-}
-
-// BigInt returns a new big.Int with the same value as the Int.
-func (i Int) BigInt() *big.Int {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		return new(big.Int).Set(iBig)
-	}
-	return big.NewInt(iSmall)
-}
-
-// bigInt returns the value as a big.Int.
-// It differs from BigInt in that this method returns the actual
-// reference and any modification will change the state of i.
-func (i Int) bigInt() *big.Int {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		return iBig
-	}
-	return big.NewInt(iSmall)
-}
-
-// Uint64 returns the value as a uint64.
-// If it is not exactly representable the result is undefined and ok is false.
-func (i Int) Uint64() (_ uint64, ok bool) {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		x, acc := bigintToUint64(iBig)
-		if acc != big.Exact {
-			return // inexact
-		}
-		return x, true
-	}
-	if iSmall < 0 {
-		return // inexact
-	}
-	return uint64(iSmall), true
-}
 
 // The math/big API should provide this function.
 func bigintToInt64(i *big.Int) (int64, big.Accuracy) {
@@ -162,196 +144,13 @@ var (
 	maxint64 = new(big.Int).SetInt64(math.MaxInt64)
 )
 
-func (i Int) Format(s fmt.State, ch rune) {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		iBig.Format(s, ch)
-		return
-	}
-	big.NewInt(iSmall).Format(s, ch)
-}
-func (i Int) String() string {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		return iBig.Text(10)
-	}
-	return strconv.FormatInt(iSmall, 10)
-}
-func (i Int) Type() string { return "int" }
-func (i Int) Freeze()      {} // immutable
-func (i Int) Truth() Bool  { return i.Sign() != 0 }
-func (i Int) Hash() (uint32, error) {
-	iSmall, iBig := i.get()
-	var lo big.Word
-	if iBig != nil {
-		lo = iBig.Bits()[0]
-	} else {
-		lo = big.Word(iSmall)
-	}
-	return 12582917 * uint32(lo+3), nil
-}
-func (x Int) CompareSameType(op syntax.Token, v Value, depth int) (bool, error) {
-	y := v.(Int)
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return threeway(op, x.bigInt().Cmp(y.bigInt())), nil
-	}
-	return threeway(op, signum64(xSmall-ySmall)), nil
-}
-
-// Float returns the float value nearest i.
-func (i Int) Float() Float {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		// Fast path for hardware int-to-float conversions.
-		if iBig.IsUint64() {
-			return Float(iBig.Uint64())
-		} else if iBig.IsInt64() {
-			return Float(iBig.Int64())
-		}
-
-		f, _ := new(big.Float).SetInt(iBig).Float64()
-		return Float(f)
-	}
-	return Float(iSmall)
-}
-
-// finiteFloat returns the finite float value nearest i,
-// or an error if the magnitude is too large.
-func (i Int) finiteFloat() (Float, error) {
-	f := i.Float()
-	if math.IsInf(float64(f), 0) {
-		return 0, fmt.Errorf("int too large to convert to float")
-	}
-	return f, nil
-}
-
-func (x Int) Sign() int {
-	xSmall, xBig := x.get()
-	if xBig != nil {
-		return xBig.Sign()
-	}
-	return signum64(xSmall)
-}
-
-func (x Int) Add(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Add(x.bigInt(), y.bigInt()))
-	}
-	return MakeInt64(xSmall + ySmall)
-}
-func (x Int) Sub(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Sub(x.bigInt(), y.bigInt()))
-	}
-	return MakeInt64(xSmall - ySmall)
-}
-func (x Int) Mul(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Mul(x.bigInt(), y.bigInt()))
-	}
-	return MakeInt64(xSmall * ySmall)
-}
-func (x Int) Or(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Or(x.bigInt(), y.bigInt()))
-	}
-	return makeSmallInt(xSmall | ySmall)
-}
-func (x Int) And(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).And(x.bigInt(), y.bigInt()))
-	}
-	return makeSmallInt(xSmall & ySmall)
-}
-func (x Int) Xor(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Xor(x.bigInt(), y.bigInt()))
-	}
-	return makeSmallInt(xSmall ^ ySmall)
-}
-func (x Int) Not() Int {
-	xSmall, xBig := x.get()
-	if xBig != nil {
-		return MakeBigInt(new(big.Int).Not(xBig))
-	}
-	return makeSmallInt(^xSmall)
-}
-func (x Int) Lsh(y uint) Int { return MakeBigInt(new(big.Int).Lsh(x.bigInt(), y)) }
-func (x Int) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh(x.bigInt(), y)) }
-
-// Precondition: y is nonzero.
-func (x Int) Div(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	// http://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
-	if xBig != nil || yBig != nil {
-		xb, yb := x.bigInt(), y.bigInt()
-
-		var quo, rem big.Int
-		quo.QuoRem(xb, yb, &rem)
-		if (xb.Sign() < 0) != (yb.Sign() < 0) && rem.Sign() != 0 {
-			quo.Sub(&quo, oneBig)
-		}
-		return MakeBigInt(&quo)
-	}
-	quo := xSmall / ySmall
-	rem := xSmall % ySmall
-	if (xSmall < 0) != (ySmall < 0) && rem != 0 {
-		quo -= 1
-	}
-	return MakeInt64(quo)
-}
-
-// Precondition: y is nonzero.
-func (x Int) Mod(y Int) Int {
-	xSmall, xBig := x.get()
-	ySmall, yBig := y.get()
-	if xBig != nil || yBig != nil {
-		xb, yb := x.bigInt(), y.bigInt()
-
-		var quo, rem big.Int
-		quo.QuoRem(xb, yb, &rem)
-		if (xb.Sign() < 0) != (yb.Sign() < 0) && rem.Sign() != 0 {
-			rem.Add(&rem, yb)
-		}
-		return MakeBigInt(&rem)
-	}
-	rem := xSmall % ySmall
-	if (xSmall < 0) != (ySmall < 0) && rem != 0 {
-		rem += ySmall
-	}
-	return makeSmallInt(rem)
-}
-
-func (i Int) rational() *big.Rat {
-	iSmall, iBig := i.get()
-	if iBig != nil {
-		return new(big.Rat).SetInt(iBig)
-	}
-	return new(big.Rat).SetInt64(iSmall)
-}
-
 // AsInt32 returns the value of x if is representable as an int32.
 func AsInt32(x Value) (int, error) {
 	i, ok := x.(Int)
 	if !ok {
 		return 0, fmt.Errorf("got %s, want int", x.Type())
 	}
-	iSmall, iBig := i.get()
+	iSmall, iBig := int_get(i)
 	if iBig != nil {
 		return 0, fmt.Errorf("%s out of range", i)
 	}
@@ -447,4 +246,297 @@ func finiteFloatToInt(f Float) Int {
 		panic(f) // non-finite
 	}
 	return MakeBigInt(new(big.Int).Div(rat.Num(), rat.Denom()))
+}
+
+func int_hash(lo big.Word) (uint32, error) { return 12582917 * uint32(lo+3), nil }
+
+func int_compare_big(x, y *big.Int, op syntax.Token) (bool, error) {
+	return threeway(op, x.Cmp(y)), nil
+}
+
+func int_compare_small(x, y int64, op syntax.Token) (bool, error) {
+	return threeway(op, signum64(x-y)), nil
+}
+
+// Precondition: y is nonzero.
+func int_div_small(x, y int64) Int {
+	quo := x / y
+	rem := x % y
+	if (x < 0) != (y < 0) && rem != 0 {
+		quo -= 1
+	}
+	return MakeInt64(quo)
+}
+
+func int_div_big(xb, yb *big.Int) Int {
+	var quo, rem big.Int
+	quo.QuoRem(xb, yb, &rem)
+	if (xb.Sign() < 0) != (yb.Sign() < 0) && rem.Sign() != 0 {
+		quo.Sub(&quo, oneBig)
+	}
+	return MakeBigInt(&quo)
+}
+
+// Precondition: y is nonzero.
+func int_mod_small(x, y int64) Int {
+	rem := x % y
+	if (x < 0) != (y < 0) && rem != 0 {
+		rem += y
+	}
+	return makeSmallInt(rem)
+}
+
+func int_mod_big(xb, yb *big.Int) Int {
+	var quo, rem big.Int
+	quo.QuoRem(xb, yb, &rem)
+	if (xb.Sign() < 0) != (yb.Sign() < 0) && rem.Sign() != 0 {
+		rem.Add(&rem, yb)
+	}
+	return MakeBigInt(&rem)
+}
+
+type intBig big.Int
+
+var _ Int = &intBig{}
+
+func (*intBig) Freeze()      {}
+func (*intBig) Type() string { return "int" }
+
+// Value interface
+func (x *intBig) String() string        { return (*big.Int)(x).Text(10) }
+func (x *intBig) Truth() Bool           { return true }
+func (x *intBig) Hash() (uint32, error) { return int_hash((*big.Int)(x).Bits()[0]) }
+
+// Unary
+func (x *intBig) BigInt() *big.Int { return new(big.Int).Set((*big.Int)(x)) }
+
+func (x *intBig) Unary(op syntax.Token) (Value, error) {
+	switch op {
+	case syntax.MINUS:
+		return zero.Sub(x), nil
+	case syntax.PLUS:
+		return x, nil
+	case syntax.TILDE:
+		return x.Not(), nil
+	}
+	return nil, nil
+}
+
+func (x *intBig) Int64() (_ int64, ok bool) {
+	i, acc := bigintToInt64((*big.Int)(x))
+	if acc != big.Exact {
+		return // inexact
+	}
+	return i, true
+}
+
+func (x *intBig) Uint64() (_ uint64, ok bool) {
+	i, acc := bigintToUint64((*big.Int)(x))
+	if acc != big.Exact {
+		return // inexact
+	}
+	return i, true
+}
+
+func (x *intBig) Float() Float {
+	f, _ := new(big.Float).SetInt((*big.Int)(x)).Float64()
+	return Float(f)
+}
+
+func (x *intBig) Format(s fmt.State, ch rune) {
+	(*big.Int)(x).Format(s, ch)
+}
+
+func (x *intBig) Not() Int {
+	return makeBigInt(new(big.Int).Not((*big.Int)(x)))
+}
+
+func (x *intBig) bigInt() *big.Int {
+	return (*big.Int)(x)
+}
+
+// Binary
+func (x *intBig) Add(y Int) Int  { return MakeBigInt(new(big.Int).Add(x.bigInt(), y.bigInt())) }
+func (x *intBig) And(y Int) Int  { return MakeBigInt(new(big.Int).And(x.bigInt(), y.bigInt())) }
+func (x *intBig) Div(y Int) Int  { return int_div_big((*big.Int)(x), y.bigInt()) }
+func (x *intBig) Mod(y Int) Int  { return int_mod_big((*big.Int)(x), y.bigInt()) }
+func (x *intBig) Mul(y Int) Int  { return MakeBigInt(new(big.Int).Mul(x.bigInt(), y.bigInt())) }
+func (x *intBig) Or(y Int) Int   { return MakeBigInt(new(big.Int).Or(x.bigInt(), y.bigInt())) }
+func (x *intBig) Sign() int      { return (*big.Int)(x).Sign() }
+func (x *intBig) Sub(y Int) Int  { return MakeBigInt(new(big.Int).Sub(x.bigInt(), y.bigInt())) }
+func (x *intBig) Xor(y Int) Int  { return MakeBigInt(new(big.Int).Xor(x.bigInt(), y.bigInt())) }
+func (x *intBig) Lsh(y uint) Int { return makeBigInt(new(big.Int).Lsh((*big.Int)(x), y)) }
+func (x *intBig) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh((*big.Int)(x), y)) }
+
+func (x *intBig) CompareSameType(op syntax.Token, y Value, depth int) (bool, error) {
+	return int_compare_big(x.bigInt(), y.(Int).bigInt(), op)
+}
+
+func (x *intBig) finiteFloat() (Float, error) {
+	f := x.Float()
+	if math.IsInf(float64(f), 0) {
+		return 0, fmt.Errorf("int too large to convert to float")
+	}
+	return f, nil
+}
+
+func (x *intBig) rational() *big.Rat {
+	return new(big.Rat).SetInt((*big.Int)(x))
+}
+
+type intSmall int64
+
+var _ Int = intSmall(0)
+
+func (intSmall) Freeze()      {}
+func (intSmall) Type() string { return "int" }
+
+func (x intSmall) Hash() (uint32, error) {
+	return int_hash(big.Word(x))
+}
+
+func (x intSmall) String() string {
+	return strconv.FormatInt(int64(x), 10)
+}
+
+func (x intSmall) Truth() Bool {
+	return x != 0
+}
+
+func (x intSmall) Unary(op syntax.Token) (Value, error) {
+	switch op {
+	case syntax.MINUS:
+		return -x, nil
+	case syntax.PLUS:
+		return x, nil
+	case syntax.TILDE:
+		return ^x, nil
+	}
+	return nil, nil
+}
+
+func (x intSmall) CompareSameType(op syntax.Token, y Value, depth int) (bool, error) {
+	ySmall, yBig := int_get(y.(Int))
+	if yBig != nil {
+		return int_compare_big(x.bigInt(), yBig, op)
+	}
+
+	return int_compare_small(int64(x), ySmall, op)
+}
+
+func (x intSmall) And(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).And(x.bigInt(), yBig))
+	}
+	return makeSmallInt(int64(x) & ySmall)
+}
+
+func (x intSmall) BigInt() *big.Int { return x.bigInt() }
+
+func (x intSmall) Add(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).Add(x.bigInt(), yBig))
+	}
+
+	return MakeInt64(int64(x) + ySmall)
+}
+
+func (x intSmall) Div(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return int_div_big(x.bigInt(), yBig)
+	}
+
+	return int_div_small(int64(x), ySmall)
+}
+
+func (x intSmall) Format(s fmt.State, ch rune) {
+	big.NewInt(int64(x)).Format(s, ch)
+}
+
+func (x intSmall) Int64() (int64, bool) {
+	return int64(x), true
+}
+
+func (x intSmall) Uint64() (_ uint64, ok bool) {
+	if x < 0 {
+		return // inexact
+	} else {
+		return uint64(x), true
+	}
+}
+
+func (x intSmall) Float() Float {
+	return Float(x)
+}
+
+func (x intSmall) Lsh(y uint) Int {
+	return MakeBigInt(new(big.Int).Lsh(x.bigInt(), y))
+}
+
+func (x intSmall) Mod(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return int_mod_big(x.bigInt(), yBig)
+	}
+
+	return int_mod_small(int64(x), ySmall)
+}
+
+func (x intSmall) Mul(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).Mul(x.bigInt(), yBig))
+	}
+	return MakeInt64(int64(x) * ySmall)
+}
+
+func (x intSmall) Not() Int { return ^x }
+
+func (x intSmall) Or(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).Or(x.bigInt(), yBig))
+	}
+	return makeSmallInt(int64(x) | ySmall)
+}
+
+func (x intSmall) Xor(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).Xor(x.bigInt(), yBig))
+	}
+
+	return makeSmallInt(int64(x) ^ ySmall)
+}
+
+func (x intSmall) Rsh(y uint) Int {
+	return x >> y
+}
+
+func (x intSmall) Sign() int {
+	return signum64(int64(x))
+}
+
+func (x intSmall) Sub(y Int) Int {
+	ySmall, yBig := int_get(y)
+	if yBig != nil {
+		return MakeBigInt(new(big.Int).Sub(x.bigInt(), y.bigInt()))
+	}
+	return MakeInt64(int64(x) - ySmall)
+}
+
+func (x intSmall) bigInt() *big.Int {
+	return big.NewInt(int64(x))
+}
+
+func (x intSmall) finiteFloat() (Float, error) {
+	// FIXME check if right
+	return x.Float(), nil
+}
+
+func (x intSmall) rational() *big.Rat {
+	return new(big.Rat).SetInt64(int64(x))
 }

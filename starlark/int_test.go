@@ -62,7 +62,7 @@ func TestIntOpts(t *testing.T) {
 		if got := fmt.Sprintf("%x", test.val); got != test.want {
 			t.Errorf("%d equals %s, want %s", i, got, test.want)
 		}
-		small, big := test.val.get()
+		small, big := int_get(test.val)
 		if small < math.MinInt32 || math.MaxInt32 < small {
 			t.Errorf("expected big, %d %s", i, test.val)
 		}
@@ -110,11 +110,14 @@ func TestImmutabilityBigInt(t *testing.T) {
 // TestIntFallback creates a small Int value in a child process with
 // limited address space to ensure that it still works, but prints a warning.
 func TestIntFallback(t *testing.T) {
+	if !hasPosixInts {
+		t.Skipf("test disabled on this target")
+	}
 
-	if (runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" && runtime.GOARCH != "mips64x" && runtime.GOARCH != "ppc64x" && runtime.GOARCH != "loong64") ||
-		(runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "dragonfly" && runtime.GOOS != "freebsd" && runtime.GOOS != "netbsd" && runtime.GOOS != "solaris") {
+	if runtime.GOOS != "linux" {
 		t.Skipf("test disabled on this platform (requires ulimit -v)")
 	}
+
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatalf("can't find file name of executable: %v", err)

@@ -133,7 +133,6 @@ type Comparable interface {
 }
 
 var (
-	_ Comparable = Int{}
 	_ Comparable = False
 	_ Comparable = Float(0)
 	_ Comparable = String("")
