@@ -31,10 +31,10 @@ func TestProfile(t *testing.T) {
 
 	const src = `
 def fibonacci(n):
-	res = list(range(n))
-	for i in res[2:]:
-		res[i] = res[i-2] + res[i-1]
-	return res
+	x, y = 1, 1
+	for i in range(n):
+		x, y = y, x+y
+	return y
 
 fibonacci(100000)
 `
