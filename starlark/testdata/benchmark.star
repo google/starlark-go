@@ -1,4 +1,5 @@
 # Benchmarks of Starlark execution
+# option:set
 
 def bench_range_construction(b):
     for _ in range(b.n):
@@ -67,6 +68,14 @@ def bench_dict_equal(b):
     "Benchmark of dict equality operation."
     for _ in range(b.n):
         if largedict != largedict:
+            fail("invalid comparison")
+
+largeset = set([v for v in range(1000)])
+
+def bench_set_equal(b):
+    "Benchmark of set union operation."
+    for _ in range(b.n):
+        if largeset != largeset:
             fail("invalid comparison")
 
 flat = { "int": 1, "float": 0.2, "string": "string", "list": [], "bool": True, "nil": None, "tuple": (1, 2, 3) }

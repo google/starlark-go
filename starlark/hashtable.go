@@ -66,16 +66,9 @@ func (ht *hashtable) init(size int) {
 func (ht *hashtable) freeze() {
 	if !ht.frozen {
 		ht.frozen = true
-		for i := range ht.table {
-			for p := &ht.table[i]; p != nil; p = p.next {
-				for i := range p.entries {
-					e := &p.entries[i]
-					if e.hash != 0 {
-						e.key.Freeze()
-						e.value.Freeze()
-					}
-				}
-			}
+		for e := ht.head; e != nil; e = e.next {
+			e.key.Freeze()
+			e.value.Freeze()
 		}
 	}
 }

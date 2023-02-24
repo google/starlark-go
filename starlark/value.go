@@ -7,35 +7,35 @@
 // Starlark values are represented by the Value interface.
 // The following built-in Value types are known to the evaluator:
 //
-//      NoneType        -- NoneType
-//      Bool            -- bool
-//      Bytes           -- bytes
-//      Int             -- int
-//      Float           -- float
-//      String          -- string
-//      *List           -- list
-//      Tuple           -- tuple
-//      *Dict           -- dict
-//      *Set            -- set
-//      *Function       -- function (implemented in Starlark)
-//      *Builtin        -- builtin_function_or_method (function or method implemented in Go)
+//	NoneType        -- NoneType
+//	Bool            -- bool
+//	Bytes           -- bytes
+//	Int             -- int
+//	Float           -- float
+//	String          -- string
+//	*List           -- list
+//	Tuple           -- tuple
+//	*Dict           -- dict
+//	*Set            -- set
+//	*Function       -- function (implemented in Starlark)
+//	*Builtin        -- builtin_function_or_method (function or method implemented in Go)
 //
 // Client applications may define new data types that satisfy at least
 // the Value interface.  Such types may provide additional operations by
 // implementing any of these optional interfaces:
 //
-//      Callable        -- value is callable like a function
-//      Comparable      -- value defines its own comparison operations
-//      Iterable        -- value is iterable using 'for' loops
-//      Sequence        -- value is iterable sequence of known length
-//      Indexable       -- value is sequence with efficient random access
-//      Mapping         -- value maps from keys to values, like a dictionary
-//      HasBinary       -- value defines binary operations such as * and +
-//      HasAttrs        -- value has readable fields or methods x.f
-//      HasSetField     -- value has settable fields x.f
-//      HasSetIndex     -- value supports element update using x[i]=y
-//      HasSetKey       -- value supports map update using x[k]=v
-//      HasUnary        -- value defines unary operations such as + and -
+//	Callable        -- value is callable like a function
+//	Comparable      -- value defines its own comparison operations
+//	Iterable        -- value is iterable using 'for' loops
+//	Sequence        -- value is iterable sequence of known length
+//	Indexable       -- value is sequence with efficient random access
+//	Mapping         -- value maps from keys to values, like a dictionary
+//	HasBinary       -- value defines binary operations such as * and +
+//	HasAttrs        -- value has readable fields or methods x.f
+//	HasSetField     -- value has settable fields x.f
+//	HasSetIndex     -- value supports element update using x[i]=y
+//	HasSetKey       -- value supports map update using x[k]=v
+//	HasUnary        -- value defines unary operations such as + and -
 //
 // Client applications may also define domain-specific functions in Go
 // and make them available to Starlark programs.  Use NewBuiltin to
@@ -63,7 +63,6 @@
 // through Starlark code and into callbacks.  When evaluation fails it
 // returns an EvalError from which the application may obtain a
 // backtrace of active Starlark calls.
-//
 package starlark // import "go.starlark.net/starlark"
 
 // This file defines the data types of Starlark and their basic operations.
@@ -229,13 +228,12 @@ var (
 //
 // Example usage:
 //
-// 	iter := iterable.Iterator()
+//	iter := iterable.Iterator()
 //	defer iter.Done()
 //	var x Value
 //	for iter.Next(&x) {
 //		...
 //	}
-//
 type Iterator interface {
 	// If the iterator is exhausted, Next returns false.
 	// Otherwise it sets *p to the current element of the sequence,
@@ -276,7 +274,7 @@ type HasSetKey interface {
 var _ HasSetKey = (*Dict)(nil)
 
 // A HasBinary value may be used as either operand of these binary operators:
-//     +   -   *   /   //   %   in   not in   |   &   ^   <<   >>
+// +   -   *   /   //   %   in   not in   |   &   ^   <<   >>
 //
 // The Side argument indicates whether the receiver is the left or right operand.
 //
@@ -296,7 +294,7 @@ const (
 )
 
 // A HasUnary value may be used as the operand of these unary operators:
-//     +   -   ~
+// +   -   ~
 //
 // An implementation may decline to handle an operation by returning (nil, nil).
 // For this reason, clients should always call the standalone Unary(op, x)
@@ -782,13 +780,12 @@ func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kw
 // In the example below, the value of f is the string.index
 // built-in method bound to the receiver value "abc":
 //
-//     f = "abc".index; f("a"); f("b")
+//	f = "abc".index; f("a"); f("b")
 //
 // In the common case, the receiver is bound only during the call,
 // but this still results in the creation of a temporary method closure:
 //
-//     "abc".index("a")
-//
+//	"abc".index("a")
 func (b *Builtin) BindReceiver(recv Value) *Builtin {
 	return &Builtin{name: b.name, fn: b.fn, recv: recv}
 }
@@ -1093,7 +1090,6 @@ func (s *Set) Len() int                               { return int(s.ht.len) }
 func (s *Set) Iterate() Iterator                      { return s.ht.iterate() }
 func (s *Set) String() string                         { return toString(s) }
 func (s *Set) Type() string                           { return "set" }
-func (s *Set) elems() []Value                         { return s.ht.keys() }
 func (s *Set) Freeze()                                { s.ht.freeze() }
 func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
@@ -1119,8 +1115,8 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 	if x.Len() != y.Len() {
 		return false, nil
 	}
-	for _, elem := range x.elems() {
-		if found, _ := y.Has(elem); !found {
+	for e := x.ht.head; e != nil; e = e.next {
+		if found, _ := y.Has(e.key); !found {
 			return false, nil
 		}
 	}
@@ -1129,8 +1125,8 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 
 func (s *Set) Union(iter Iterator) (Value, error) {
 	set := new(Set)
-	for _, elem := range s.elems() {
-		set.Insert(elem) // can't fail
+	for e := s.ht.head; e != nil; e = e.next {
+		set.Insert(e.key) // can't fail
 	}
 	var x Value
 	for iter.Next(&x) {
@@ -1234,11 +1230,11 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 
 	case *Set:
 		out.WriteString("set([")
-		for i, elem := range x.elems() {
-			if i > 0 {
+		for e := x.ht.head; e != nil; e = e.next {
+			if e != x.ht.head {
 				out.WriteString(", ")
 			}
-			writeValue(out, elem, path)
+			writeValue(out, e.key, path)
 		}
 		out.WriteString("])")
 
