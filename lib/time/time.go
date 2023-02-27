@@ -211,7 +211,7 @@ func (d Duration) AttrNames() []string {
 
 // CompareSameType implements comparison of two Duration values. required by
 // starlark.Comparable interface.
-func (d Duration) ThreeWayCompareSameType(v starlark.Value, depth int) (int, error) {
+func (d Duration) Cmp(v starlark.Value, depth int) (int, error) {
 	if x, y := d, v.(Duration); x < y {
 		return -1, nil
 	} else if x > y {
@@ -393,7 +393,7 @@ func (t Time) AttrNames() []string {
 
 // CompareSameType implements comparison of two Time values. required by
 // starlark.Comparable interface.
-func (t Time) ThreeWayCompareSameType(yV starlark.Value, depth int) (int, error) {
+func (t Time) Cmp(yV starlark.Value, depth int) (int, error) {
 	x := time.Time(t)
 	y := time.Time(yV.(Time))
 	if x.Before(y) {

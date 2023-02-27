@@ -131,14 +131,19 @@ type Comparable interface {
 	CompareSameType(op syntax.Token, y Value, depth int) (bool, error)
 }
 
-// Alternate, simplified comparison interface
-type ThreeWayComparable interface {
+// A TotallyOrdered is a type whose values form a total order:
+// if x and y are of the same TotallyOrdered type, then x must be less than y,
+// greater than y, or equal to y.
+//
+// It is simpler than Comparable and should be preferred in new code,
+// but if a type implements both interfaces, Comparable takes precedence.
+type TotallyOrdered interface {
 	Value
-	// ThreeWayCompareSameType compares one value to another of the same orderable
-	// Type() and returns a three-way comparison value (-1, 0, 1)
+	// Cmp compares two values x and y of the same totally ordered type.
+	// It returns negative if x < y, positive if x > y, and zero if the values are equal.
 	//
 	// Implementations that recursively compare subcomponents of
-	// the value should use the CompareDepth function, not Compare, to
+	// the value should use the CompareDepth function, not Cmp, to
 	// avoid infinite recursion on cyclic structures.
 	//
 	// The depth parameter is used to bound comparisons of cyclic
@@ -149,18 +154,18 @@ type ThreeWayComparable interface {
 	// Client code should not call this method.  Instead, use the
 	// standalone Compare or Equals functions, which are defined for
 	// all pairs of operands.
-	ThreeWayCompareSameType(y Value, depth int) (int, error)
+	Cmp(y Value, depth int) (int, error)
 }
 
 var (
-	_ ThreeWayComparable = Int{}
-	_ Comparable         = False
-	_ Comparable         = Float(0)
-	_ Comparable         = String("")
-	_ Comparable         = (*Dict)(nil)
-	_ Comparable         = (*List)(nil)
-	_ Comparable         = Tuple(nil)
-	_ Comparable         = (*Set)(nil)
+	_ TotallyOrdered = Int{}
+	_ TotallyOrdered = Float(0)
+	_ Comparable     = False
+	_ Comparable     = String("")
+	_ Comparable     = (*Dict)(nil)
+	_ Comparable     = (*List)(nil)
+	_ Comparable     = Tuple(nil)
+	_ Comparable     = (*Set)(nil)
 )
 
 // A Callable value f may be the operand of a function call, f(x).
@@ -460,9 +465,9 @@ func isFinite(f float64) bool {
 	return math.Abs(f) <= math.MaxFloat64
 }
 
-func (x Float) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (x Float) Cmp(y_ Value, depth int) (int, error) {
 	y := y_.(Float)
-	return threeway(op, floatCmp(x, y)), nil
+	return floatCmp(x, y), nil
 }
 
 // floatCmp performs a three-valued comparison on floats,
@@ -1320,8 +1325,8 @@ func CompareDepth(op syntax.Token, x, y Value, depth int) (bool, error) {
 			return xcomp.CompareSameType(op, y, depth)
 		}
 
-		if xcomp, ok := x.(ThreeWayComparable); ok {
-			t, err := xcomp.ThreeWayCompareSameType(y, depth)
+		if xcomp, ok := x.(TotallyOrdered); ok {
+			t, err := xcomp.Cmp(y, depth)
 			if err != nil {
 				return false, err
 			}
