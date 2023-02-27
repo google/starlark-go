@@ -134,10 +134,8 @@ type Comparable interface {
 // Alternate, simplified comparison interface
 type ThreeWayComparable interface {
 	Value
-	// CompareSameType compares one value to another of the same Type()
-	// and returns a three-way comparison value (-1, 0, 1)
-	// CompareSameType returns an error if an ordered comparison was
-	// requested for a type that does not support it.
+	// ThreeWayCompareSameType compares one value to another of the same orderable
+	// Type() and returns a three-way comparison value (-1, 0, 1)
 	//
 	// Implementations that recursively compare subcomponents of
 	// the value should use the CompareDepth function, not Compare, to
@@ -151,7 +149,7 @@ type ThreeWayComparable interface {
 	// Client code should not call this method.  Instead, use the
 	// standalone Compare or Equals functions, which are defined for
 	// all pairs of operands.
-	CompareSameType(y Value, depth int) (int, error)
+	ThreeWayCompareSameType(y Value, depth int) (int, error)
 }
 
 var (
@@ -1318,13 +1316,12 @@ func CompareDepth(op syntax.Token, x, y Value, depth int) (bool, error) {
 		return false, fmt.Errorf("comparison exceeded maximum recursion depth")
 	}
 	if sameType(x, y) {
-
 		if xcomp, ok := x.(Comparable); ok {
 			return xcomp.CompareSameType(op, y, depth)
 		}
 
 		if xcomp, ok := x.(ThreeWayComparable); ok {
-			t, err := xcomp.CompareSameType(y, depth)
+			t, err := xcomp.ThreeWayCompareSameType(y, depth)
 			if err != nil {
 				return false, err
 			}

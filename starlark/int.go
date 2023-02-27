@@ -191,7 +191,7 @@ func (i Int) Hash() (uint32, error) {
 	return 12582917 * uint32(lo+3), nil
 }
 
-func (x Int) CompareSameType(v Value, depth int) (int, error) {
+func (x Int) ThreeWayCompareSameType(v Value, depth int) (int, error) {
 	y := v.(Int)
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
