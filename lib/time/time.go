@@ -212,13 +212,12 @@ func (d Duration) AttrNames() []string {
 // CompareSameType implements comparison of two Duration values. required by
 // starlark.Comparable interface.
 func (d Duration) CompareSameType(op syntax.Token, v starlark.Value, depth int) (bool, error) {
-	cmp := 0
 	if x, y := d, v.(Duration); x < y {
-		cmp = -1
+		return -1, nil
 	} else if x > y {
-		cmp = 1
+		return 1, nil
 	}
-	return threeway(op, cmp), nil
+	return 0, nil
 }
 
 // Binary implements binary operators, which satisfies the starlark.HasBinary
@@ -394,16 +393,15 @@ func (t Time) AttrNames() []string {
 
 // CompareSameType implements comparison of two Time values. required by
 // starlark.Comparable interface.
-func (t Time) CompareSameType(op syntax.Token, yV starlark.Value, depth int) (bool, error) {
+func (t Time) CompareSameType(yV starlark.Value, depth int) (int, error) {
 	x := time.Time(t)
 	y := time.Time(yV.(Time))
-	cmp := 0
 	if x.Before(y) {
-		cmp = -1
+		return -1, nil
 	} else if x.After(y) {
-		cmp = 1
+		return 1, nil
 	}
-	return threeway(op, cmp), nil
+	return 0, nil
 }
 
 // Binary implements binary operators, which satisfies the starlark.HasBinary
@@ -484,24 +482,4 @@ func builtinAttrNames(methods map[string]builtinMethod) []string {
 	}
 	sort.Strings(names)
 	return names
-}
-
-// Threeway interprets a three-way comparison value cmp (-1, 0, +1)
-// as a boolean comparison (e.g. x < y).
-func threeway(op syntax.Token, cmp int) bool {
-	switch op {
-	case syntax.EQL:
-		return cmp == 0
-	case syntax.NEQ:
-		return cmp != 0
-	case syntax.LE:
-		return cmp <= 0
-	case syntax.LT:
-		return cmp < 0
-	case syntax.GE:
-		return cmp >= 0
-	case syntax.GT:
-		return cmp > 0
-	}
-	panic(op)
 }
