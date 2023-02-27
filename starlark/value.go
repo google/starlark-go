@@ -131,15 +131,38 @@ type Comparable interface {
 	CompareSameType(op syntax.Token, y Value, depth int) (bool, error)
 }
 
+// Alternate, simplified comparison interface
+type ThreeWayComparable interface {
+	Value
+	// CompareSameType compares one value to another of the same Type()
+	// and returns a three-way comparison value (-1, 0, 1)
+	// CompareSameType returns an error if an ordered comparison was
+	// requested for a type that does not support it.
+	//
+	// Implementations that recursively compare subcomponents of
+	// the value should use the CompareDepth function, not Compare, to
+	// avoid infinite recursion on cyclic structures.
+	//
+	// The depth parameter is used to bound comparisons of cyclic
+	// data structures.  Implementations should decrement depth
+	// before calling CompareDepth and should return an error if depth
+	// < 1.
+	//
+	// Client code should not call this method.  Instead, use the
+	// standalone Compare or Equals functions, which are defined for
+	// all pairs of operands.
+	CompareSameType(y Value, depth int) (int, error)
+}
+
 var (
 	_ Comparable = Int{}
-	_ Comparable = False
-	_ Comparable = Float(0)
-	_ Comparable = String("")
-	_ Comparable = (*Dict)(nil)
-	_ Comparable = (*List)(nil)
-	_ Comparable = Tuple(nil)
-	_ Comparable = (*Set)(nil)
+	_ Comparable         = False
+	_ Comparable         = Float(0)
+	_ Comparable         = String("")
+	_ Comparable         = (*Dict)(nil)
+	_ Comparable         = (*List)(nil)
+	_ Comparable         = Tuple(nil)
+	_ Comparable         = (*Set)(nil)
 )
 
 // A Callable value f may be the operand of a function call, f(x).
@@ -1295,8 +1318,17 @@ func CompareDepth(op syntax.Token, x, y Value, depth int) (bool, error) {
 		return false, fmt.Errorf("comparison exceeded maximum recursion depth")
 	}
 	if sameType(x, y) {
+
 		if xcomp, ok := x.(Comparable); ok {
 			return xcomp.CompareSameType(op, y, depth)
+		}
+
+		if xcomp, ok := x.(ThreeWayComparable); ok {
+			t, err := xcomp.CompareSameType(y, depth)
+			if err != nil {
+				return false, err
+			}
+			return threeway(op, t), nil
 		}
 
 		// use identity comparison
