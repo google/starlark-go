@@ -190,14 +190,15 @@ func (i Int) Hash() (uint32, error) {
 	}
 	return 12582917 * uint32(lo+3), nil
 }
-func (x Int) CompareSameType(op syntax.Token, v Value, depth int) (bool, error) {
+
+func (x Int) CompareSameType(v Value, depth int) (int, error) {
 	y := v.(Int)
 	xSmall, xBig := x.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return threeway(op, x.bigInt().Cmp(y.bigInt())), nil
+		return x.bigInt().Cmp(y.bigInt()), nil
 	}
-	return threeway(op, signum64(xSmall-ySmall)), nil
+	return signum64(xSmall - ySmall), nil
 }
 
 // Float returns the float value nearest i.

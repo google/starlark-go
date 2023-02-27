@@ -155,7 +155,7 @@ type ThreeWayComparable interface {
 }
 
 var (
-	_ Comparable = Int{}
+	_ ThreeWayComparable = Int{}
 	_ Comparable         = False
 	_ Comparable         = Float(0)
 	_ Comparable         = String("")
