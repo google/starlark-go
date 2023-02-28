@@ -155,22 +155,68 @@ func overloaded(elems, buckets int) bool {
 
 func (ht *hashtable) grow() {
 	// Double the number of buckets and rehash.
-	// TODO(adonovan): opt:
-	// - avoid reentrant calls to ht.insert, and specialize it.
-	//   e.g. we know the calls to Equals will return false since
-	//   there are no duplicates among the old keys.
-	// - saving the entire hash in the bucket would avoid the need to
-	//   recompute the hash.
-	// - save the old buckets on a free list.
+	// TODO(adonovan): opt: save the old buckets on a free list.
 	ht.table = make([]bucket, len(ht.table)<<1)
 	oldhead := ht.head
 	ht.head = nil
 	ht.tailLink = &ht.head
 	ht.len = 0
 	for e := oldhead; e != nil; e = e.next {
+		//ht.growInsert(e.key, e.value, e.hash)
 		ht.insert(e.key, e.value)
 	}
 	ht.bucket0[0] = bucket{} // clear out unused initial bucket
+}
+
+// growInsert is a specialized version of hashtable.insert which uses the already-computed
+// hash and bypasses some safety checks which don't apply during a grow() operation:
+// - Checking for duplicate entries (already done on initial insert)
+// - Checking hashtable capacity / load-factor
+// - Checking for an uninitialized hashmap
+func (ht *hashtable) growInsert(k, v Value, h uint32) error {
+
+	if err := ht.checkMutable("insert into"); err != nil {
+		return err
+	}
+
+	var insert *entry
+
+	// Inspect each entry in the bucket list.
+	p := &ht.table[h&(uint32(len(ht.table)-1))]
+	for {
+		for i := range p.entries {
+			e := &p.entries[i]
+			if e.hash == 0 {
+				// Found empty entry; make a note.
+				insert = e
+			}
+		}
+		if p.next == nil {
+			break
+		}
+		p = p.next
+	}
+
+	if insert == nil {
+		// No space in existing buckets.  Add a new one to the bucket list.
+		b := new(bucket)
+		p.next = b
+		insert = &b.entries[0]
+	}
+
+	// Insert key/value pair.
+	insert.hash = h
+	insert.key = k
+	insert.value = v
+
+	// Append entry to doubly-linked list.
+	insert.prevLink = ht.tailLink
+	*ht.tailLink = insert
+	ht.tailLink = &insert.next
+
+	ht.len++
+
+	return nil
 }
 
 func (ht *hashtable) lookup(k Value) (v Value, found bool, err error) {
@@ -264,6 +310,10 @@ func (ht *hashtable) delete(k Value) (v Value, found bool, err error) {
 					v := e.value
 					*e = entry{}
 					ht.len--
+
+					// remove empty bucket from bucket list
+
+
 					return v, true, nil // found
 				}
 			}
