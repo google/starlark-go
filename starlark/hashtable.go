@@ -162,17 +162,17 @@ func (ht *hashtable) grow() {
 	ht.tailLink = &ht.head
 	ht.len = 0
 	for e := oldhead; e != nil; e = e.next {
-		//ht.growInsert(e.key, e.value, e.hash)
-		ht.insert(e.key, e.value)
+		ht.growInsert(e.key, e.value, e.hash)
 	}
 	ht.bucket0[0] = bucket{} // clear out unused initial bucket
 }
 
 // growInsert is a specialized version of hashtable.insert which uses the already-computed
-// hash and bypasses some safety checks which don't apply during a grow() operation:
+// hash and bypasses some safety checks which don't apply during a grow operation:
 // - Checking for duplicate entries (already done on initial insert)
-// - Checking hashtable capacity / load-factor
-// - Checking for an uninitialized hashmap
+// - Checking hashtable capacity / load-factor (size has just been doubled)
+// - Checking for an uninitialized hashmap (already done on intial insert)
+// - Not checking additional buckets once space is found (this hashtable hasn't had any deletes)
 func (ht *hashtable) growInsert(k, v Value, h uint32) error {
 
 	if err := ht.checkMutable("insert into"); err != nil {
@@ -181,7 +181,8 @@ func (ht *hashtable) growInsert(k, v Value, h uint32) error {
 
 	var insert *entry
 
-	// Inspect each entry in the bucket list.
+	// Go to the appropriate bucket and look for space to insert.
+	// There is no chance of an update here so we can exit as soon as we find an open space.
 	p := &ht.table[h&(uint32(len(ht.table)-1))]
 	for {
 		for i := range p.entries {
@@ -189,9 +190,13 @@ func (ht *hashtable) growInsert(k, v Value, h uint32) error {
 			if e.hash == 0 {
 				// Found empty entry; make a note.
 				insert = e
+				break
 			}
 		}
-		if p.next == nil {
+		if insert != nil {
+			break // No need to look at following buckets.
+		}
+		if p.next == nil { // last bucket
 			break
 		}
 		p = p.next
@@ -310,10 +315,6 @@ func (ht *hashtable) delete(k Value) (v Value, found bool, err error) {
 					v := e.value
 					*e = entry{}
 					ht.len--
-
-					// remove empty bucket from bucket list
-
-
 					return v, true, nil // found
 				}
 			}
