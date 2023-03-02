@@ -155,73 +155,21 @@ func overloaded(elems, buckets int) bool {
 
 func (ht *hashtable) grow() {
 	// Double the number of buckets and rehash.
-	// TODO(adonovan): opt: save the old buckets on a free list.
+	//
+	// Even though this makes reentrant calls to ht.insert,
+	// calls Equals unnecessarily (since there can't be duplicate keys),
+	// and recomputes the hash unnecessarily, the gains from
+	// avoiding these steps were found to be too small to justify
+	// the extra logic: -2% on hashtable benchmark.
 	ht.table = make([]bucket, len(ht.table)<<1)
 	oldhead := ht.head
 	ht.head = nil
 	ht.tailLink = &ht.head
 	ht.len = 0
 	for e := oldhead; e != nil; e = e.next {
-		ht.growInsert(e.key, e.value, e.hash)
+		ht.insert(e.key, e.value)
 	}
 	ht.bucket0[0] = bucket{} // clear out unused initial bucket
-}
-
-// growInsert is a specialized version of hashtable.insert which uses the already-computed
-// hash and bypasses some safety checks which don't apply during a grow operation:
-// - Checking for duplicate entries (already done on initial insert)
-// - Checking hashtable capacity / load-factor (size has just been doubled)
-// - Checking for an uninitialized hashmap (already done on intial insert)
-// - Not checking additional buckets once space is found (this hashtable hasn't had any deletes)
-func (ht *hashtable) growInsert(k, v Value, h uint32) error {
-
-	if err := ht.checkMutable("insert into"); err != nil {
-		return err
-	}
-
-	var insert *entry
-
-	// Go to the appropriate bucket and look for space to insert.
-	// There is no chance of an update here so we can exit as soon as we find an open space.
-	p := &ht.table[h&(uint32(len(ht.table)-1))]
-	for {
-		for i := range p.entries {
-			e := &p.entries[i]
-			if e.hash == 0 {
-				// Found empty entry; make a note.
-				insert = e
-				break
-			}
-		}
-		if insert != nil {
-			break // No need to look at following buckets.
-		}
-		if p.next == nil { // last bucket
-			break
-		}
-		p = p.next
-	}
-
-	if insert == nil {
-		// No space in existing buckets.  Add a new one to the bucket list.
-		b := new(bucket)
-		p.next = b
-		insert = &b.entries[0]
-	}
-
-	// Insert key/value pair.
-	insert.hash = h
-	insert.key = k
-	insert.value = v
-
-	// Append entry to doubly-linked list.
-	insert.prevLink = ht.tailLink
-	*ht.tailLink = insert
-	ht.tailLink = &insert.next
-
-	ht.len++
-
-	return nil
 }
 
 func (ht *hashtable) lookup(k Value) (v Value, found bool, err error) {
