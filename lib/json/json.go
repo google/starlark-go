@@ -81,12 +81,8 @@ var Module = &starlarkstruct.Module{
 	},
 }
 
-func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
-		return nil, err
-	}
-
+// Encode returns the JSON encoding of a Starlark value.
+func Encode(x starlark.Value) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -221,9 +217,21 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 
 	if err := emit(x); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
+		return nil, err
+	}
+	bytes, err := Encode(x)
+	if err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
-	return starlark.String(buf.String()), nil
+	return starlark.String(bytes), nil
 }
 
 func pointer(i interface{}) unsafe.Pointer {
@@ -283,12 +291,8 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	return starlark.String(buf.String()), nil
 }
 
-func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (_ starlark.Value, err error) {
-	var s string
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
-		return nil, err
-	}
-
+// Decodes returns the Starlark value of a given JSON-encoded string.
+func Decode(s string) (_ starlark.Value, err error) {
 	// The decoder necessarily makes certain representation choices
 	// such as list vs tuple, struct vs dict, int vs float.
 	// In principle, we could parameterize it to allow the caller to
@@ -508,6 +512,14 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		fail("unexpected character %q after value", s[i])
 	}
 	return x, nil
+}
+
+func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (_ starlark.Value, err error) {
+	var s string
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
+		return nil, err
+	}
+	return Decode(s)
 }
 
 func isdigit(b byte) bool {
