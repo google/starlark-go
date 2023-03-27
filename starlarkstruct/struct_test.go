@@ -32,7 +32,7 @@ func Test(t *testing.T) {
 }
 
 // load implements the 'load' operation as used in the evaluator tests.
-func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+func load(thread *starlark.Thread, module string) (starlark.StringDictLike, error) {
 	if module == "assert.star" {
 		return starlarktest.LoadAssertModule()
 	}
