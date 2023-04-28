@@ -502,7 +502,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		switch x := x.(type) {
 		case failure:
 			if d != nil {
-			    v = d
+				v = d
 			} else {
 				err = fmt.Errorf("json.decode: at offset %d, %s", i, x)
 			}
