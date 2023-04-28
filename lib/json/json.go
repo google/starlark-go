@@ -54,15 +54,19 @@ import (
 // (e.g. it implements both Iterable and HasFields), the first case takes precedence.
 // Encoding any other value yields an error.
 //
-// def decode(x):
+// def decode(x[, default]):
 //
-// The decode function accepts one positional parameter, a JSON string.
+// The decode function has one required positional parameter, a JSON string.
 // It returns the Starlark value that the string denotes.
 // - Numbers are parsed as int or float, depending on whether they
 //   contain a decimal point.
 // - JSON objects are parsed as new unfrozen Starlark dicts.
 // - JSON arrays are parsed as new unfrozen Starlark lists.
-// Decoding fails if x is not a valid JSON string.
+// If `x` is not a valid JSON string and the optional, positional-only `default`
+// parameter is specified (including specified as `None`), the decode function
+// returns the `default` value.
+// If `x` is not a valid JSON string and the optional, positional-only `default`
+// parameter is not specified, the decode function fails.
 //
 // def indent(str, *, prefix="", indent="\t"):
 //
@@ -283,9 +287,10 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	return starlark.String(buf.String()), nil
 }
 
-func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (_ starlark.Value, err error) {
+func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (v starlark.Value, err error) {
 	var s string
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
+	var d starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s, &d); err != nil {
 		return nil, err
 	}
 
@@ -496,18 +501,22 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		x := recover()
 		switch x := x.(type) {
 		case failure:
-			err = fmt.Errorf("json.decode: at offset %d, %s", i, x)
+			if d != nil {
+			    v = d
+			} else {
+				err = fmt.Errorf("json.decode: at offset %d, %s", i, x)
+			}
 		case nil:
 			// nop
 		default:
 			panic(x) // unexpected panic
 		}
 	}()
-	x := parse()
+	v = parse()
 	if skipSpace() {
 		fail("unexpected character %q after value", s[i])
 	}
-	return x, nil
+	return v, nil
 }
 
 func isdigit(b byte) bool {
