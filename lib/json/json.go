@@ -298,6 +298,11 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	// control the returned types, but there's no compelling need yet.
 
 	// Use panic/recover with a distinguished type (failure) for error handling.
+	// If "default" is set, we only want to return it when encountering invalid
+	// json - not for any other possible causes of panic.
+	// In particular, if we ever extend the json.decode API to take a callback,
+	// a distinguished, private failure type prevents the possibility of
+	// json.decode with "default" becoming abused as a try-catch mechanism.
 	type failure string
 	fail := func(format string, args ...interface{}) {
 		panic(failure(fmt.Sprintf(format, args...)))
