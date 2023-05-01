@@ -62,11 +62,9 @@ import (
 //   contain a decimal point.
 // - JSON objects are parsed as new unfrozen Starlark dicts.
 // - JSON arrays are parsed as new unfrozen Starlark lists.
-// If `x` is not a valid JSON string and the optional, positional-only `default`
-// parameter is specified (including specified as `None`), the decode function
-// returns the `default` value.
-// If `x` is not a valid JSON string and the optional, positional-only `default`
-// parameter is not specified, the decode function fails.
+// If x is not a valid JSON string, the behavior depends on the "default"
+// positional-only parameter: if present, Decode returns its value; otherwise,
+// Decode fails.
 //
 // def indent(str, *, prefix="", indent="\t"):
 //
