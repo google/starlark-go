@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 	"reflect"
@@ -200,8 +199,13 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 			sort.Strings(names)
 			for i, name := range names {
 				v, err := x.Attr(name)
-				if err != nil || v == nil {
-					log.Fatalf("internal error: dir(%s) includes %q but value has no .%s field", x.Type(), name, name)
+				if err != nil {
+					return fmt.Errorf("cannot access attribute %s.%s: %w", x.Type(), name, err)
+				}
+				if v == nil {
+					// x.AttrNames() returned name, but x.Attr(name) returned nil, stating
+					// that the field doesn't exist.
+					return fmt.Errorf("missing attribute %s.%s (despite %q appearing in dir()", x.Type(), name, name)
 				}
 				if i > 0 {
 					buf.WriteByte(',')
