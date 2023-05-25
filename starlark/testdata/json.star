@@ -120,6 +120,11 @@ assert.eq(json.decode('{"invalid": "json"', "default value"), "default value")
 assert.eq(json.decode('{"invalid": "json"', default = None), None)
 assert.eq(json.decode('{"invalid": "json"', None), None)
 
+assert.fails(
+    lambda: json.decode(x = '{"invalid": "json"', default = "default value"),
+    "unexpected keyword argument x"
+)
+
 def codec(x):
     return json.decode(json.encode(x))
 

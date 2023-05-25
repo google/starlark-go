@@ -290,6 +290,11 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s, "default?", &d); err != nil {
 		return nil, err
 	}
+	if len(args) < 1 {
+		// "x" parameter is positional only; UnpackArgs does not allow us to
+		// directly express def(x, *, default)
+		return nil, fmt.Errorf("%s: unexpected keyword argument x", b.Name())
+	}
 
 	// The decoder necessarily makes certain representation choices
 	// such as list vs tuple, struct vs dict, int vs float.
