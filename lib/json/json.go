@@ -292,7 +292,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 	if len(args) < 1 {
 		// "x" parameter is positional only; UnpackArgs does not allow us to
-		// directly express def(x, *, default)
+		// directly express "def decode(x, *, default)"
 		return nil, fmt.Errorf("%s: unexpected keyword argument x", b.Name())
 	}
 
