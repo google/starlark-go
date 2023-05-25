@@ -63,8 +63,7 @@ import (
 // - JSON objects are parsed as new unfrozen Starlark dicts.
 // - JSON arrays are parsed as new unfrozen Starlark lists.
 // If x is not a valid JSON string, the behavior depends on the "default"
-// positional-only parameter: if present, Decode returns its value; otherwise,
-// Decode fails.
+// parameter: if present, Decode returns its value; otherwise, Decode fails.
 //
 // def indent(str, *, prefix="", indent="\t"):
 //
@@ -288,7 +287,7 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (v starlark.Value, err error) {
 	var s string
 	var d starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s, &d); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s, "default?", &d); err != nil {
 		return nil, err
 	}
 

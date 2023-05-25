@@ -113,14 +113,12 @@ decode_error('{"one": 1]', "in object, got ']', want ',' or '}'")
 
 ## json.decode with default specified
 
+assert.eq(json.decode('{"valid": "json"}', default = "default value"), {"valid": "json"})
 assert.eq(json.decode('{"valid": "json"}', "default value"), {"valid": "json"})
+assert.eq(json.decode('{"invalid": "json"', default = "default value"), "default value")
 assert.eq(json.decode('{"invalid": "json"', "default value"), "default value")
+assert.eq(json.decode('{"invalid": "json"', default = None), None)
 assert.eq(json.decode('{"invalid": "json"', None), None)
-
-assert.fails(
-    lambda: json.decode('{"invalid": "json"', default = "default value"),
-    "unexpected keyword argument",
-)
 
 def codec(x):
     return json.decode(json.encode(x))
