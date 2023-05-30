@@ -22,6 +22,7 @@ assert.eq(json.encode((1, 2, 3)), "[1,2,3]")
 assert.eq(json.encode(range(3)), "[0,1,2]") # a built-in iterable
 assert.eq(json.encode(dict(x = 1, y = "two")), '{"x":1,"y":"two"}')
 assert.eq(json.encode(dict(y = "two", x = 1)), '{"x":1,"y":"two"}') # key, not insertion, order
+assert.eq(json.encode({1: "one", 2: "two"}), '{"1":"one","2":"two"}') # key, not insertion, order
 assert.eq(json.encode(struct(x = 1, y = "two")), '{"x":1,"y":"two"}')  # a user-defined HasAttrs
 assert.eq(json.encode("😹"[:1]), '"\\ufffd"') # invalid UTF-8 -> replacement char
 
@@ -29,13 +30,12 @@ def encode_error(expr, error):
     assert.fails(lambda: json.encode(expr), error)
 
 encode_error(float("NaN"), "json.encode: cannot encode non-finite float nan")
-encode_error({1: "two"}, "dict has int key, want string")
+encode_error({(1,2): "two"}, "dict has tuple key, want string or int")
 encode_error(len, "cannot encode builtin_function_or_method as JSON")
 encode_error(struct(x=[1, {"x": len}]), # nested failure
              'in field .x: at list index 1: in dict key "x": cannot encode...')
 encode_error(struct(x=[1, {"x": len}]), # nested failure
              'in field .x: at list index 1: in dict key "x": cannot encode...')
-encode_error({1: 2}, 'dict has int key, want string')
 
 recursive_map = {}
 recursive_map["r"] = recursive_map

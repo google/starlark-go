@@ -155,19 +155,45 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 			// e.g. dict (must have string keys)
 			buf.WriteByte('{')
 			items := x.Items()
+			stringKeys := false
+			intKeys := false
 			for _, item := range items {
-				if _, ok := item[0].(starlark.String); !ok {
-					return fmt.Errorf("%s has %s key, want string", x.Type(), item[0].Type())
+				_, isString := item[0].(starlark.String)
+				_, isInt := item[0].(starlark.Int)
+				if !isString && !isInt {
+					return fmt.Errorf("%s has %s key, want string or int", x.Type(), item[0].Type())
 				}
+				stringKeys = stringKeys || isString
+				intKeys = intKeys || isInt
 			}
-			sort.Slice(items, func(i, j int) bool {
-				return items[i][0].(starlark.String) < items[j][0].(starlark.String)
-			})
+			// Sort the keys. This is useful if they come from a dict, which presents
+			// its items unordered. However, we only sort if all the keys have the
+			// same type.
+			if !(stringKeys && intKeys) {
+				sort.Slice(items, func(i, j int) bool {
+					// Compare as strings if all the keys are strings, or as ints if all
+					// the keys are ints.
+					if stringKeys {
+						return items[i][0].(starlark.String) < items[j][0].(starlark.String)
+					}
+					cmp, err := items[i][0].(starlark.Int).Cmp(items[j][0], 0 /* depth */)
+					if err != nil {
+						panic(fmt.Errorf("unexpected failure to compare ints: %w", err))
+					}
+					return cmp == -1
+				})
+			}
 			for i, item := range items {
 				if i > 0 {
 					buf.WriteByte(',')
 				}
-				k, _ := starlark.AsString(item[0])
+				key := item[0]
+				k, ok := starlark.AsString(key)
+				if !ok {
+					// If the key is not a string, it must be an int as per the checks
+					// above.
+					k = key.(starlark.Int).BigInt().String()
+				}
 				quote(k)
 				buf.WriteByte(':')
 				if err := emit(item[1]); err != nil {
