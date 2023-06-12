@@ -260,12 +260,14 @@ appear in the grammar; they are reserved as possible future keywords:
 <!-- and to remain a syntactic subset of Python -->
 
 ```text
-as             finally        nonlocal
-assert         from           raise
-class          global         try
-del            import         with
-except         is             yield
+as              except          nonlocal
+assert          finally         raise
+async           from            try
+await           global          with
+class           import          yield
+del             is   
 ```
+<!-- NB: bazelbuild/starlark puts `while` in the second list -->
 
 <b>Implementation note:</b>
 The Go implementation permits `assert` to be used as an identifier,
