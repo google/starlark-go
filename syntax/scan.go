@@ -1107,6 +1107,8 @@ var keywordToken = map[string]Token{
 	// reserved words:
 	"as": ILLEGAL,
 	// "assert":   ILLEGAL, // heavily used by our tests
+	"async":    ILLEGAL,
+	"await":    ILLEGAL,
 	"class":    ILLEGAL,
 	"del":      ILLEGAL,
 	"except":   ILLEGAL,
