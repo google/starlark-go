@@ -40,8 +40,10 @@ var (
 
 // Starlark dialect flags
 func init() {
-	flag.BoolVar(&resolve.AllowFloat, "fp", true, "allow floating-point numbers")
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
+
+	// obsolete, no effect:
+	flag.BoolVar(&resolve.AllowFloat, "fp", true, "allow floating-point numbers")
 	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
 	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")
 }
