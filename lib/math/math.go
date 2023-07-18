@@ -71,7 +71,7 @@ var Module = &starlarkstruct.Module{
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
 		"fabs":      newUnaryBuiltin("fabs", math.Abs),
 		"floor":     starlark.NewBuiltin("floor", floor),
-		"mod":       newBinaryBuiltin("round", math.Mod),
+		"mod":       newBinaryBuiltin("mod", math.Mod),
 		"pow":       newBinaryBuiltin("pow", math.Pow),
 		"remainder": newBinaryBuiltin("remainder", math.Remainder),
 		"round":     newUnaryBuiltin("round", math.Round),
