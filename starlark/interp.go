@@ -575,15 +575,14 @@ loop:
 
 			for i := 0; i < n; i++ {
 				from := string(stack[sp-1-i].(String))
-				v, ok := dict[from]
-				if !ok {
+				if ok := dict.Has(from); !ok {
 					err = fmt.Errorf("load: name %s not found in module %s", from, module)
 					if n := spell.Nearest(from, dict.Keys()); n != "" {
 						err = fmt.Errorf("%s (did you mean %s?)", err, n)
 					}
 					break loop
 				}
-				stack[sp-1-i] = v
+				stack[sp-1-i] = dict.Get(from)
 			}
 
 		case compile.SETLOCAL:
@@ -640,7 +639,7 @@ loop:
 
 		case compile.PREDECLARED:
 			name := f.Prog.Names[arg]
-			x := fn.module.predeclared[name]
+			x := fn.module.predeclared.Get(name)
 			if x == nil {
 				err = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name)
 				break loop

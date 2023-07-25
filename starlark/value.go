@@ -691,7 +691,7 @@ type Function struct {
 // All functions in the same program share a module.
 type module struct {
 	program     *compile.Program
-	predeclared StringDict
+	predeclared StringDictLike
 	globals     []Value
 	constants   []Value
 }

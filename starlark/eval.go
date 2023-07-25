@@ -24,6 +24,13 @@ import (
 	"go.starlark.net/syntax"
 )
 
+// StringDictLike is an interface for a dictionary of Starlark values.
+type StringDictLike interface {
+	Get(string) Value
+	Has(string) bool
+	Keys() []string
+}
+
 // A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
@@ -45,7 +52,7 @@ type Thread struct {
 	// The error message need not include the module name.
 	//
 	// See example_test.go for some example implementations of Load.
-	Load func(thread *Thread, module string) (StringDict, error)
+	Load func(thread *Thread, module string) (StringDictLike, error)
 
 	// OnMaxSteps is called when the thread reaches the limit set by SetMaxExecutionSteps.
 	// The default behavior is to call thread.Cancel("too many steps").
@@ -183,6 +190,9 @@ func (d StringDict) Freeze() {
 
 // Has reports whether the dictionary contains the specified key.
 func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
+
+// Get returns the value associated with the specified key.
+func (d StringDict) Get(key string) Value { return d[key] }
 
 // A frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
@@ -342,9 +352,16 @@ func (prog *Program) Write(out io.Writer) error {
 //
 // If ExecFile fails during evaluation, it returns an *EvalError
 // containing a backtrace.
-func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDict) (StringDict, error) {
+func ExecFile(thread *Thread, filename string, src interface{}, predeclared StringDictLike) (StringDict, error) {
+	var has func(string) bool
+	if predeclared != nil {
+		has = predeclared.Has
+	} else {
+		has = func(string) bool { return false }
+	}
+
 	// Parse, resolve, and compile a Starlark source file.
-	_, mod, err := SourceProgram(filename, src, predeclared.Has)
+	_, mod, err := SourceProgram(filename, src, has)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +435,7 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 // Init creates a set of global variables for the program,
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
-func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
+func (prog *Program) Init(thread *Thread, predeclared StringDictLike) (StringDict, error) {
 	toplevel := makeToplevelFunction(prog.compiled, predeclared)
 
 	_, err := Call(thread, toplevel, nil, nil)
@@ -479,7 +496,7 @@ func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
 	return err
 }
 
-func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Function {
+func makeToplevelFunction(prog *compile.Program, predeclared StringDictLike) *Function {
 	// Create the Starlark value denoted by each program constant c.
 	constants := make([]Value, len(prog.Constants))
 	for i, c := range prog.Constants {
@@ -556,7 +573,7 @@ func EvalExpr(thread *Thread, expr syntax.Expr, env StringDict) (Value, error) {
 
 // ExprFunc returns a no-argument function
 // that evaluates the expression whose source is src.
-func ExprFunc(filename string, src interface{}, env StringDict) (*Function, error) {
+func ExprFunc(filename string, src interface{}, env StringDictLike) (*Function, error) {
 	expr, err := syntax.ParseExpr(filename, src, 0)
 	if err != nil {
 		return nil, err
@@ -565,7 +582,7 @@ func ExprFunc(filename string, src interface{}, env StringDict) (*Function, erro
 }
 
 // makeExprFunc returns a no-argument function whose body is expr.
-func makeExprFunc(expr syntax.Expr, env StringDict) (*Function, error) {
+func makeExprFunc(expr syntax.Expr, env StringDictLike) (*Function, error) {
 	locals, err := resolve.Expr(expr, env.Has, Universe.Has)
 	if err != nil {
 		return nil, err

@@ -92,8 +92,8 @@ func ExampleThread_Load_sequential() {
 
 	cache := make(map[string]*entry)
 
-	var load func(_ *starlark.Thread, module string) (starlark.StringDict, error)
-	load = func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
+	var load func(_ *starlark.Thread, module string) (starlark.StringDictLike, error)
+	load = func(_ *starlark.Thread, module string) (starlark.StringDictLike, error) {
 		e, ok := cache[module]
 		if e == nil {
 			if ok {
@@ -120,7 +120,7 @@ func ExampleThread_Load_sequential() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(globals["c"])
+	fmt.Println(globals.Get("c"))
 
 	// Output:
 	// "Hello, world!"
@@ -267,7 +267,7 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 	thread := &starlark.Thread{
 		Name:  "exec " + module,
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
-		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
+		Load: func(_ *starlark.Thread, module string) (starlark.StringDictLike, error) {
 			// Tunnel the cycle-checker state for this "thread of loading".
 			return c.get(cc, module)
 		},

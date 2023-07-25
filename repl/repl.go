@@ -33,7 +33,6 @@ var interrupted = make(chan os.Signal, 1)
 // variable named "context" to a context.Context that is cancelled by a
 // SIGINT (Control-C). Client-supplied global functions may use this
 // context to make long-running operations interruptable.
-//
 func REPL(thread *starlark.Thread, globals starlark.StringDict) {
 	signal.Notify(interrupted, os.Interrupt)
 	defer signal.Stop(interrupted)
@@ -152,7 +151,7 @@ func PrintError(err error) {
 // MakeLoad returns a simple sequential implementation of module loading
 // suitable for use in the REPL.
 // Each function returned by MakeLoad accesses a distinct private cache.
-func MakeLoad() func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+func MakeLoad() func(thread *starlark.Thread, module string) (starlark.StringDictLike, error) {
 	type entry struct {
 		globals starlark.StringDict
 		err     error
@@ -160,7 +159,7 @@ func MakeLoad() func(thread *starlark.Thread, module string) (starlark.StringDic
 
 	var cache = make(map[string]*entry)
 
-	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+	return func(thread *starlark.Thread, module string) (starlark.StringDictLike, error) {
 		e, ok := cache[module]
 		if e == nil {
 			if ok {

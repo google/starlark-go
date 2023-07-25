@@ -195,7 +195,7 @@ func (it *fibIterator) Next(p *starlark.Value) bool {
 func (it *fibIterator) Done() {}
 
 // load implements the 'load' operation as used in the evaluator tests.
-func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+func load(thread *starlark.Thread, module string) (starlark.StringDictLike, error) {
 	if module == "assert.star" {
 		return starlarktest.LoadAssertModule()
 	}
@@ -588,7 +588,7 @@ def f(x):
 f(0)
 `
 	thread := new(starlark.Thread)
-	thread.Load = func(t *starlark.Thread, module string) (starlark.StringDict, error) {
+	thread.Load = func(t *starlark.Thread, module string) (starlark.StringDictLike, error) {
 		return starlark.ExecFile(new(starlark.Thread), module, loadedSrc, nil)
 	}
 	_, err := starlark.ExecFile(thread, "root.star", src, nil)
