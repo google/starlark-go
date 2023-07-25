@@ -395,7 +395,6 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 		}
 		defer iter.Done()
 
-		// TODO(adonovan): handle maps
 		list := msg.Mutable(fdesc).List()
 		list.Truncate(0)
 		var x starlark.Value
@@ -406,6 +405,45 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 			}
 			list.Append(v)
 		}
+		return nil
+	}
+
+	if fdesc.IsMap() {
+		mapping, ok := value.(starlark.IterableMapping)
+		if !ok {
+			return fmt.Errorf("in map field %s: expected mappable type, but got %s", fdesc.Name(), value.Type())
+		}
+
+		iter := mapping.Iterate()
+		defer iter.Done()
+
+		// Each value is converted using toProto as usual, passing the key/value
+		// field descriptors to check their types.
+		mutMap := msg.Mutable(fdesc).Map()
+		var k starlark.Value
+		for iter.Next(&k) {
+			kproto, err := toProto(fdesc.MapKey(), k)
+			if err != nil {
+				return fmt.Errorf("in key of map field %s: %w", fdesc.Name(), err)
+			}
+
+			// `found` is discarded, as the presence of the key in the
+			// iterator guarantees the presence of some value (even if it is
+			// starlark.None). Mismatching values will be caught in toProto
+			// below.
+			v, _, err := mapping.Get(k)
+			if err != nil {
+				return fmt.Errorf("in map field %s, at key %s: %w", fdesc.Name(), k.String(), err)
+			}
+
+			vproto, err := toProto(fdesc.MapValue(), v)
+			if err != nil {
+				return fmt.Errorf("in map field %s, at key %s: %w", fdesc.Name(), k.String(), err)
+			}
+
+			mutMap.Set(kproto.MapKey(), vproto)
+		}
+
 		return nil
 	}
 
