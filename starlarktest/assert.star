@@ -6,12 +6,20 @@
 # matches(str, pattern): report whether str matches regular expression pattern.
 # module(**kwargs): a constructor for a module.
 # _freeze(x): freeze the value x and everything reachable from it.
+# _floateq(x, y): reports floating point equality (within 1 ULP).
 #
 # Clients may use these functions to define their own testing abstractions.
 
+_num = ("float", "int")
+
 def _eq(x, y):
     if x != y:
-        error("%r != %r" % (x, y))
+	if (type(x) == "float" and type(y) in _num or
+	    type(y) == "float" and type(x) in _num):
+	    if not _floateq(float(x), float(y)):
+		error("floats: %r != %r (delta > 1 ulp)" % (x, y))
+	else:
+            error("%r != %r" % (x, y))
 
 def _ne(x, y):
     if x == y:
