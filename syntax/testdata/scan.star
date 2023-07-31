@@ -113,7 +113,7 @@ def _emit_generate_params_action(cmds, ctx, fn):
     ]
     cmds_all += cmds
     cmds_all_str = "\n".join(cmds_all) + "\n"
-    f = ctx.new_file(ctx.configuration.bin_dir, fn)
+    f = ctx.actions.declare_file(fn)
     ctx.file_action(
         output = f,
         content = cmds_all_str,
@@ -254,7 +254,10 @@ def _emit_go_cover_action(ctx, sources):
             continue
 
         cover_var = "GoCover_%d" % count
-        out = ctx.new_file(src, src.basename[:-3] + "_" + cover_var + ".cover.go")
+        out = ctx.actions.declare_file(
+            src.basename[:-3] + "_" + cover_var + ".cover.go",
+            sibling = src,
+        )
         outputs += [out]
         ctx.action(
             inputs = [src] + ctx.files.toolchain,
@@ -306,13 +309,16 @@ def go_library_impl(ctx):
 
     extra_objects = [cgo_object.cgo_obj] if cgo_object else []
     for src in asm_srcs:
-        obj = ctx.new_file(src, "%s.dir/%s.o" % (ctx.label.name, src.basename[:-2]))
+        obj = ctx.actions.declare_file(
+            "%s.dir/%s.o" % (ctx.label.name, src.basename[:-2]),
+            sibling = src,
+        )
         _emit_go_asm_action(ctx, src, asm_hdrs, obj)
         extra_objects += [obj]
 
     lib_name = _go_importpath(ctx) + ".a"
-    out_lib = ctx.new_file(lib_name)
-    out_object = ctx.new_file(ctx.label.name + ".o")
+    out_lib = ctx.actions.declare_file(lib_name)
+    out_object = ctx.actions.declare_file(ctx.label.name + ".o")
     search_path = out_lib.path[:-len(lib_name)]
     gc_goopts = _gc_goopts(ctx)
     transitive_go_libraries = depset([out_lib])
@@ -531,9 +537,9 @@ def go_test_impl(ctx):
     test into a binary."""
 
     lib_result = go_library_impl(ctx)
-    main_go = ctx.new_file(ctx.label.name + "_main_test.go")
-    main_object = ctx.new_file(ctx.label.name + "_main_test.o")
-    main_lib = ctx.new_file(ctx.label.name + "_main_test.a")
+    main_go = ctx.actions.declare_file(ctx.label.name + "_main_test.go")
+    main_object = ctx.actions.declare_file(ctx.label.name + "_main_test.o")
+    main_lib = ctx.actions.declare_file(ctx.label.name + "_main_test.a")
     go_import = _go_importpath(ctx)
 
     cmds = [
@@ -754,7 +760,7 @@ def _cgo_filter_srcs_impl(ctx):
     for src in srcs:
         stem, _, ext = src.path.rpartition(".")
         dst_basename = "%s.filtered.%s" % (stem, ext)
-        dst = ctx.new_file(src, dst_basename)
+        dst = ctx.actions.declare_file(dst_basename, sibling = src)
         cmds += [
             "if '%s' -cgo -quiet '%s'; then" %
             (ctx.executable._filter_tags.path, src.path),
@@ -824,7 +830,7 @@ def _cgo_codegen_impl(ctx):
     p = _pkg_dir(ctx.label.workspace_root, ctx.label.package) + "/"
     if p == "./":
         p = ""  # workaround when cgo_library in repository root
-    out_dir = (ctx.configuration.genfiles_dir.path + "/" +
+    out_dir = (ctx.configuration.bin_dir.path + "/" +
                p + ctx.attr.outdir)
     cc = ctx.fragments.cpp.compiler_executable
     cmds = [
@@ -905,7 +911,6 @@ _cgo_codegen_rule = rule(
         ),
     },
     fragments = ["cpp"],
-    output_to_genfiles = True,
 )
 
 def _cgo_codegen(
