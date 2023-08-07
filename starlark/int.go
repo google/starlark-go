@@ -192,7 +192,7 @@ func (i Int) Hash() (uint32, error) {
 }
 
 // Cmp implements comparison of two Int values.
-// Required by starlark.TotallyOrdered interface.
+// Required by the TotallyOrdered interface.
 func (i Int) Cmp(v Value, depth int) (int, error) {
 	j := v.(Int)
 	iSmall, iBig := i.get()

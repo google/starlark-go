@@ -466,7 +466,7 @@ func isFinite(f float64) bool {
 }
 
 // Cmp implements comparison of two Float values.
-// Required by starlark.TotallyOrdered interface.
+// Required by the TotallyOrdered interface.
 func (f Float) Cmp(v Value, depth int) (int, error) {
 	g := v.(Float)
 	return floatCmp(f, g), nil
