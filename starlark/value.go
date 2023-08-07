@@ -465,9 +465,11 @@ func isFinite(f float64) bool {
 	return math.Abs(f) <= math.MaxFloat64
 }
 
-func (x Float) Cmp(y_ Value, depth int) (int, error) {
-	y := y_.(Float)
-	return floatCmp(x, y), nil
+// Cmp implements comparison of two Float values.
+// Required by the TotallyOrdered interface.
+func (f Float) Cmp(v Value, depth int) (int, error) {
+	g := v.(Float)
+	return floatCmp(f, g), nil
 }
 
 // floatCmp performs a three-valued comparison on floats,
