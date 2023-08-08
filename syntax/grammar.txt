@@ -6,11 +6,11 @@ File = {Statement | newline} eof .
 
 Statement = DefStmt | IfStmt | ForStmt | WhileStmt | SimpleStmt .
 
-DefStmt = 'def' identifier '(' [Parameters [',']] ')' ':' Suite .
+DefStmt = 'def' identifier '(' [Parameters [',']] ')' ['->' Test] ':' Suite .
 
 Parameters = Parameter {',' Parameter}.
 
-Parameter = identifier | identifier '=' Test | '*' | '*' identifier | '**' identifier .
+Parameter = identifier [':' Test] | identifier [':' Test] '=' Test | '*' | '*' identifier [':' Test] | '**' identifier [':' Test] .
 
 IfStmt = 'if' Test ':' Suite {'elif' Test ':' Suite} ['else' ':' Suite] .
 

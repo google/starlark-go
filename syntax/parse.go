@@ -159,15 +159,24 @@ func (p *parser) parseDefStmt() Stmt {
 	defpos := p.nextToken() // consume DEF
 	id := p.parseIdent()
 	p.consume(LPAREN)
-	params := p.parseParams()
+	params := p.parseParams(false)
 	p.consume(RPAREN)
+
+	var returnType Expr
+	// def fn() -> type:
+	if p.tok == ARROW {
+		p.consume(ARROW)
+		returnType = p.parseTest()
+	}
+
 	p.consume(COLON)
 	body := p.parseSuite()
 	return &DefStmt{
-		Def:    defpos,
-		Name:   id,
-		Params: params,
-		Body:   body,
+		Def:        defpos,
+		Name:       id,
+		Params:     params,
+		Body:       body,
+		ReturnType: returnType,
 	}
 }
 
@@ -275,10 +284,11 @@ func (p *parser) parseSimpleStmt(stmts []Stmt, consumeNL bool) []Stmt {
 }
 
 // small_stmt = RETURN expr?
-//            | PASS | BREAK | CONTINUE
-//            | LOAD ...
-//            | expr ('=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=') expr   // assign
-//            | expr
+//
+//	| PASS | BREAK | CONTINUE
+//	| LOAD ...
+//	| expr ('=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=') expr   // assign
+//	| expr
 func (p *parser) parseSmallStmt() Stmt {
 	switch p.tok {
 	case RETURN:
@@ -300,6 +310,7 @@ func (p *parser) parseSmallStmt() Stmt {
 
 	// Assignment
 	x := p.parseExpr(false)
+
 	switch p.tok {
 	case EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, SLASHSLASH_EQ, PERCENT_EQ, AMP_EQ, PIPE_EQ, CIRCUMFLEX_EQ, LTLT_EQ, GTGT_EQ:
 		op := p.tok
@@ -415,22 +426,24 @@ func (p *parser) consume(t Token) Position {
 }
 
 // params = (param COMMA)* param COMMA?
-//        |
+//
+//	|
 //
 // param = IDENT
-//       | IDENT EQ test
-//       | STAR
-//       | STAR IDENT
-//       | STARSTAR IDENT
+//
+//	| IDENT EQ test
+//	| STAR
+//	| STAR IDENT
+//	| STARSTAR IDENT
 //
 // parseParams parses a parameter list.  The resulting expressions are of the form:
 //
-//      *Ident                                          x
-//      *Binary{Op: EQ, X: *Ident, Y: Expr}             x=y
-//      *Unary{Op: STAR}                                *
-//      *Unary{Op: STAR, X: *Ident}                     *args
-//      *Unary{Op: STARSTAR, X: *Ident}                 **kwargs
-func (p *parser) parseParams() []Expr {
+//	*Ident                                          x
+//	*Binary{Op: EQ, X: *Ident, Y: Expr}             x=y
+//	*Unary{Op: STAR}                                *
+//	*Unary{Op: STAR, X: *Ident}                     *args
+//	*Unary{Op: STARSTAR, X: *Ident}                 **kwargs
+func (p *parser) parseParams(lambda bool) []Expr {
 	var params []Expr
 	for p.tok != RPAREN && p.tok != COLON && p.tok != EOF {
 		if len(params) > 0 {
@@ -446,7 +459,9 @@ func (p *parser) parseParams() []Expr {
 			pos := p.nextToken()
 			var x Expr
 			if op == STARSTAR || p.tok == IDENT {
-				x = p.parseIdent()
+				id := p.parseIdent()
+				id.TypeHint = p.maybeTypeHint()
+				x = id
 			}
 			params = append(params, &UnaryExpr{
 				OpPos: pos,
@@ -459,6 +474,9 @@ func (p *parser) parseParams() []Expr {
 		// IDENT
 		// IDENT = test
 		id := p.parseIdent()
+		if !lambda { // type hint syntax not compatible with lambdas
+			id.TypeHint = p.maybeTypeHint()
+		}
 		if p.tok == EQ { // default value
 			eq := p.nextToken()
 			dflt := p.parseTest()
@@ -474,6 +492,16 @@ func (p *parser) parseParams() []Expr {
 		params = append(params, id)
 	}
 	return params
+}
+
+// potentially consume a type hint expression
+// returns nil if there is no type hint
+func (p *parser) maybeTypeHint() Expr {
+	if p.tok == COLON {
+		p.consume(COLON)
+		return p.parseTest()
+	}
+	return nil
 }
 
 // parseExpr parses an expression, possible consisting of a
@@ -547,7 +575,7 @@ func (p *parser) parseLambda(allowCond bool) Expr {
 	lambda := p.nextToken()
 	var params []Expr
 	if p.tok != COLON {
-		params = p.parseParams()
+		params = p.parseParams(true)
 	}
 	p.consume(COLON)
 
@@ -651,9 +679,10 @@ func init() {
 }
 
 // primary_with_suffix = primary
-//                     | primary '.' IDENT
-//                     | primary slice_suffix
-//                     | primary call_suffix
+//
+//	| primary '.' IDENT
+//	| primary slice_suffix
+//	| primary call_suffix
 func (p *parser) parsePrimaryWithSuffix() Expr {
 	x := p.parsePrimary()
 	for {
@@ -770,12 +799,13 @@ func (p *parser) parseArgs() []Expr {
 	return args
 }
 
-//  primary = IDENT
-//          | INT | FLOAT | STRING | BYTES
-//          | '[' ...                    // list literal or comprehension
-//          | '{' ...                    // dict literal or comprehension
-//          | '(' ...                    // tuple or parenthesized expression
-//          | ('-'|'+'|'~') primary_with_suffix
+// primary = IDENT
+//
+//	| INT | FLOAT | STRING | BYTES
+//	| '[' ...                    // list literal or comprehension
+//	| '{' ...                    // dict literal or comprehension
+//	| '(' ...                    // tuple or parenthesized expression
+//	| ('-'|'+'|'~') primary_with_suffix
 func (p *parser) parsePrimary() Expr {
 	switch p.tok {
 	case IDENT:
@@ -836,9 +866,10 @@ func (p *parser) parsePrimary() Expr {
 }
 
 // list = '[' ']'
-//      | '[' expr ']'
-//      | '[' expr expr_list ']'
-//      | '[' expr (FOR loop_variables IN expr)+ ']'
+//
+//	| '[' expr ']'
+//	| '[' expr expr_list ']'
+//	| '[' expr (FOR loop_variables IN expr)+ ']'
 func (p *parser) parseList() Expr {
 	lbrack := p.nextToken()
 	if p.tok == RBRACK {
@@ -865,8 +896,9 @@ func (p *parser) parseList() Expr {
 }
 
 // dict = '{' '}'
-//      | '{' dict_entry_list '}'
-//      | '{' dict_entry FOR loop_variables IN expr '}'
+//
+//	| '{' dict_entry_list '}'
+//	| '{' dict_entry FOR loop_variables IN expr '}'
 func (p *parser) parseDict() Expr {
 	lbrace := p.nextToken()
 	if p.tok == RBRACE {
@@ -904,8 +936,9 @@ func (p *parser) parseDictEntry() *DictEntry {
 }
 
 // comp_suffix = FOR loopvars IN expr comp_suffix
-//             | IF expr comp_suffix
-//             | ']'  or  ')'                              (end)
+//
+//	| IF expr comp_suffix
+//	| ']'  or  ')'                              (end)
 //
 // There can be multiple FOR/IF clauses; the first is always a FOR.
 func (p *parser) parseComprehensionSuffix(lbrace Position, body Expr, endBrace Token) Expr {

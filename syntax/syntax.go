@@ -99,9 +99,10 @@ func (*LoadStmt) stmt()   {}
 func (*ReturnStmt) stmt() {}
 
 // An AssignStmt represents an assignment:
+//
 //	x = 0
 //	x, y = y, x
-// 	x += 1
+//	x += 1
 type AssignStmt struct {
 	commentsRef
 	OpPos Position
@@ -119,10 +120,11 @@ func (x *AssignStmt) Span() (start, end Position) {
 // A DefStmt represents a function definition.
 type DefStmt struct {
 	commentsRef
-	Def    Position
-	Name   *Ident
-	Params []Expr // param = ident | ident=expr | * | *ident | **ident
-	Body   []Stmt
+	Def        Position
+	Name       *Ident
+	Params     []Expr // param = ident | ident=expr | * | *ident | **ident
+	Body       []Stmt
+	ReturnType Expr
 
 	Function interface{} // a *resolve.Function, set by resolver
 }
@@ -238,13 +240,18 @@ func (*UnaryExpr) expr()     {}
 // An Ident represents an identifier.
 type Ident struct {
 	commentsRef
-	NamePos Position
-	Name    string
+	NamePos  Position
+	Name     string
+	TypeHint Expr
 
 	Binding interface{} // a *resolver.Binding, set by resolver
 }
 
 func (x *Ident) Span() (start, end Position) {
+	if x.TypeHint != nil {
+		_, end := x.TypeHint.Span()
+		return x.NamePos, end
+	}
 	return x.NamePos, x.NamePos.add(x.Name)
 }
 

@@ -79,6 +79,7 @@ const (
 	LTLT_EQ       // <<=
 	GTGT_EQ       // >>=
 	STARSTAR      // **
+	ARROW         // ->
 
 	// Keywords
 	AND
@@ -164,6 +165,7 @@ var tokenNames = [...]string{
 	LTLT_EQ:       "<<=",
 	GTGT_EQ:       ">>=",
 	STARSTAR:      "**",
+	ARROW:         "->",
 	AND:           "and",
 	BREAK:         "break",
 	CONTINUE:      "continue",
@@ -772,6 +774,10 @@ start:
 		case '+':
 			return PLUS
 		case '-':
+			if sc.peekRune() == '>' {
+				sc.readRune()
+				return ARROW
+			}
 			return MINUS
 		case '/':
 			if sc.peekRune() == '/' {
