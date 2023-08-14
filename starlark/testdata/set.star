@@ -116,3 +116,7 @@ assert.eq(iter(), [1, 2, 3])
 
 # sets are not indexable
 assert.fails(lambda : x[0], "unhandled.*operation")
+
+# adding and removing
+x.add(4)
+assert.true(4 in x)

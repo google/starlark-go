@@ -141,6 +141,7 @@ var (
 
 	setMethods = map[string]*Builtin{
 		"union": NewBuiltin("union", set_union),
+		"add": NewBuiltin("add", set_add),
 	}
 )
 
@@ -2181,6 +2182,18 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		return nil, nameErr(b, err)
 	}
 	return union, nil
+}
+
+func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var elem Value
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &elem); err != nil {
+		return nil, err
+	}
+	err := b.Receiver().(*Set).Insert(elem)
+	if err != nil {
+		return nil, nameErr(b, err)
+	}
+	return None, nil
 }
 
 // Common implementation of string_{r}{find,index}.
