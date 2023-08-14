@@ -2188,6 +2188,7 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 	return union, nil
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·add.
 func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var elem Value
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &elem); err != nil {
@@ -2200,6 +2201,7 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	return None, nil
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·remove.
 func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var k Value
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
@@ -2213,6 +2215,7 @@ func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 	return nil, nameErr(b, "missing key")
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·discard.
 func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var k Value
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
@@ -2224,6 +2227,7 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	return None, nil
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·pop.
 func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
@@ -2240,6 +2244,7 @@ func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	return k, nil
 }
 
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·clear.
 func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err

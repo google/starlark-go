@@ -966,7 +966,15 @@ Sets are instantiated by calling the built-in `set` function, which
 returns a set containing all the elements of its optional argument,
 which must be an iterable sequence.  Sets have no literal syntax.
 
-The only method of a set is `union`, which is equivalent to the `|` operator.
+A set has these methods:
+
+* [`union`](#set·union)
+* [`add`](#set·add)
+* [`pop`](#set·pop)
+* [`remove`](#set·remove)
+* [`discard`](#set·discard)
+* [`clear`](#set·clear)
+
 
 A set used in a Boolean context is considered true if it is non-empty.
 
@@ -3753,6 +3761,68 @@ must be iterable.
 x = set([1, 2])
 y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
+```
+
+<a id='set·add'></a>
+### set·add
+
+`S.add(x)` adds the value `x` to the set `S`. This has no effect if `x` is already in `S`.
+
+```python
+x = set([1, 2])
+x.add(3)                             # None (x == set([1, 2, 3]))
+x.add(3)                             # None (x == set([1, 2, 3]))
+```
+
+<a id='set·pop'></a>
+### set·pop
+
+`S.pop()` removes an arbitrary item from the set and returns it.
+
+`pop` fails if the set is empty.
+
+```python
+x = set([1, 2, 3])
+x.pop()                              # 1 (x == set([2, 3]))
+```
+
+<a id='set·remove'></a>
+### set·remove
+
+`S.remove(x)` removes `x` from the set and returns None.
+
+`remove` fails if the set does not contain `x` or is frozen.
+
+```python
+x = set([1, 2, 3])
+x.remove(2)                             # None (x == set([1, 3]))
+x.remove(2)                             # error: element not found
+```
+
+<a id='set·discard'></a>
+### set·discard
+
+`S.discard(x)` removes `x` from the set and returns None.
+
+`discard` fails if the set is frozen.
+
+```python
+x = set([1, 2, 3])
+x.discard(2)                             # None (x == set([1, 3]))
+x.discard(2)                             # None (x == set([1, 3]))
+```
+
+<a id='set·clear'></a>
+### set·clear
+
+`S.clear()` removes all items from the set and returns None.
+
+`clear` fails if the set is frozen.
+
+```python
+x = set([1, 2, 3])
+x.discard(2)                             # None (x == set([1, 3]))
+x.discard(2)                             # None (x == set([1, 3]))
 ```
 
 <a id='string·elem_ords'></a>
