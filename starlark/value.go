@@ -1453,7 +1453,7 @@ func Iterate(x Value) Iterator {
 // Bytes is the type of a Starlark binary string.
 //
 // A Bytes encapsulates an immutable sequence of bytes.
-// It is comparable, indexable, and sliceable, but not direcly iterable;
+// It is comparable, indexable, and sliceable, but not directly iterable;
 // use bytes.elems() for an iterable view.
 //
 // In this Go implementation, the elements of 'string' and 'bytes' are

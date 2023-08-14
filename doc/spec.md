@@ -1439,7 +1439,7 @@ on the value returned by `get_filename()`.
 ## Value concepts
 
 Starlark has eleven core [data types](#data-types).  An application
-that embeds the Starlark intepreter may define additional types that
+that embeds the Starlark interpreter may define additional types that
 behave like Starlark values.  All values, whether core or
 application-defined, implement a few basic behaviors:
 
