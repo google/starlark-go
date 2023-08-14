@@ -140,12 +140,12 @@ var (
 	}
 
 	setMethods = map[string]*Builtin{
-		"union": NewBuiltin("union", set_union),
-		"add": NewBuiltin("add", set_add),
-		"pop": NewBuiltin("pop", set_pop),
-		"remove": NewBuiltin("remove", set_remove),
+		"union":   NewBuiltin("union", set_union),
+		"add":     NewBuiltin("add", set_add),
+		"pop":     NewBuiltin("pop", set_pop),
+		"remove":  NewBuiltin("remove", set_remove),
 		"discard": NewBuiltin("discard", set_discard),
-		"clear": NewBuiltin("clear", set_clear),
+		"clear":   NewBuiltin("clear", set_clear),
 	}
 )
 
@@ -2244,7 +2244,7 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	err := b.Receiver().(*Set).Clear();
+	err := b.Receiver().(*Set).Clear()
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
