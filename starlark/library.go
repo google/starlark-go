@@ -142,6 +142,7 @@ var (
 	setMethods = map[string]*Builtin{
 		"union": NewBuiltin("union", set_union),
 		"add": NewBuiltin("add", set_add),
+		"pop": NewBuiltin("pop", set_pop),
 	}
 )
 
@@ -2195,6 +2196,23 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	}
 	return None, nil
 }
+
+func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*Set)
+	k, ok := recv.ht.first()
+	if !ok {
+		return nil, nameErr(b, "empty set")
+	}
+	_, err := recv.Delete(k)
+	if err != nil {
+		return nil, nameErr(b, err) // set is frozen
+	}
+	return k, nil
+}
+
 
 // Common implementation of string_{r}{find,index}.
 func string_find_impl(b *Builtin, args Tuple, kwargs []Tuple, allowError, last bool) (Value, error) {

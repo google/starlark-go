@@ -120,3 +120,8 @@ assert.fails(lambda : x[0], "unhandled.*operation")
 # adding and removing
 x.add(4)
 assert.true(4 in x)
+
+# pop
+z = set([1])
+assert.eq(z.pop(), 1)
+assert.fails(z.pop(), "pop: empty set")
