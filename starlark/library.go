@@ -144,6 +144,7 @@ var (
 		"add": NewBuiltin("add", set_add),
 		"pop": NewBuiltin("pop", set_pop),
 		"remove": NewBuiltin("remove", set_remove),
+		"discard": NewBuiltin("remove", set_discard),
 	}
 )
 
@@ -2209,6 +2210,17 @@ func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 		return None, nil
 	}
 	return nil, nameErr(b, "missing key")
+}
+
+func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var k Value
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
+		return nil, err
+	}
+	if _, err := b.Receiver().(*Set).Delete(k); err != nil {
+		return nil, nameErr(b, err) // dict is frozen or key is unhashable
+	}
+	return None, nil
 }
 
 func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
