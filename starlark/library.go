@@ -144,7 +144,8 @@ var (
 		"add": NewBuiltin("add", set_add),
 		"pop": NewBuiltin("pop", set_pop),
 		"remove": NewBuiltin("remove", set_remove),
-		"discard": NewBuiltin("remove", set_discard),
+		"discard": NewBuiltin("discard", set_discard),
+		"clear": NewBuiltin("clear", set_clear),
 	}
 )
 
@@ -2239,6 +2240,16 @@ func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	return k, nil
 }
 
+func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	err := b.Receiver().(*Set).Clear();
+	if err != nil {
+		return nil, nameErr(b, err)
+	}
+	return None, nil
+}
 
 // Common implementation of string_{r}{find,index}.
 func string_find_impl(b *Builtin, args Tuple, kwargs []Tuple, allowError, last bool) (Value, error) {
