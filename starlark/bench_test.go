@@ -18,8 +18,6 @@ import (
 )
 
 func BenchmarkStarlark(b *testing.B) {
-	defer setOptions("")
-
 	starlark.Universe["json"] = json.Module
 
 	testdata := starlarktest.DataFile("starlark", ".")
@@ -36,10 +34,10 @@ func BenchmarkStarlark(b *testing.B) {
 			b.Error(err)
 			continue
 		}
-		setOptions(string(src))
+		opts := getOptions(string(src))
 
 		// Evaluate the file once.
-		globals, err := starlark.ExecFile(thread, filename, src, nil)
+		globals, err := starlark.ExecFileOptions(opts, thread, filename, src, nil)
 		if err != nil {
 			reportEvalError(b, err)
 		}
@@ -63,9 +61,9 @@ func BenchmarkStarlark(b *testing.B) {
 // It provides b.n, the number of iterations that must be executed by the function,
 // which is typically of the form:
 //
-//   def bench_foo(b):
-//      for _ in range(b.n):
-//         ...work...
+//	def bench_foo(b):
+//	   for _ in range(b.n):
+//	      ...work...
 //
 // It also provides stop, start, and restart methods to stop the clock in case
 // there is significant set-up work that should not count against the measured

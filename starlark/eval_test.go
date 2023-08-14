@@ -20,7 +20,6 @@ import (
 	starlarkmath "go.starlark.net/lib/math"
 	"go.starlark.net/lib/proto"
 	"go.starlark.net/lib/time"
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
@@ -31,11 +30,19 @@ import (
 )
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
-func setOptions(src string) {
-	resolve.AllowGlobalReassign = option(src, "globalreassign")
-	resolve.LoadBindsGlobally = option(src, "loadbindsglobally")
-	resolve.AllowRecursion = option(src, "recursion")
-	resolve.AllowSet = option(src, "set")
+func getOptions(src string) *syntax.FileOptions {
+	// TODO(adonovan): use new fine-grained names.
+	// And share with resolve_test.go
+	allowGlobalReassign := option(src, "globalreassign")
+	recursion := option(src, "recursion")
+	return &syntax.FileOptions{
+		Set:               option(src, "set"),
+		While:             allowGlobalReassign || recursion,
+		TopLevelControl:   allowGlobalReassign,
+		GlobalReassign:    allowGlobalReassign,
+		LoadBindsGlobally: option(src, "loadbindsglobally"),
+		Recursion:         recursion,
+	}
 }
 
 func option(chunk, name string) bool {
@@ -113,7 +120,6 @@ func TestEvalExpr(t *testing.T) {
 }
 
 func TestExecFile(t *testing.T) {
-	defer setOptions("")
 	testdata := starlarktest.DataFile("starlark", ".")
 	thread := &starlark.Thread{Load: load}
 	starlarktest.SetReporter(thread, t)
@@ -148,9 +154,8 @@ func TestExecFile(t *testing.T) {
 				"struct":    starlark.NewBuiltin("struct", starlarkstruct.Make),
 			}
 
-			setOptions(chunk.Source)
-
-			_, err := starlark.ExecFile(thread, filename, chunk.Source, predeclared)
+			opts := getOptions(chunk.Source)
+			_, err := starlark.ExecFileOptions(opts, thread, filename, chunk.Source, predeclared)
 			switch err := err.(type) {
 			case *starlark.EvalError:
 				found := false
