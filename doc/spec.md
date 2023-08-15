@@ -153,12 +153,12 @@ reproducibility is paramount, such as build tools.
     * [list·insert](#list·insert)
     * [list·pop](#list·pop)
     * [list·remove](#list·remove)
-    * [set·union](#set·union)
     * [set·add](#set·add)
+    * [set·clear](#set·clear)
+    * [set·discard](#set·discard)
     * [set·pop](#set·pop)
     * [set·remove](#set·remove)
-    * [set·discard](#set·discard)
-    * [set·clear](#set·clear)
+    * [set·union](#set·union)
     * [string·capitalize](#string·capitalize)
     * [string·codepoint_ords](#string·codepoint_ords)
     * [string·codepoints](#string·codepoints)
@@ -973,12 +973,12 @@ which must be an iterable sequence.  Sets have no literal syntax.
 
 A set has these methods:
 
-* [`union`](#set·union)
 * [`add`](#set·add)
+* [`clear`](#set·clear)
+* [`discard`](#set·discard)
 * [`pop`](#set·pop)
 * [`remove`](#set·remove)
-* [`discard`](#set·discard)
-* [`clear`](#set·clear)
+* [`union`](#set·union)
 
 
 A set used in a Boolean context is considered true if it is non-empty.
@@ -3753,21 +3753,6 @@ x.remove(2)                             # None (x == [1, 3])
 x.remove(2)                             # error: element not found
 ```
 
-<a id='set·union'></a>
-### set·union
-
-`S.union(iterable)` returns a new set into which have been inserted
-all the elements of set S and all the elements of the argument, which
-must be iterable.
-
-`union` fails if any element of the iterable is not hashable.
-
-```python
-x = set([1, 2])
-y = set([2, 3])
-x.union(y)                              # set([1, 2, 3])
-```
-
 <a id='set·add'></a>
 ### set·add
 
@@ -3779,29 +3764,17 @@ x.add(3)                             # None (x == set([1, 2, 3]))
 x.add(3)                             # None (x == set([1, 2, 3]))
 ```
 
-<a id='set·pop'></a>
-### set·pop
+<a id='set·clear'></a>
+### set·clear
 
-`S.pop()` removes an arbitrary item from the set and returns it.
+`S.clear()` removes all items from the set and returns None.
 
-`pop` fails if the set is empty.
-
-```python
-x = set([1, 2, 3])
-x.pop()                              # 1 (x == set([2, 3]))
-```
-
-<a id='set·remove'></a>
-### set·remove
-
-`S.remove(x)` removes `x` from the set and returns None.
-
-`remove` fails if the set does not contain `x` or is frozen.
+`clear` fails if the set is frozen.
 
 ```python
 x = set([1, 2, 3])
-x.remove(2)                             # None (x == set([1, 3]))
-x.remove(2)                             # error: element not found
+x.discard(2)                             # None (x == set([1, 3]))
+x.discard(2)                             # None (x == set([1, 3]))
 ```
 
 <a id='set·discard'></a>
@@ -3817,17 +3790,46 @@ x.discard(2)                             # None (x == set([1, 3]))
 x.discard(2)                             # None (x == set([1, 3]))
 ```
 
-<a id='set·clear'></a>
-### set·clear
+<a id='set·pop'></a>
+### set·pop
 
-`S.clear()` removes all items from the set and returns None.
+`S.pop()` removes the first inserted item from the set and returns it.
 
-`clear` fails if the set is frozen.
+`pop` fails if the set is empty or is frozen.
+
+```python
+x = set([1, 2])
+x.pop()                                 # 1
+x.pop()                                 # 2
+x.pop()                                 # error: empty set
+```
+
+<a id='set·remove'></a>
+### set·remove
+
+`S.remove(x)` removes `x` from the set and returns None.
+
+`remove` fails if the set does not contain `x` or is frozen.
 
 ```python
 x = set([1, 2, 3])
-x.discard(2)                             # None (x == set([1, 3]))
-x.discard(2)                             # None (x == set([1, 3]))
+x.remove(2)                             # None (x == set([1, 3]))
+x.remove(2)                             # error: element not found
+```
+
+<a id='set·union'></a>
+### set·union
+
+`S.union(iterable)` returns a new set into which have been inserted
+all the elements of set S and all the elements of the argument, which
+must be iterable.
+
+`union` fails if any element of the iterable is not hashable.
+
+```python
+x = set([1, 2])
+y = set([2, 3])
+x.union(y)                              # set([1, 2, 3])
 ```
 
 <a id='string·elem_ords'></a>

@@ -140,12 +140,12 @@ var (
 	}
 
 	setMethods = map[string]*Builtin{
-		"union":   NewBuiltin("union", set_union),
 		"add":     NewBuiltin("add", set_add),
+		"clear":   NewBuiltin("clear", set_clear),
+		"discard": NewBuiltin("discard", set_discard),
 		"pop":     NewBuiltin("pop", set_pop),
 		"remove":  NewBuiltin("remove", set_remove),
-		"discard": NewBuiltin("discard", set_discard),
-		"clear":   NewBuiltin("clear", set_clear),
+		"union":   NewBuiltin("union", set_union),
 	}
 )
 
@@ -2173,25 +2173,10 @@ func string_splitlines(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 	return NewList(list), nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
-func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
-		return nil, err
-	}
-	iter := iterable.Iterate()
-	defer iter.Done()
-	union, err := b.Receiver().(*Set).Union(iter)
-	if err != nil {
-		return nil, nameErr(b, err)
-	}
-	return union, nil
-}
-
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·add.
 func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var elem Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &elem); err != nil {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &elem); err != nil {
 		return nil, err
 	}
 	err := b.Receiver().(*Set).Insert(elem)
@@ -2201,18 +2186,16 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	return None, nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·remove.
-func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var k Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·clear.
+func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	if found, err := b.Receiver().(*Set).Delete(k); err != nil {
-		return nil, nameErr(b, err) // dict is frozen or key is unhashable
-	} else if found {
-		return None, nil
+	err := b.Receiver().(*Set).Clear()
+	if err != nil {
+		return nil, nameErr(b, err)
 	}
-	return nil, nameErr(b, "missing key")
+	return None, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·discard.
@@ -2244,16 +2227,33 @@ func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	return k, nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·clear.
-func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·remove.
+func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var k Value
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
 		return nil, err
 	}
-	err := b.Receiver().(*Set).Clear()
+	if found, err := b.Receiver().(*Set).Delete(k); err != nil {
+		return nil, nameErr(b, err) // dict is frozen or key is unhashable
+	} else if found {
+		return None, nil
+	}
+	return nil, nameErr(b, "missing key")
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
+func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var iterable Iterable
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
+		return nil, err
+	}
+	iter := iterable.Iterate()
+	defer iter.Done()
+	union, err := b.Receiver().(*Set).Union(iter)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
-	return None, nil
+	return union, nil
 }
 
 // Common implementation of string_{r}{find,index}.
