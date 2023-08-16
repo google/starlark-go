@@ -15,7 +15,7 @@
 # - set += iterable, perhaps?
 # Test iterator invalidation.
 
-load("assert.star", "assert")
+load("assert.star", "assert", "freeze")
 
 # literals
 # Parser does not currently support {1, 2, 3}.
@@ -118,25 +118,50 @@ assert.eq(iter(), [1, 2, 3])
 assert.fails(lambda : x[0], "unhandled.*operation")
 
 # adding and removing
-x.add(4)
-assert.true(4 in x)
+add_set = set([1,2,3])
+add_set.add(4)
+assert.true(4 in add_set)
+freeze(add_set) # no mutation of frozen set because key already present
+add_set.add(4)
+assert.fails(lambda: add_set.add(5), "add: cannot insert into frozen hash table")
 
-# remove 
-x.remove(4)
-assert.true(4 not in x)
-assert.fails(lambda: x.remove(4), "remove: missing key")
+# remove
+remove_set = set([1,2,3])
+remove_set.remove(3)
+assert.true(3 not in remove_set)
+assert.fails(lambda: remove_set.remove(3), "remove: missing key")
+freeze(remove_set)
+assert.fails(lambda: remove_set.remove(3), "remove: cannot delete from frozen hash table")
 
 # discard
-x.add(4)
-x.discard(4)
-assert.true(4 not in x)
-assert.eq(x.discard(4), None)
+discard_set = set([1,2,3])
+discard_set.discard(3)
+assert.true(3 not in discard_set)
+assert.eq(discard_set.discard(3), None)
+freeze(discard_set)
+assert.eq(discard_set.discard(3), None)  # no mutation of frozen set because key doesn't exist
+assert.fails(lambda: discard_set.discard(1), "discard: cannot delete from frozen hash table")
+
 
 # pop
-z = set([1])
-assert.eq(z.pop(), 1)
-assert.fails(lambda: z.pop(), "pop: empty set")
+pop_set = set([1,2,3])
+assert.eq(pop_set.pop(), 1)
+assert.eq(pop_set.pop(), 2)
+assert.eq(pop_set.pop(), 3)
+assert.fails(lambda: pop_set.pop(), "pop: empty set")
+pop_set.add(1)
+pop_set.add(2)
+freeze(pop_set)
+assert.fails(lambda: pop_set.pop(), "pop: cannot delete from frozen hash table")
+
 
 # clear
-x.clear()
-assert.eq(len(x), 0)
+clear_set = set([1,2,3])
+clear_set.clear()
+assert.eq(len(clear_set), 0)
+freeze(clear_set) # no mutation of frozen set because its already empty
+assert.eq(clear_set.clear(), None) 
+
+other_clear_set = set([1,2,3])
+freeze(other_clear_set)
+assert.fails(lambda: other_clear_set.clear(), "clear: cannot clear frozen hash table")

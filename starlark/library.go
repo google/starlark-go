@@ -2179,6 +2179,11 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &elem); err != nil {
 		return nil, err
 	}
+	if found, err := b.Receiver().(*Set).Has(elem); err != nil {
+		return nil, nameErr(b, err)
+	} else if found {
+		return None, nil
+	}
 	err := b.Receiver().(*Set).Insert(elem)
 	if err != nil {
 		return nil, nameErr(b, err)
@@ -2190,6 +2195,9 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
+	}
+	if b.Receiver().(*Set).Len() == 0 { // clear on an empty set is non-mutating
+		return None, nil
 	}
 	err := b.Receiver().(*Set).Clear()
 	if err != nil {
@@ -2203,6 +2211,11 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	var k Value
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
 		return nil, err
+	}
+	if found, err := b.Receiver().(*Set).Has(k); err != nil {
+		return nil, nameErr(b, err)
+	} else if !found {
+		return None, nil
 	}
 	if _, err := b.Receiver().(*Set).Delete(k); err != nil {
 		return nil, nameErr(b, err) // dict is frozen or key is unhashable

@@ -3756,7 +3756,12 @@ x.remove(2)                             # error: element not found
 <a id='set·add'></a>
 ### set·add
 
-`S.add(x)` adds the value `x` to the set `S`. This has no effect if `x` is already in `S`.
+If `x` is not an element of set `S`, `S.add(x)` adds it to the set or fails if the set is frozen.
+If `x` already an element of the set, `add(x)` has no effect.
+
+`add` fails if the set does not contain `x` and is frozen.
+
+It returns None.
 
 ```python
 x = set([1, 2])
@@ -3767,27 +3772,30 @@ x.add(3)                             # None (x == set([1, 2, 3]))
 <a id='set·clear'></a>
 ### set·clear
 
-`S.clear()` removes all items from the set and returns None.
+`S.clear()` removes all items from the set and fails if the set is non-empty and frozen.
 
-`clear` fails if the set is frozen.
+It returns None.
 
 ```python
 x = set([1, 2, 3])
-x.discard(2)                             # None (x == set([1, 3]))
-x.discard(2)                             # None (x == set([1, 3]))
+x.clear(2)                               # None
+x                                        # set([])
 ```
 
 <a id='set·discard'></a>
 ### set·discard
 
-`S.discard(x)` removes `x` from the set and returns None.
+If `x` is an element of set `S`, `S.discard(x)` removes `x` from the set, or fails if the
+set is frozen. If `x` is not an element of the set, discard has no effect.
 
-`discard` fails if the set is frozen.
+It returns None.
 
 ```python
 x = set([1, 2, 3])
-x.discard(2)                             # None (x == set([1, 3]))
-x.discard(2)                             # None (x == set([1, 3]))
+x.discard(2)                             # None
+x                                        # set([1, 3])
+x.discard(2)                             # None
+x                                        # set([1, 3])
 ```
 
 <a id='set·pop'></a>
@@ -3813,7 +3821,8 @@ x.pop()                                 # error: empty set
 
 ```python
 x = set([1, 2, 3])
-x.remove(2)                             # None (x == set([1, 3]))
+x.remove(2)                             # None
+x                                       # set([1, 3])
 x.remove(2)                             # error: element not found
 ```
 
