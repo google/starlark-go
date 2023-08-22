@@ -2196,12 +2196,10 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	if b.Receiver().(*Set).Len() == 0 { // clear on an empty set is non-mutating
-		return None, nil
-	}
-	err := b.Receiver().(*Set).Clear()
-	if err != nil {
-		return nil, nameErr(b, err)
+	if b.Receiver().(*Set).Len() > 0 {
+		if err := b.Receiver().(*Set).Clear(); err != nil {
+			return nil, nameErr(b, err)
+		}
 	}
 	return None, nil
 }
@@ -2218,7 +2216,7 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 		return None, nil
 	}
 	if _, err := b.Receiver().(*Set).Delete(k); err != nil {
-		return nil, nameErr(b, err) // dict is frozen or key is unhashable
+		return nil, nameErr(b, err) // set is frozen
 	}
 	return None, nil
 }

@@ -3759,20 +3759,20 @@ x.remove(2)                             # error: element not found
 If `x` is not an element of set `S`, `S.add(x)` adds it to the set or fails if the set is frozen.
 If `x` already an element of the set, `add(x)` has no effect.
 
-`add` fails if the set does not contain `x` and is frozen.
-
 It returns None.
 
 ```python
 x = set([1, 2])
-x.add(3)                             # None (x == set([1, 2, 3]))
-x.add(3)                             # None (x == set([1, 2, 3]))
+x.add(3)                             # None
+x                                    # set([1, 2, 3])
+x.add(3)                             # None
+x                                    # set([1, 2, 3])
 ```
 
 <a id='set·clear'></a>
 ### set·clear
 
-`S.clear()` removes all items from the set and fails if the set is non-empty and frozen.
+`S.clear()` removes all items from the set or fails if the set is non-empty and frozen.
 
 It returns None.
 
@@ -3803,7 +3803,7 @@ x                                        # set([1, 3])
 
 `S.pop()` removes the first inserted item from the set and returns it.
 
-`pop` fails if the set is empty or is frozen.
+`pop` fails if the set is empty or frozen.
 
 ```python
 x = set([1, 2])
