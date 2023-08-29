@@ -153,6 +153,11 @@ reproducibility is paramount, such as build tools.
     * [list·insert](#list·insert)
     * [list·pop](#list·pop)
     * [list·remove](#list·remove)
+    * [set·add](#set·add)
+    * [set·clear](#set·clear)
+    * [set·discard](#set·discard)
+    * [set·pop](#set·pop)
+    * [set·remove](#set·remove)
     * [set·union](#set·union)
     * [string·capitalize](#string·capitalize)
     * [string·codepoint_ords](#string·codepoint_ords)
@@ -966,7 +971,15 @@ Sets are instantiated by calling the built-in `set` function, which
 returns a set containing all the elements of its optional argument,
 which must be an iterable sequence.  Sets have no literal syntax.
 
-The only method of a set is `union`, which is equivalent to the `|` operator.
+A set has these methods:
+
+* [`add`](#set·add)
+* [`clear`](#set·clear)
+* [`discard`](#set·discard)
+* [`pop`](#set·pop)
+* [`remove`](#set·remove)
+* [`union`](#set·union)
+
 
 A set used in a Boolean context is considered true if it is non-empty.
 
@@ -3737,6 +3750,79 @@ x                                       # [2]
 x = [1, 2, 3, 2]
 x.remove(2)                             # None (x == [1, 3, 2])
 x.remove(2)                             # None (x == [1, 3])
+x.remove(2)                             # error: element not found
+```
+
+<a id='set·add'></a>
+### set·add
+
+If `x` is not an element of set `S`, `S.add(x)` adds it to the set or fails if the set is frozen.
+If `x` already an element of the set, `add(x)` has no effect.
+
+It returns None.
+
+```python
+x = set([1, 2])
+x.add(3)                             # None
+x                                    # set([1, 2, 3])
+x.add(3)                             # None
+x                                    # set([1, 2, 3])
+```
+
+<a id='set·clear'></a>
+### set·clear
+
+`S.clear()` removes all items from the set or fails if the set is non-empty and frozen.
+
+It returns None.
+
+```python
+x = set([1, 2, 3])
+x.clear(2)                               # None
+x                                        # set([])
+```
+
+<a id='set·discard'></a>
+### set·discard
+
+If `x` is an element of set `S`, `S.discard(x)` removes `x` from the set, or fails if the
+set is frozen. If `x` is not an element of the set, discard has no effect.
+
+It returns None.
+
+```python
+x = set([1, 2, 3])
+x.discard(2)                             # None
+x                                        # set([1, 3])
+x.discard(2)                             # None
+x                                        # set([1, 3])
+```
+
+<a id='set·pop'></a>
+### set·pop
+
+`S.pop()` removes the first inserted item from the set and returns it.
+
+`pop` fails if the set is empty or frozen.
+
+```python
+x = set([1, 2])
+x.pop()                                 # 1
+x.pop()                                 # 2
+x.pop()                                 # error: empty set
+```
+
+<a id='set·remove'></a>
+### set·remove
+
+`S.remove(x)` removes `x` from the set and returns None.
+
+`remove` fails if the set does not contain `x` or is frozen.
+
+```python
+x = set([1, 2, 3])
+x.remove(2)                             # None
+x                                       # set([1, 3])
 x.remove(2)                             # error: element not found
 ```
 
