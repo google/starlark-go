@@ -2241,7 +2241,7 @@ func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value,
 	return diff, nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection.
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issubset.
 func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
@@ -2256,7 +2256,7 @@ func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	return Bool(diff), nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection.
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issuperset.
 func set_issuperset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {

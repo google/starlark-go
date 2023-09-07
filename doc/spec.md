@@ -978,7 +978,7 @@ which must be an iterable sequence.  Sets have no literal syntax.
 
 A set has these methods:
 
-* [`add``](#set·add)
+* [`add`](#set·add)
 * [`clear`](#set·clear)
 * [`difference`](#set·difference)
 * [`discard`](#set·discard)
@@ -3909,6 +3909,21 @@ x = set([1, 2, 3])
 x.remove(2)                             # None
 x                                       # set([1, 3])
 x.remove(2)                             # error: element not found
+```
+
+<a id='set·symmetric_difference'></a>
+### set·symmetric_difference
+
+`S.symmetric_difference(y)` returns a new set which includes all items in S and y, except for items which are in both.
+
+y can be any type of iterable (set, list, tuple).
+
+The symmetric difference between two sets can also be expressed using the `^` operator.
+
+```python
+x = set([1, 2, 3])
+x.symmetric_difference([3, 4, 5])         # set([1, 2, 4, 5])
+x ^ set([2, 3, 4])                        # set([1, 4])
 ```
 
 <a id='set·union'></a>
