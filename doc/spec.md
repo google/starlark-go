@@ -155,9 +155,14 @@ reproducibility is paramount, such as build tools.
     * [list·remove](#list·remove)
     * [set·add](#set·add)
     * [set·clear](#set·clear)
+    * [set·difference](#set·difference)
     * [set·discard](#set·discard)
+    * [set·intersection](#set·intersection)
+    * [set·issubset](#set·issubset)
+    * [set·issuperset](#set·issuperset)
     * [set·pop](#set·pop)
     * [set·remove](#set·remove)
+    * [set·symmetric_difference](#set·symmetric_difference)
     * [set·union](#set·union)
     * [string·capitalize](#string·capitalize)
     * [string·codepoint_ords](#string·codepoint_ords)
@@ -973,11 +978,16 @@ which must be an iterable sequence.  Sets have no literal syntax.
 
 A set has these methods:
 
-* [`add`](#set·add)
+* [`add``](#set·add)
 * [`clear`](#set·clear)
+* [`difference`](#set·difference)
 * [`discard`](#set·discard)
+* [`intersection`](#set·intersection)
+* [`issubset`](#set·issubset)
+* [`issuperset`](#set·issuperset)
 * [`pop`](#set·pop)
 * [`remove`](#set·remove)
+* [`symmetric_difference`](#set·symmetric_difference)
 * [`union`](#set·union)
 
 
@@ -3789,6 +3799,21 @@ x.clear(2)                               # None
 x                                        # set([])
 ```
 
+<a id='set·difference'></a>
+### set·difference
+
+`S.difference(y)` returns a new set which includes all items in S which are not in y.
+
+y can be any type of iterable (set, list, tuple).
+
+The difference between two sets can also be expressed using the `-` operator.
+
+```python
+x = set([1, 2, 3])
+x.difference([3, 4, 5])                   # set([1,2])
+x - set([1, 2])                           # set([3])
+```
+
 <a id='set·discard'></a>
 ### set·discard
 
@@ -3803,6 +3828,59 @@ x.discard(2)                             # None
 x                                        # set([1, 3])
 x.discard(2)                             # None
 x                                        # set([1, 3])
+```
+
+<a id='set·intersection'></a>
+### set·intersection
+
+`S.intersection(y)` returns a new set which includes all items in S which are also in y.
+
+y can be any type of iterable (set, list, tuple).
+
+The difference between two sets can also be expressed using the `&` operator.
+
+```python
+x = set([1, 2, 3])
+x.intersection([3, 4, 5])                # set([3])
+x & set([1, 2])                          # set([1,2])
+```
+
+<a id='set·issubset'></a>
+### set·issubset
+
+`S.issubset(y)` returns True if all items in S are also in y, otherwise it returns False.
+
+y can be any type of iterable (set, list, tuple).
+
+The `<=` operator can be used to determine if a given set is a subset of another.
+
+The `<` operator can be used to determine if a given set is a proper subset of another, which is equivalent to `x <= y and x != y`
+
+```python
+x = set([1, 2])
+x.issubset([1, 2, 3])                # True
+x.issubset([1, 3, 4])                # False
+x <= set([1, 2])                     # True
+x < set([1, 2])                      # False
+```
+
+<a id='set·issuperset'></a>
+### set·issuperset
+
+`S.issuperset(y)` returns True if all items in y are also in S, otherwise it returns False.
+
+y can be any type of iterable (set, list, tuple).
+
+The `>=` operator can be used to determine if a given set is a superset of another.
+
+The `>` operator can be used to determine if a given set is a proper superset of another, which is equivalent to `x >= y and x != y`
+
+```python
+x = set([1, 2, 3])
+x.issuperset([1, 2])                 # True
+x.issuperset([1, 3, 4])              # False
+x >= set([1, 2, 3])                  # True
+x > set([1, 2])                      # False
 ```
 
 <a id='set·pop'></a>
