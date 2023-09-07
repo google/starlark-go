@@ -2045,6 +2045,12 @@ Sets
       int & int                 # bitwise intersection (AND)
       set & set                 # set intersection
       set ^ set                 # set symmetric difference
+      set - set                 # set difference
+      set >= set                # superset
+      set > set                 # proper superset
+      set <= set                # subset
+      set < set                 # proper subset
+
 
 Dict
       dict | dict               # ordered union
@@ -2115,6 +2121,7 @@ Implementations may impose a limit on the second operand of a left shift.
 set([1, 2]) & set([2, 3])       # set([2])
 set([1, 2]) | set([2, 3])       # set([1, 2, 3])
 set([1, 2]) ^ set([2, 3])       # set([1, 3])
+set([1, 2]) - set([2, 3])       # set([1])
 ```
 
 <b>Implementation note:</b>

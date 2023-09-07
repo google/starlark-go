@@ -1134,6 +1134,26 @@ func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 	case syntax.NEQ:
 		ok, err := setsEqual(x, y, depth)
 		return !ok, err
+	case syntax.GE: // superset
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.isSuperset(iter)
+	case syntax.LE: // subset
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.isSubset(iter)
+	case syntax.GT: // proper superset
+		eq, err := setsEqual(x, y, depth)
+		iter := y.Iterate()
+		defer iter.Done()
+		ok, err := x.isSuperset(iter)
+		return ok && !eq, err
+	case syntax.LT: // proper subset
+		eq, _ := setsEqual(x, y, depth)
+		iter := y.Iterate()
+		defer iter.Done()
+		ok, err := x.isSubset(iter)
+		return ok && !eq, err
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
@@ -1163,6 +1183,84 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 		}
 	}
 	return set, nil
+}
+
+func (s *Set) Difference(other Iterator) (Value, error) {
+	diff := new(Set)
+	for e := s.ht.head; e != nil; e = e.next {
+		diff.Insert(e.key) // can't fail
+	}
+	var x Value
+	for other.Next(&x) {
+		if _, err := diff.Delete(x); err != nil {
+			return nil, err
+		}
+	}
+	return diff, nil
+}
+
+func (s *Set) isSuperset(other Iterator) (bool, error) {
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return false, err
+		}
+		if !found {
+			return false, nil 
+		}
+	}
+	return true, nil
+}
+
+func (s *Set) isSubset(other Iterator) (bool, error) {
+	var x Value
+	otherset := new(Set)
+	for other.Next(&x) {
+		err := otherset.Insert(x)
+		if err != nil {
+			return false, err
+		}
+	}
+	iter := s.Iterate()
+	defer iter.Done()
+	return otherset.isSuperset(iter)
+}
+
+func (s *Set) Intersection(other Iterator) (Value, error) {
+	intersect := new(Set)
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			err = intersect.Insert(x)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return intersect, nil
+}
+
+func (s *Set) symmetricDifference(other Iterator) (Value, error) {
+	diff := new(Set)
+	for e := s.ht.head; e != nil; e = e.next {
+		diff.Insert(e.key) // can't fail
+	}
+	var x Value
+	for other.Next(&x) {
+		found, err := diff.Delete(x)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			diff.Insert(x)
+		}
+	}
+	return diff, nil
 }
 
 // toString returns the string form of value v.
