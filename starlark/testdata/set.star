@@ -46,7 +46,7 @@ y = set([3, 4, 5])
 # set + any is not defined
 assert.fails(lambda : x + y, "unknown.*: set \\+ set")
 
-# set | set (use resolve.AllowBitwise to enable it)
+# set | set
 assert.eq(list(set("a".elems()) | set("b".elems())), ["a", "b"])
 assert.eq(list(set("ab".elems()) | set("bc".elems())), ["a", "b", "c"])
 assert.fails(lambda : set() | [], "unknown binary op: set | list")
