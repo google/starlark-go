@@ -140,17 +140,17 @@ var (
 	}
 
 	setMethods = map[string]*Builtin{
-		"add":     NewBuiltin("add", set_add),
-		"clear":   NewBuiltin("clear", set_clear),
-		"difference": NewBuiltin("difference", set_difference),
-		"discard": NewBuiltin("discard", set_discard),
-		"intersection": NewBuiltin("intersection", set_intersection),
-		"issubset": NewBuiltin("issubset", set_issubset),
-		"issuperset": NewBuiltin("issuperset", set_issuperset),
-		"pop":     NewBuiltin("pop", set_pop),
-		"remove":  NewBuiltin("remove", set_remove),
+		"add":                  NewBuiltin("add", set_add),
+		"clear":                NewBuiltin("clear", set_clear),
+		"difference":           NewBuiltin("difference", set_difference),
+		"discard":              NewBuiltin("discard", set_discard),
+		"intersection":         NewBuiltin("intersection", set_intersection),
+		"issubset":             NewBuiltin("issubset", set_issubset),
+		"issuperset":           NewBuiltin("issuperset", set_issuperset),
+		"pop":                  NewBuiltin("pop", set_pop),
+		"remove":               NewBuiltin("remove", set_remove),
 		"symmetric_difference": NewBuiltin("symmetric_difference", set_symmetric_difference),
-		"union":   NewBuiltin("union", set_union),
+		"union":                NewBuiltin("union", set_union),
 	}
 )
 

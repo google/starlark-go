@@ -1207,7 +1207,7 @@ func (s *Set) isSuperset(other Iterator) (bool, error) {
 			return false, err
 		}
 		if !found {
-			return false, nil 
+			return false, nil
 		}
 	}
 	return true, nil
