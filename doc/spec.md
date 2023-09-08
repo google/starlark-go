@@ -2005,6 +2005,11 @@ which breaks several mathematical identities.  For example, if `x` is
 a `NaN` value, the comparisons `x < y`, `x == y`, and `x > y` all
 yield false for all values of `y`.
 
+When used to compare two `set` objects, the `<=`, and `>=` operators will report
+whether one set is a subset or superset of another. Similarly, using `<` or `>` will
+report whether a set is a proper subset or superset of another, thus `x > y` is
+equivalent to `x >= y and x != y`.
+
 Applications may define additional types that support ordered
 comparison.
 
@@ -2056,10 +2061,6 @@ Sets
       set & set                 # set intersection
       set ^ set                 # set symmetric difference
       set - set                 # set difference
-      set >= set                # superset
-      set > set                 # proper superset
-      set <= set                # subset
-      set < set                 # proper subset
 
 
 Dict
@@ -3802,16 +3803,13 @@ x                                        # set([])
 <a id='set·difference'></a>
 ### set·difference
 
-`S.difference(y)` returns a new set which includes all items in S which are not in y.
+`S.difference(y)` returns a new set into which have been inserted all the elements of set S which are not in y.
 
-y can be any type of iterable (set, list, tuple).
-
-The difference between two sets can also be expressed using the `-` operator.
+y can be any type of iterable (e.g. set, list, tuple).
 
 ```python
 x = set([1, 2, 3])
-x.difference([3, 4, 5])                   # set([1,2])
-x - set([1, 2])                           # set([3])
+x.difference([3, 4, 5])                   # set([1, 2])
 ```
 
 <a id='set·discard'></a>
@@ -3833,16 +3831,13 @@ x                                        # set([1, 3])
 <a id='set·intersection'></a>
 ### set·intersection
 
-`S.intersection(y)` returns a new set which includes all items in S which are also in y.
+`S.intersection(y)` returns a new set into which have been inserted all the elements of set S which are also in y.
 
-y can be any type of iterable (set, list, tuple).
-
-The difference between two sets can also be expressed using the `&` operator.
+y can be any type of iterable (e.g. set, list, tuple).
 
 ```python
 x = set([1, 2, 3])
 x.intersection([3, 4, 5])                # set([3])
-x & set([1, 2])                          # set([1,2])
 ```
 
 <a id='set·issubset'></a>
@@ -3850,18 +3845,12 @@ x & set([1, 2])                          # set([1,2])
 
 `S.issubset(y)` returns True if all items in S are also in y, otherwise it returns False.
 
-y can be any type of iterable (set, list, tuple).
-
-The `<=` operator can be used to determine if a given set is a subset of another.
-
-The `<` operator can be used to determine if a given set is a proper subset of another, which is equivalent to `x <= y and x != y`
+y can be any type of iterable (e.g. set, list, tuple).
 
 ```python
 x = set([1, 2])
 x.issubset([1, 2, 3])                # True
 x.issubset([1, 3, 4])                # False
-x <= set([1, 2])                     # True
-x < set([1, 2])                      # False
 ```
 
 <a id='set·issuperset'></a>
@@ -3869,18 +3858,12 @@ x < set([1, 2])                      # False
 
 `S.issuperset(y)` returns True if all items in y are also in S, otherwise it returns False.
 
-y can be any type of iterable (set, list, tuple).
-
-The `>=` operator can be used to determine if a given set is a superset of another.
-
-The `>` operator can be used to determine if a given set is a proper superset of another, which is equivalent to `x >= y and x != y`
+y can be any type of iterable (e.g. set, list, tuple).
 
 ```python
 x = set([1, 2, 3])
 x.issuperset([1, 2])                 # True
 x.issuperset([1, 3, 4])              # False
-x >= set([1, 2, 3])                  # True
-x > set([1, 2])                      # False
 ```
 
 <a id='set·pop'></a>
@@ -3914,16 +3897,13 @@ x.remove(2)                             # error: element not found
 <a id='set·symmetric_difference'></a>
 ### set·symmetric_difference
 
-`S.symmetric_difference(y)` returns a new set which includes all items in S and y, except for items which are in both.
+`S.symmetric_difference(y)` creates a new set into which is inserted all of the items which are in S but not y, followed by all of the items which are in y but not S.
 
-y can be any type of iterable (set, list, tuple).
-
-The symmetric difference between two sets can also be expressed using the `^` operator.
+y can be any type of iterable (e.g. set, list, tuple).
 
 ```python
 x = set([1, 2, 3])
 x.symmetric_difference([3, 4, 5])         # set([1, 2, 4, 5])
-x ^ set([2, 3, 4])                        # set([1, 4])
 ```
 
 <a id='set·union'></a>
