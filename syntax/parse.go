@@ -177,15 +177,17 @@ func (p *parser) parseStmt(stmts []Stmt) []Stmt {
 func (p *parser) parseDefStmt() Stmt {
 	defpos := p.nextToken() // consume DEF
 	id := p.parseIdent()
-	p.consume(LPAREN)
+	lparen := p.consume(LPAREN)
 	params := p.parseParams()
-	p.consume(RPAREN)
+	rparen := p.consume(RPAREN)
 	p.consume(COLON)
 	body := p.parseSuite()
 	return &DefStmt{
 		Def:    defpos,
 		Name:   id,
+		Lparen: lparen,
 		Params: params,
+		Rparen: rparen,
 		Body:   body,
 	}
 }
