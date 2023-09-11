@@ -1135,22 +1135,28 @@ func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 		ok, err := setsEqual(x, y, depth)
 		return !ok, err
 	case syntax.GE: // superset
+		if x.Len() < y.Len() {
+			return false, nil
+		}
 		iter := y.Iterate()
 		defer iter.Done()
 		return x.IsSuperset(iter)
 	case syntax.LE: // subset
+		if x.Len() > y.Len() {
+			return false, nil
+		}
 		iter := y.Iterate()
 		defer iter.Done()
 		return x.IsSubset(iter)
 	case syntax.GT: // proper superset
-		if x.Len() == y.Len() {
+		if x.Len() <= y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
 		defer iter.Done()
 		return x.IsSuperset(iter)
 	case syntax.LT: // proper subset
-		if x.Len() == y.Len() {
+		if x.Len() >= y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
