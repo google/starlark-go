@@ -1119,7 +1119,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			if y, ok := y.(*Set); ok {
 				iter := y.Iterate()
 				defer iter.Done()
-				return x.symmetricDifference(iter)
+				return x.SymmetricDifference(iter)
 			}
 		}
 

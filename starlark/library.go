@@ -2249,7 +2249,7 @@ func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 	}
 	iter := other.Iterate()
 	defer iter.Done()
-	diff, err := b.Receiver().(*Set).isSubset(iter)
+	diff, err := b.Receiver().(*Set).IsSubset(iter)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
@@ -2264,7 +2264,7 @@ func set_issuperset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 	}
 	iter := other.Iterate()
 	defer iter.Done()
-	diff, err := b.Receiver().(*Set).isSuperset(iter)
+	diff, err := b.Receiver().(*Set).IsSuperset(iter)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
@@ -2327,7 +2327,7 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 	}
 	iter := other.Iterate()
 	defer iter.Done()
-	diff, err := b.Receiver().(*Set).symmetricDifference(iter)
+	diff, err := b.Receiver().(*Set).SymmetricDifference(iter)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}

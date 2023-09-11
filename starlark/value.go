@@ -1137,23 +1137,25 @@ func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 	case syntax.GE: // superset
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.isSuperset(iter)
+		return x.IsSuperset(iter)
 	case syntax.LE: // subset
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.isSubset(iter)
+		return x.IsSubset(iter)
 	case syntax.GT: // proper superset
-		eq, err := setsEqual(x, y, depth)
+		if x.Len() == y.Len() {
+			return false, nil
+		}
 		iter := y.Iterate()
 		defer iter.Done()
-		ok, err := x.isSuperset(iter)
-		return ok && !eq, err
+		return x.IsSuperset(iter)
 	case syntax.LT: // proper subset
-		eq, _ := setsEqual(x, y, depth)
+		if x.Len() == y.Len() {
+			return false, nil
+		}
 		iter := y.Iterate()
 		defer iter.Done()
-		ok, err := x.isSubset(iter)
-		return ok && !eq, err
+		return x.IsSubset(iter)
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
@@ -1171,11 +1173,28 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 	return true, nil
 }
 
-func (s *Set) Union(iter Iterator) (Value, error) {
+func setFromIterator(iter Iterator) (*Set, error) {
+	var x Value
+	set := new(Set)
+	for iter.Next(&x) {
+		err := set.Insert(x)
+		if err != nil {
+			return set, err
+		}
+	}
+	return set, nil
+}
+
+func (s *Set) clone() *Set {
 	set := new(Set)
 	for e := s.ht.head; e != nil; e = e.next {
 		set.Insert(e.key) // can't fail
 	}
+	return set
+}
+
+func (s *Set) Union(iter Iterator) (Value, error) {
+	set := s.clone()
 	var x Value
 	for iter.Next(&x) {
 		if err := set.Insert(x); err != nil {
@@ -1186,10 +1205,7 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 }
 
 func (s *Set) Difference(other Iterator) (Value, error) {
-	diff := new(Set)
-	for e := s.ht.head; e != nil; e = e.next {
-		diff.Insert(e.key) // can't fail
-	}
+	diff := s.clone()
 	var x Value
 	for other.Next(&x) {
 		if _, err := diff.Delete(x); err != nil {
@@ -1199,7 +1215,7 @@ func (s *Set) Difference(other Iterator) (Value, error) {
 	return diff, nil
 }
 
-func (s *Set) isSuperset(other Iterator) (bool, error) {
+func (s *Set) IsSuperset(other Iterator) (bool, error) {
 	var x Value
 	for other.Next(&x) {
 		found, err := s.Has(x)
@@ -1213,18 +1229,14 @@ func (s *Set) isSuperset(other Iterator) (bool, error) {
 	return true, nil
 }
 
-func (s *Set) isSubset(other Iterator) (bool, error) {
-	var x Value
-	otherset := new(Set)
-	for other.Next(&x) {
-		err := otherset.Insert(x)
-		if err != nil {
-			return false, err
-		}
+func (s *Set) IsSubset(other Iterator) (bool, error) {
+	otherset, err := setFromIterator(other)
+	if err != nil {
+		return false, err
 	}
 	iter := s.Iterate()
 	defer iter.Done()
-	return otherset.isSuperset(iter)
+	return otherset.IsSuperset(iter)
 }
 
 func (s *Set) Intersection(other Iterator) (Value, error) {
@@ -1245,11 +1257,8 @@ func (s *Set) Intersection(other Iterator) (Value, error) {
 	return intersect, nil
 }
 
-func (s *Set) symmetricDifference(other Iterator) (Value, error) {
-	diff := new(Set)
-	for e := s.ht.head; e != nil; e = e.next {
-		diff.Insert(e.key) // can't fail
-	}
+func (s *Set) SymmetricDifference(other Iterator) (Value, error) {
+	diff := s.clone()
 	var x Value
 	for other.Next(&x) {
 		found, err := diff.Delete(x)
