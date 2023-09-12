@@ -826,6 +826,12 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 				}
 				return x - yf, nil
 			}
+		case *Set: // difference
+			if y, ok := y.(*Set); ok {
+				iter := y.Iterate()
+				defer iter.Done()
+				return x.Difference(iter)
+			}
 		}
 
 	case syntax.STAR:
@@ -1097,17 +1103,9 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // intersection
 			if y, ok := y.(*Set); ok {
-				set := new(Set)
-				if x.Len() > y.Len() {
-					x, y = y, x // opt: range over smaller set
-				}
-				for xe := x.ht.head; xe != nil; xe = xe.next {
-					// Has, Insert cannot fail here.
-					if found, _ := y.Has(xe.key); found {
-						set.Insert(xe.key)
-					}
-				}
-				return set, nil
+				iter := y.Iterate()
+				defer iter.Done()
+				return x.Intersection(iter)
 			}
 		}
 
@@ -1119,18 +1117,9 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // symmetric difference
 			if y, ok := y.(*Set); ok {
-				set := new(Set)
-				for xe := x.ht.head; xe != nil; xe = xe.next {
-					if found, _ := y.Has(xe.key); !found {
-						set.Insert(xe.key)
-					}
-				}
-				for ye := y.ht.head; ye != nil; ye = ye.next {
-					if found, _ := x.Has(ye.key); !found {
-						set.Insert(ye.key)
-					}
-				}
-				return set, nil
+				iter := y.Iterate()
+				defer iter.Done()
+				return x.SymmetricDifference(iter)
 			}
 		}
 

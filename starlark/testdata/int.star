@@ -74,7 +74,6 @@ def compound():
     x %= 3
     assert.eq(x, 2)
 
-    # use resolve.AllowBitwise to enable the ops:
     x = 2
     x &= 1
     assert.eq(x, 0)
@@ -197,7 +196,6 @@ assert.fails(lambda: int("0x-4", 16), "invalid literal with base 16: 0x-4")
 
 # bitwise union (int|int), intersection (int&int), XOR (int^int), unary not (~int),
 # left shift (int<<int), and right shift (int>>int).
-# use resolve.AllowBitwise to enable the ops.
 # TODO(adonovan): this is not yet in the Starlark spec,
 # but there is consensus that it should be.
 assert.eq(1 | 2, 3)

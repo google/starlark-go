@@ -1,5 +1,5 @@
 # Tests of Starlark 'set'
-# option:set
+# option:set option:globalreassign
 
 # Sets are not a standard part of Starlark, so the features
 # tested in this file must be enabled in the application by setting
@@ -9,9 +9,7 @@
 
 # TODO(adonovan): support set mutation:
 # - del set[k]
-# - set.remove
 # - set.update
-# - set.clear
 # - set += iterable, perhaps?
 # Test iterator invalidation.
 
@@ -48,7 +46,7 @@ y = set([3, 4, 5])
 # set + any is not defined
 assert.fails(lambda : x + y, "unknown.*: set \\+ set")
 
-# set | set (use resolve.AllowBitwise to enable it)
+# set | set
 assert.eq(list(set("a".elems()) | set("b".elems())), ["a", "b"])
 assert.eq(list(set("ab".elems()) | set("bc".elems())), ["a", "b", "c"])
 assert.fails(lambda : set() | [], "unknown binary op: set | list")
@@ -67,12 +65,16 @@ assert.eq(list(x.union([5, 1])), [1, 2, 3, 5])
 assert.eq(list(x.union((6, 5, 4))), [1, 2, 3, 6, 5, 4])
 assert.fails(lambda : x.union([1, 2, {}]), "unhashable type: dict")
 
-# intersection, set & set (use resolve.AllowBitwise to enable it)
+# intersection, set & set or set.intersection(iterable)
 assert.eq(list(set("a".elems()) & set("b".elems())), [])
 assert.eq(list(set("ab".elems()) & set("bc".elems())), ["b"])
+assert.eq(list(set("a".elems()).intersection("b".elems())), [])
+assert.eq(list(set("ab".elems()).intersection("bc".elems())), ["b"])
 
-# symmetric difference, set ^ set (use resolve.AllowBitwise to enable it)
+# symmetric difference, set ^ set or set.symmetric_difference(iterable)
 assert.eq(set([1, 2, 3]) ^ set([4, 5, 3]), set([1, 2, 4, 5]))
+assert.eq(set([1,2,3,4]).symmetric_difference([3,4,5,6]), set([1,2,5,6]))
+assert.eq(set([1,2,3,4]).symmetric_difference(set([])), set([1,2,3,4]))
 
 def test_set_augmented_assign():
     x = set([1, 2, 3])
@@ -100,7 +102,6 @@ assert.eq(x, x)
 assert.eq(y, y)
 assert.true(x != y)
 assert.eq(set([1, 2, 3]), set([3, 2, 1]))
-assert.fails(lambda : x < y, "set < set not implemented")
 
 # iteration
 assert.true(type([elem for elem in x]), "list")
@@ -154,7 +155,6 @@ pop_set.add(2)
 freeze(pop_set)
 assert.fails(lambda: pop_set.pop(), "pop: cannot delete from frozen hash table")
 
-
 # clear
 clear_set = set([1,2,3])
 clear_set.clear()
@@ -165,3 +165,34 @@ assert.eq(clear_set.clear(), None)
 other_clear_set = set([1,2,3])
 freeze(other_clear_set)
 assert.fails(lambda: other_clear_set.clear(), "clear: cannot clear frozen hash table")
+
+# difference: set - set or set.difference(iterable)
+assert.eq(set([1,2,3,4]).difference([1,2,3,4]), set([]))
+assert.eq(set([1,2,3,4]).difference([1,2]), set([3,4]))
+assert.eq(set([1,2,3,4]).difference([]), set([1,2,3,4]))
+assert.eq(set([1,2,3,4]).difference(set([1,2,3])), set([4]))
+
+assert.eq(set([1,2,3,4]) - set([1,2,3,4]), set())
+assert.eq(set([1,2,3,4]) - set([1,2]), set([3,4]))
+
+# issuperset: set >= set or set.issuperset(iterable)
+assert.true(set([1,2,3]).issuperset([1,2]))
+assert.true(not set([1,2,3]).issuperset(set([1,2,4])))
+assert.true(set([1,2,3]) >= set([1,2,3]))
+assert.true(set([1,2,3]) >= set([1,2]))
+assert.true(not set([1,2,3]) >= set([1,2,4]))
+
+# proper superset: set > set
+assert.true(set([1, 2, 3]) > set([1, 2]))
+assert.true(not set([1,2, 3]) > set([1, 2, 3]))
+
+# issubset: set <= set or set.issubset(iterable)
+assert.true(set([1,2]).issubset([1,2,3]))
+assert.true(not set([1,2,3]).issubset(set([1,2,4])))
+assert.true(set([1,2,3]) <= set([1,2,3]))
+assert.true(set([1,2]) <= set([1,2,3]))
+assert.true(not set([1,2,3]) <= set([1,2,4]))
+
+# proper subset: set < set
+assert.true(set([1,2]) < set([1,2,3]))
+assert.true(not set([1,2,3]) < set([1,2,3]))

@@ -155,9 +155,14 @@ reproducibility is paramount, such as build tools.
     * [list·remove](#list·remove)
     * [set·add](#set·add)
     * [set·clear](#set·clear)
+    * [set·difference](#set·difference)
     * [set·discard](#set·discard)
+    * [set·intersection](#set·intersection)
+    * [set·issubset](#set·issubset)
+    * [set·issuperset](#set·issuperset)
     * [set·pop](#set·pop)
     * [set·remove](#set·remove)
+    * [set·symmetric_difference](#set·symmetric_difference)
     * [set·union](#set·union)
     * [string·capitalize](#string·capitalize)
     * [string·codepoint_ords](#string·codepoint_ords)
@@ -975,9 +980,14 @@ A set has these methods:
 
 * [`add`](#set·add)
 * [`clear`](#set·clear)
+* [`difference`](#set·difference)
 * [`discard`](#set·discard)
+* [`intersection`](#set·intersection)
+* [`issubset`](#set·issubset)
+* [`issuperset`](#set·issuperset)
 * [`pop`](#set·pop)
 * [`remove`](#set·remove)
+* [`symmetric_difference`](#set·symmetric_difference)
 * [`union`](#set·union)
 
 
@@ -1995,6 +2005,11 @@ which breaks several mathematical identities.  For example, if `x` is
 a `NaN` value, the comparisons `x < y`, `x == y`, and `x > y` all
 yield false for all values of `y`.
 
+When used to compare two `set` objects, the `<=`, and `>=` operators will report
+whether one set is a subset or superset of another. Similarly, using `<` or `>` will
+report whether a set is a proper subset or superset of another, thus `x > y` is
+equivalent to `x >= y and x != y`.
+
 Applications may define additional types that support ordered
 comparison.
 
@@ -2045,6 +2060,8 @@ Sets
       int & int                 # bitwise intersection (AND)
       set & set                 # set intersection
       set ^ set                 # set symmetric difference
+      set - set                 # set difference
+
 
 Dict
       dict | dict               # ordered union
@@ -2115,6 +2132,7 @@ Implementations may impose a limit on the second operand of a left shift.
 set([1, 2]) & set([2, 3])       # set([2])
 set([1, 2]) | set([2, 3])       # set([1, 2, 3])
 set([1, 2]) ^ set([2, 3])       # set([1, 3])
+set([1, 2]) - set([2, 3])       # set([1])
 ```
 
 <b>Implementation note:</b>
@@ -3782,6 +3800,18 @@ x.clear(2)                               # None
 x                                        # set([])
 ```
 
+<a id='set·difference'></a>
+### set·difference
+
+`S.difference(y)` returns a new set into which have been inserted all the elements of set S which are not in y.
+
+y can be any type of iterable (e.g. set, list, tuple).
+
+```python
+x = set([1, 2, 3])
+x.difference([3, 4, 5])                   # set([1, 2])
+```
+
 <a id='set·discard'></a>
 ### set·discard
 
@@ -3796,6 +3826,44 @@ x.discard(2)                             # None
 x                                        # set([1, 3])
 x.discard(2)                             # None
 x                                        # set([1, 3])
+```
+
+<a id='set·intersection'></a>
+### set·intersection
+
+`S.intersection(y)` returns a new set into which have been inserted all the elements of set S which are also in y.
+
+y can be any type of iterable (e.g. set, list, tuple).
+
+```python
+x = set([1, 2, 3])
+x.intersection([3, 4, 5])                # set([3])
+```
+
+<a id='set·issubset'></a>
+### set·issubset
+
+`S.issubset(y)` returns True if all items in S are also in y, otherwise it returns False.
+
+y can be any type of iterable (e.g. set, list, tuple).
+
+```python
+x = set([1, 2])
+x.issubset([1, 2, 3])                # True
+x.issubset([1, 3, 4])                # False
+```
+
+<a id='set·issuperset'></a>
+### set·issuperset
+
+`S.issuperset(y)` returns True if all items in y are also in S, otherwise it returns False.
+
+y can be any type of iterable (e.g. set, list, tuple).
+
+```python
+x = set([1, 2, 3])
+x.issuperset([1, 2])                 # True
+x.issuperset([1, 3, 4])              # False
 ```
 
 <a id='set·pop'></a>
@@ -3824,6 +3892,18 @@ x = set([1, 2, 3])
 x.remove(2)                             # None
 x                                       # set([1, 3])
 x.remove(2)                             # error: element not found
+```
+
+<a id='set·symmetric_difference'></a>
+### set·symmetric_difference
+
+`S.symmetric_difference(y)` creates a new set into which is inserted all of the items which are in S but not y, followed by all of the items which are in y but not S.
+
+y can be any type of iterable (e.g. set, list, tuple).
+
+```python
+x = set([1, 2, 3])
+x.symmetric_difference([3, 4, 5])         # set([1, 2, 4, 5])
 ```
 
 <a id='set·union'></a>
