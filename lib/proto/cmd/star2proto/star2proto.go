@@ -13,7 +13,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -66,7 +65,7 @@ func main() {
 	if *descriptors != "" {
 		var fdset descriptorpb.FileDescriptorSet
 		for i, filename := range strings.Split(*descriptors, ",") {
-			data, err := ioutil.ReadFile(filename)
+			data, err := os.ReadFile(filename)
 			if err != nil {
 				log.Fatalf("--descriptors[%d]: %s", i, err)
 			}

@@ -14,7 +14,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -51,7 +50,7 @@ func main() {
 		html := filepath.Join(subdir, "index.html")
 		if _, err := os.Stat(html); os.IsNotExist(err) {
 			data := strings.Replace(defaultHTML, "$PKG", pkg, -1)
-			if err := ioutil.WriteFile(html, []byte(data), 0666); err != nil {
+			if err := os.WriteFile(html, []byte(data), 0666); err != nil {
 				log.Fatal(err)
 			}
 			log.Printf("created %s", html)
