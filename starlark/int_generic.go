@@ -1,5 +1,4 @@
 //go:build (!linux && !darwin && !dragonfly && !freebsd && !netbsd && !solaris) || (!amd64 && !arm64 && !mips64x && !ppc64 && !ppc64le && !loong64 && !s390x)
-// +build !linux,!darwin,!dragonfly,!freebsd,!netbsd,!solaris !amd64,!arm64,!mips64x,!ppc64,!ppc64le,!loong64,!s390x
 
 package starlark
 
