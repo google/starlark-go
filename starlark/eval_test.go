@@ -6,6 +6,7 @@ package starlark_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"os/exec"
@@ -47,11 +48,6 @@ func getOptions(src string) *syntax.FileOptions {
 
 func option(chunk, name string) bool {
 	return strings.Contains(chunk, "option:"+name)
-}
-
-// Wrapper is the type of errors with an Unwrap method; see https://golang.org/pkg/errors.
-type Wrapper interface {
-	Unwrap() error
 }
 
 func TestEvalExpr(t *testing.T) {
@@ -612,12 +608,10 @@ Error: cannot load crash.star: floored division by zero`
 				result = evalErr
 			}
 
-			// TODO: use errors.Unwrap when go >=1.13 is everywhere.
-			wrapper, isWrapper := err.(Wrapper)
-			if !isWrapper {
+			err = errors.Unwrap(err)
+			if err == nil {
 				break
 			}
-			err = wrapper.Unwrap()
 		}
 		return result
 	}
