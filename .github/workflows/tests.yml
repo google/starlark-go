@@ -5,15 +5,15 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: [1.18.x, 1.19.x]
+        go-version: [1.18.x, 1.19.x, 1.20.x, 1.21.x]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run Tests
         shell: bash
         run: 'internal/test.sh'
