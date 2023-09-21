@@ -26,7 +26,7 @@ package chunkedfile // import "go.starlark.net/internal/chunkedfile"
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -56,7 +56,7 @@ type Reporter interface {
 // by a newline so that the Go source position added by (*testing.T).Errorf
 // appears on a separate line so as not to confused editors.
 func Read(filename string, report Reporter) (chunks []Chunk) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		report.Errorf("%s", err)
 		return

@@ -7,7 +7,6 @@ package starlark_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,12 +18,11 @@ import (
 // TestProfile is a simple integration test that the profiler
 // emits minimally plausible pprof-compatible output.
 func TestProfile(t *testing.T) {
-	prof, err := ioutil.TempFile("", "profile_test")
+	prof, err := os.CreateTemp(t.TempDir(), "profile_test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer prof.Close()
-	defer os.Remove(prof.Name())
 	if err := starlark.StartProfile(prof); err != nil {
 		t.Fatal(err)
 	}

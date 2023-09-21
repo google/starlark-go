@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/build"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -472,7 +472,7 @@ var dataFile = func(pkgdir, filename string) string {
 func BenchmarkParse(b *testing.B) {
 	filename := dataFile("syntax", "testdata/scan.star")
 	b.StopTimer()
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -7,7 +7,7 @@ package starlark_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,7 +29,7 @@ func BenchmarkStarlark(b *testing.B) {
 
 		filename := filepath.Join(testdata, file)
 
-		src, err := ioutil.ReadFile(filename)
+		src, err := os.ReadFile(filename)
 		if err != nil {
 			b.Error(err)
 			continue
@@ -126,7 +126,7 @@ func BenchmarkProgram(b *testing.B) {
 	b.Run("read", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			var err error
-			src, err = ioutil.ReadFile(filename)
+			src, err = os.ReadFile(filename)
 			if err != nil {
 				b.Fatal(err)
 			}
