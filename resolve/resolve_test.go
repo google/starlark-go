@@ -16,14 +16,14 @@ import (
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
 func getOptions(src string) *syntax.FileOptions {
-	// TODO(adonovan): use new fine-grained names.
-	// And share with eval_test.go
+	while := option(src, "while")
+	toplevelcontrol := option(src, "toplevelcontrol")
 	allowGlobalReassign := option(src, "globalreassign")
 	recursion := option(src, "recursion")
 	return &syntax.FileOptions{
 		Set:               option(src, "set"),
-		While:             allowGlobalReassign || recursion,
-		TopLevelControl:   allowGlobalReassign,
+		While:             allowGlobalReassign || recursion || while,
+		TopLevelControl:   allowGlobalReassign || toplevelcontrol,
 		GlobalReassign:    allowGlobalReassign,
 		LoadBindsGlobally: option(src, "loadbindsglobally"),
 		Recursion:         recursion,

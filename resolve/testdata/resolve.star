@@ -381,3 +381,23 @@ load("module", "x") # ok
 ---
 _ = x # forward ref to file-local
 load("module", "x") # ok
+
+---
+# option:toplevelcontrol
+if 1:
+  pass
+for i in M:
+  pass
+
+---
+# option:while
+def fn():
+  while M:
+    pass
+
+fn()
+
+---
+# option:toplevelcontrol option:while
+while M:
+  pass
