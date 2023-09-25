@@ -505,7 +505,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		}
 
 	case *syntax.IfStmt:
-		if !r.options.GlobalReassign && r.container().function == nil {
+		if !r.options.TopLevelControl && r.container().function == nil {
 			r.errorf(stmt.If, "if statement not within a function")
 		}
 		r.expr(stmt.Cond)
@@ -531,7 +531,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		r.function(fn, stmt.Def)
 
 	case *syntax.ForStmt:
-		if !r.options.GlobalReassign && r.container().function == nil {
+		if !r.options.TopLevelControl && r.container().function == nil {
 			r.errorf(stmt.For, "for loop not within a function")
 		}
 		r.expr(stmt.X)
@@ -545,7 +545,7 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		if !r.options.While {
 			r.errorf(stmt.While, doesnt+"support while loops")
 		}
-		if !r.options.GlobalReassign && r.container().function == nil {
+		if !r.options.TopLevelControl && r.container().function == nil {
 			r.errorf(stmt.While, "while loop not within a function")
 		}
 		r.expr(stmt.Cond)

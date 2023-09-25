@@ -143,17 +143,17 @@ load("foo",
      _e="f") # ok
 
 ---
-# option:globalreassign
+# option:toplevelcontrol
 if M:
     load("foo", "bar") ### "load statement within a conditional"
 
 ---
-# option:globalreassign
+# option:toplevelcontrol
 for x in M:
     load("foo", "bar") ### "load statement within a loop"
 
 ---
-# option:recursion option:globalreassign
+# option:toplevelcontrol option:while
 while M:
     load("foo", "bar") ### "load statement within a loop"
 
@@ -173,7 +173,7 @@ if x: ### "if statement not within a function"
   pass
 
 ---
-# option:globalreassign
+# option:toplevelcontrol
 
 for x in "abc": # ok
   pass
@@ -189,7 +189,7 @@ def f():
     pass
 
 ---
-# option:recursion
+# option:while
 
 def f():
   while U: # ok
@@ -199,7 +199,7 @@ while U: ### "while loop not within a function"
   pass
 
 ---
-# option:globalreassign option:recursion
+# option:toplevelcontrol option:while
 
 while U: # ok
   pass
