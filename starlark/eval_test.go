@@ -32,17 +32,13 @@ import (
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
 func getOptions(src string) *syntax.FileOptions {
-	while := option(src, "while")
-	toplevelcontrol := option(src, "toplevelcontrol")
-	allowGlobalReassign := option(src, "globalreassign")
-	recursion := option(src, "recursion")
 	return &syntax.FileOptions{
 		Set:               option(src, "set"),
-		While:             allowGlobalReassign || recursion || while,
-		TopLevelControl:   allowGlobalReassign || toplevelcontrol,
-		GlobalReassign:    allowGlobalReassign,
+		While:             option(src, "while"),
+		TopLevelControl:   option(src, "toplevelcontrol"),
+		GlobalReassign:    option(src, "globalreassign"),
 		LoadBindsGlobally: option(src, "loadbindsglobally"),
-		Recursion:         recursion,
+		Recursion:         option(src, "recursion"),
 	}
 }
 
@@ -141,6 +137,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/tuple.star",
 		"testdata/recursion.star",
 		"testdata/module.star",
+		"testdata/while.star",
 	} {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
