@@ -895,18 +895,48 @@ type RepeatedField struct {
 	itercount int
 }
 
+var _ starlark.Iterable = (*RepeatedField)(nil)
 var _ starlark.HasSetIndex = (*RepeatedField)(nil)
+var _ starlark.HasAttrs = (*RepeatedField)(nil)
+
+func (rf *RepeatedField) AttrNames() []string {
+	return []string{"append"}
+}
+
+func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
+	if name != "append" {
+		return nil, nil
+	}
+	return starlark.NewBuiltin("append", repeatedFieldAppend).BindReceiver(rf), nil
+}
+
+func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var object starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &object); err != nil {
+		return nil, err
+	}
+	rf := b.Receiver().(*RepeatedField)
+
+	if err := rf.checkMutable("append to"); err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+
+	po, err := toProto(rf.typ, object)
+	if err != nil {
+		return nil, fmt.Errorf("appending to repeated field: %v", err)
+	}
+	rf.list.Append(po)
+
+	return starlark.None, nil
+}
 
 func (rf *RepeatedField) Type() string {
 	return fmt.Sprintf("proto.repeated<%s>", typeString(rf.typ))
 }
 
 func (rf *RepeatedField) SetIndex(i int, v starlark.Value) error {
-	if *rf.frozen {
-		return fmt.Errorf("cannot insert value in frozen repeated field")
-	}
-	if rf.itercount > 0 {
-		return fmt.Errorf("cannot insert value in repeated field with active iterators")
+	if err := rf.checkMutable("insert value in"); err != nil {
+		return err
 	}
 	x, err := toProto(rf.typ, v)
 	if err != nil {
@@ -916,6 +946,18 @@ func (rf *RepeatedField) SetIndex(i int, v starlark.Value) error {
 		return fmt.Errorf("setting element of repeated field: %v", err)
 	}
 	rf.list.Set(i, x)
+	return nil
+}
+
+// checkMutable reports an error if the repeated field should not be mutated.
+// verb+" repeated field" should describe the operation.
+func (rf *RepeatedField) checkMutable(verb string) error {
+	if *rf.frozen {
+		return fmt.Errorf("cannot %s frozen repeated field", verb)
+	}
+	if rf.itercount > 0 {
+		return fmt.Errorf("cannot %s repeated field during iteration", verb)
+	}
 	return nil
 }
 

@@ -11,4 +11,6 @@ assert.eq(m.name, "somename.proto")
 assert.eq(list(m.dependency), ["a", "b", "c"])
 m.dependency = ["d", "e"]
 assert.eq(list(m.dependency), ["d", "e"])
+m.dependency.append("f")
+assert.eq(list(m.dependency), ["d", "e", "f"])
 
