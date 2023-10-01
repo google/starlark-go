@@ -1101,13 +1101,9 @@ func (mf *MapField) Iterate() starlark.Iterator {
 		mf.itercount++
 	}
 
-	keys := make([]starlark.Value, 0, mf.mp.Len())
-	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
-		keys = append(keys, toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen))
-		return true // Keep iterating.
-	})
-
-	return &mapFieldIterator{mf, keys, 0}
+	// TODO(negz): Should we store only keys in the iterator? It doesn't
+	// consume the values.
+	return &mapFieldIterator{mf, mf.Items(), 0}
 }
 
 func (mf *MapField) Items() []starlark.Tuple {
@@ -1121,7 +1117,15 @@ func (mf *MapField) Items() []starlark.Tuple {
 		return true // Keep iterating.
 	})
 
-	// TODO(negz): Sort out.
+	// A map key can be any scalar protobuf type except floats and bytes.
+	// In practice in starlark they should be Int, String, or Bool and thus
+	// either TotallyOrdered or Comparable. None of these return errors when
+	// compared to the same type.
+	sort.Slice(out, func(i, j int) bool {
+		less, _ := starlark.Compare(syntax.LT, out[i][0], out[j][0])
+		return less
+	})
+
 	return out
 }
 
@@ -1132,19 +1136,14 @@ func (mf *MapField) String() string {
 	buf := new(bytes.Buffer)
 	buf.WriteByte('{')
 
-	// TODO(negz): We presumably need to sort these to avoid randomness.
-	i := 0
-	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+	for i, kv := range mf.Items() {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		writeString(buf, mf.typ.MapKey(), mk.Value())
+		buf.WriteString(kv[0].String())
 		buf.WriteString(": ")
-		writeString(buf, mf.typ.MapValue(), v)
-
-		i++
-		return true // Keep iterating.
-	})
+		buf.WriteString(kv[1].String())
+	}
 
 	buf.WriteByte('}')
 	return buf.String()
@@ -1155,13 +1154,13 @@ func (rf *MapField) Truth() starlark.Bool { return rf.mp.Len() > 0 }
 type mapFieldIterator struct {
 	mf *MapField
 
-	keys []starlark.Value
-	i    int
+	items []starlark.Tuple
+	i     int
 }
 
 func (it *mapFieldIterator) Next(p *starlark.Value) bool {
-	if it.i < len(it.keys) {
-		*p = it.keys[it.i]
+	if it.i < len(it.items) {
+		*p = it.items[it.i][0] // We're only iterating over keys.
 		it.i++
 		return true
 	}
