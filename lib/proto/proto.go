@@ -11,6 +11,7 @@
 //
 //	Message                 -- a protocol message
 //	RepeatedField           -- a repeated field of a message, like a list
+//	MapField                -- a map field of a message, like a dict
 //
 //	FileDescriptor          -- information about a .proto file
 //	FieldDescriptor         -- information about a message field (or extension field)
@@ -79,7 +80,7 @@ package proto
 // TODO(adonovan): Go and Starlark API improvements:
 // - Make Message and RepeatedField comparable.
 //   (NOTE: proto.Equal works only with generated message types.)
-// - Support maps, oneof, any. But not messageset if we can avoid it.
+// - Support oneof, any. But not messageset if we can avoid it.
 // - Support "well-known types".
 // - Defend against cycles in object graph.
 // - Test missing required fields in marshalling.
@@ -594,6 +595,15 @@ func toStarlark(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen *
 			frozen: frozen,
 		}
 	}
+
+	if mp, ok := x.Interface().(protoreflect.Map); ok {
+		return &MapField{
+			typ:    typ,
+			mp:     mp,
+			frozen: frozen,
+		}
+	}
+
 	return toStarlark1(typ, x, frozen)
 }
 
@@ -651,7 +661,7 @@ func toStarlark1(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen 
 // or RepeatedField wrapper values derived from it.
 type Message struct {
 	msg    protoreflect.Message // any concrete type is allowed
-	frozen *bool                // shared by a group of related Message/RepeatedField wrappers
+	frozen *bool                // shared by a group of related Message/RepeatedField/MapField wrappers
 }
 
 // Message returns the wrapped message.
@@ -788,6 +798,11 @@ func defaultValue(fdesc protoreflect.FieldDescriptor) starlark.Value {
 		return &RepeatedField{typ: fdesc, list: emptyList{}, frozen: &frozen}
 	}
 
+	// The default value of a map field is an empty map.
+	if fdesc.IsMap() {
+		return &MapField{typ: fdesc, mp: emptyMap{}, frozen: &frozen}
+	}
+
 	// The zero value for a message type is an empty instance of that message.
 	if desc := fdesc.Message(); desc != nil {
 		return &Message{msg: newMessage(desc), frozen: &frozen}
@@ -802,6 +817,17 @@ func defaultValue(fdesc protoreflect.FieldDescriptor) starlark.Value {
 type emptyList struct{ protoreflect.List }
 
 func (emptyList) Len() int { return 0 }
+
+type emptyMap struct{ protoreflect.Map }
+
+func (emptyMap) Len() int { return 0 }
+
+func (emptyMap) Get(_ protoreflect.MapKey) protoreflect.Value {
+	// An invalid value, signalling the supplied key does not exist.
+	return protoreflect.Value{}
+}
+
+func (emptyMap) Range(_ func(protoreflect.MapKey, protoreflect.Value) bool) {}
 
 // newMessage returns a new empty instance of the message type described by desc.
 func newMessage(desc protoreflect.MessageDescriptor) protoreflect.Message {
@@ -1005,6 +1031,146 @@ func (it *repeatedFieldIterator) Next(p *starlark.Value) bool {
 func (it *repeatedFieldIterator) Done() {
 	if !*it.rf.frozen {
 		it.rf.itercount--
+	}
+}
+
+type MapField struct {
+	typ protoreflect.FieldDescriptor
+
+	mp        protoreflect.Map
+	frozen    *bool
+	itercount int
+}
+
+var _ starlark.HasSetKey = (*MapField)(nil)
+var _ starlark.IterableMapping = (*MapField)(nil)
+
+func (mf *MapField) Type() string {
+	return fmt.Sprintf("proto.map<%s, %s>", typeString(mf.typ.MapKey()), typeString(mf.typ.MapValue()))
+}
+
+func (mf *MapField) SetKey(k, v starlark.Value) error {
+	if err := mf.checkMutable("set key in"); err != nil {
+		return err
+	}
+
+	kx, err := toProto(mf.typ.MapKey(), k)
+	if err != nil {
+		return fmt.Errorf("setting key of map field: %v", err)
+	}
+	vx, err := toProto(mf.typ.MapValue(), v)
+	if err != nil {
+		return fmt.Errorf("setting value of map field: %v", err)
+	}
+
+	mf.mp.Set(kx.MapKey(), vx)
+	return nil
+}
+
+// checkMutable reports an error if the map field should not be mutated.
+// verb+" map field" should describe the operation.
+func (mf *MapField) checkMutable(verb string) error {
+	if *mf.frozen {
+		return fmt.Errorf("cannot %s frozen map field", verb)
+	}
+	if mf.itercount > 0 {
+		return fmt.Errorf("cannot %s map field during iteration", verb)
+	}
+	return nil
+}
+
+func (mf *MapField) Get(k starlark.Value) (starlark.Value, bool, error) {
+	pk, err := toProto(mf.typ.MapKey(), k)
+	if err != nil {
+		return nil, false, fmt.Errorf("getting value of map field: %v", err)
+	}
+
+	v := mf.mp.Get(pk.MapKey())
+	if !v.IsValid() {
+		return nil, false, nil
+	}
+
+	return toStarlark1(mf.typ.MapValue(), v, mf.frozen), true, nil
+}
+
+func (mf *MapField) Freeze()               { *mf.frozen = true }
+func (mf *MapField) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", mf.Type()) }
+
+func (mf *MapField) Iterate() starlark.Iterator {
+	if !*mf.frozen {
+		mf.itercount++
+	}
+
+	keys := make([]starlark.Value, 0, mf.mp.Len())
+	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+		keys = append(keys, toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen))
+		return true // Keep iterating.
+	})
+
+	return &mapFieldIterator{mf, keys, 0}
+}
+
+func (mf *MapField) Items() []starlark.Tuple {
+	out := make([]starlark.Tuple, 0, mf.mp.Len())
+
+	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+		out = append(out, starlark.Tuple{
+			toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen),
+			toStarlark1(mf.typ.MapValue(), v, mf.frozen),
+		})
+		return true // Keep iterating.
+	})
+
+	// TODO(negz): Sort out.
+	return out
+}
+
+func (mf *MapField) Len() int { return mf.mp.Len() }
+
+func (mf *MapField) String() string {
+	// We want to use {k1: v1, k2: v2} notation, like a dict.
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
+
+	// TODO(negz): We presumably need to sort these to avoid randomness.
+	i := 0
+	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		writeString(buf, mf.typ.MapKey(), mk.Value())
+		buf.WriteString(": ")
+		writeString(buf, mf.typ.MapValue(), v)
+
+		i++
+		return true // Keep iterating.
+	})
+
+	buf.WriteByte('}')
+	return buf.String()
+}
+
+func (rf *MapField) Truth() starlark.Bool { return rf.mp.Len() > 0 }
+
+type mapFieldIterator struct {
+	mf *MapField
+
+	keys []starlark.Value
+	i    int
+}
+
+func (it *mapFieldIterator) Next(p *starlark.Value) bool {
+	if it.i < len(it.keys) {
+		*p = it.keys[it.i]
+		it.i++
+		return true
+	}
+	return false
+}
+
+func (it *mapFieldIterator) Done() {
+	if !*it.mf.frozen {
+		it.mf.itercount--
 	}
 }
 
