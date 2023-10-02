@@ -61,6 +61,15 @@
 //	msg.uints32s = [1, 2, 3]
 //	print(type(msg.uints32s))       # "proto.repeated<uint32>"
 //
+// The value of a map field of a message is represented by the dict-like data
+// type, MapField. Its items can be set and access in the usual ways. As with
+// assignments to message fields, and assignment to a MapField performs a
+// dynamic check to ensure the key and value are of the correct type.
+//
+//	msg.string_map = {"a": "A", "b", "B"}
+//	msg.string_map["c"] = "C"
+//	print(type(msg.string_map))     # "proto.map<string, string>"
+//
 // To construct a Message from encoded binary or text data, call
 // Unmarshal or UnmarshalText.  These two functions are exposed to
 // Starlark programs as proto.unmarshal{,_text}.
