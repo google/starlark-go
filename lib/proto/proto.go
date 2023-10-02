@@ -72,9 +72,6 @@
 // are frozen.
 //
 // TODO(adonovan): document descriptors, enums, message instantiation.
-//
-// See proto_test.go for an example of how to use the 'proto'
-// module in an application that embeds Starlark.
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
