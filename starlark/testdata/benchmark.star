@@ -126,3 +126,42 @@ def bench_to_json_deep_list(b):
     "Benchmark json.encode builtin with a list of deep input"
     for _ in range(b.n):
         json.encode(deep)
+
+def bench_issubset_unique_large_small(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(10000))
+    for _ in range(b.n):
+        s.issubset(range(1000))
+
+def bench_issubset_unique_small_large(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(1000))
+    for _ in range(b.n):
+        s.issubset(range(10000))
+
+def bench_issubset_unique_same(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(1000))
+    for _ in range(b.n):
+        s.issubset(range(1000))
+
+def bench_issubset_duplicate_large_small(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(10000))
+    l = list(range(200)) * 5
+    for _ in range(b.n):
+        s.issubset(range(1000))
+
+def bench_issubset_duplicate_small_large(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(1000))
+    l = list(range(2000)) * 5
+    for _ in range(b.n):
+        s.issubset(l)
+
+def bench_issubset_duplicate_same(b):
+    "Benchmark set.issubset builtin"
+    s = set(range(1000))
+    l = list(range(200)) * 5
+    for _ in range(b.n):
+        s.issubset(l)
