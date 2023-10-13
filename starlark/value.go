@@ -1236,13 +1236,11 @@ func (s *Set) IsSuperset(other Iterator) (bool, error) {
 }
 
 func (s *Set) IsSubset(other Iterator) (bool, error) {
-	otherset, err := setFromIterator(other)
-	if err != nil {
+	if count, err := s.ht.count(other); err != nil {
 		return false, err
+	} else {
+		return count == s.Len(), nil
 	}
-	iter := s.Iterate()
-	defer iter.Done()
-	return otherset.IsSuperset(iter)
 }
 
 func (s *Set) Intersection(other Iterator) (Value, error) {
