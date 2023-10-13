@@ -201,7 +201,7 @@ func (ht *hashtable) lookup(k Value) (v Value, found bool, err error) {
 	return None, false, nil // not found
 }
 
-// count returns the number of elements of iter that are part of ht
+// count returns the number of distinct elements of iter that are elements of ht.
 func (ht *hashtable) count(iter Iterator) (int, error) {
 	if ht.table == nil {
 		return 0, nil // empty
@@ -209,10 +209,14 @@ func (ht *hashtable) count(iter Iterator) (int, error) {
 
 	var k Value
 	count := 0
-	storage := make([][1]big.Word, len(ht.table))
+
+	// Use a bitset per table entry to record seen elements of ht.
+	// Elements are identified by their bucket number and index within the bucket.
+	// Each bitset gets one word initially, but may grow.
+	storage := make([]big.Word, len(ht.table))
 	bitsets := make([]big.Int, len(ht.table))
 	for i := range bitsets {
-		bitsets[i].SetBits(storage[i][:0])
+		bitsets[i].SetBits(storage[i : i+1 : i+1])
 	}
 	for iter.Next(&k) && count != int(ht.len) {
 		h, err := k.Hash()
@@ -225,7 +229,8 @@ func (ht *hashtable) count(iter Iterator) (int, error) {
 
 		// Inspect each bucket in the bucket list.
 		bucketId := h & (uint32(len(ht.table) - 1))
-		for p, i := &ht.table[bucketId], 0; p != nil; p, i = p.next, i+1 {
+		i := 0
+		for p := &ht.table[bucketId]; p != nil; p = p.next {
 			for j := range p.entries {
 				e := &p.entries[j]
 				if e.hash == h {
@@ -240,6 +245,7 @@ func (ht *hashtable) count(iter Iterator) (int, error) {
 					}
 				}
 			}
+			i++
 		}
 	}
 
