@@ -123,3 +123,17 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 		}
 	}
 }
+
+func TestHashtableCount(t *testing.T) {
+	const count = 1000
+	ht := new(hashtable)
+	for i := 0; i < count; i++ {
+		ht.insert(MakeInt(i), None)
+	}
+
+	if c, err := ht.count(rangeValue{0, count, 1, count}.Iterate()); err != nil {
+		t.Error(err)
+	} else if c != count {
+		t.Errorf("count doesn't match: expected %d got %d", count, c)
+	}
+}
