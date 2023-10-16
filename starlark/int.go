@@ -212,6 +212,12 @@ func (i Int) Float() Float {
 			return Float(iBig.Uint64())
 		} else if iBig.IsInt64() {
 			return Float(iBig.Int64())
+		} else {
+			// Fast path for very big ints.
+			const maxFiniteLen = 1023 + 1 // max exponent value + implicit mantissa bit
+			if iBig.BitLen() > maxFiniteLen {
+				return Float(math.Inf(iBig.Sign()))
+			}
 		}
 
 		f, _ := new(big.Float).SetInt(iBig).Float64()
