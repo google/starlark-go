@@ -6,6 +6,7 @@
 package time // import "go.starlark.net/lib/time"
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -68,10 +69,28 @@ var Module = &starlarkstruct.Module{
 	},
 }
 
-// NowFunc is a function that generates the current time. Intentionally exported
+// NowFunc is a function that reports the current time. Intentionally exported
 // so that it can be overridden, for example by applications that require their
 // Starlark scripts to be fully deterministic.
+//
+// Deprecated: avoid updating this global variable
+// and instead use SetNow on each thread to set its clock function.
 var NowFunc = time.Now
+
+const contextKey = "time.now"
+
+// SetNow sets the thread's optional clock function.
+// If non-nil, it will be used in preference to NowFunc when the
+// thread requests the current time by executing a call to time.now.
+func SetNow(thread *starlark.Thread, nowFunc func() (time.Time, error)) {
+	thread.SetLocal(contextKey, nowFunc)
+}
+
+// Now returns the clock function previously associated with this thread.
+func Now(thread *starlark.Thread) func() (time.Time, error) {
+	nowFunc, _ := thread.Local(contextKey).(func() (time.Time, error))
+	return nowFunc
+}
 
 func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
@@ -129,7 +148,19 @@ func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.T
 }
 
 func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return Time(NowFunc()), nil
+	nowErrFunc := Now(thread)
+	if nowErrFunc != nil {
+		t, err := nowErrFunc()
+		if err != nil {
+			return nil, err
+		}
+		return Time(t), nil
+	}
+	nowFunc := NowFunc
+	if nowFunc == nil {
+		return nil, errors.New("time.now() is not available")
+	}
+	return Time(nowFunc()), nil
 }
 
 // Duration is a Starlark representation of a duration.
