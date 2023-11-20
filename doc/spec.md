@@ -2197,6 +2197,9 @@ which must be a tuple with exactly one component per conversion,
 unless the format string contains only a single conversion, in which
 case `args` itself is its operand.
 
+If the format string contains no conversions, the operand must be a
+`Mapping` or an empty tuple.
+
 Starlark does not support the flag, width, and padding specifiers
 supported by Python's `%` and other variants of C's `printf`.
 
