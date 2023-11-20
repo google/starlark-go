@@ -172,7 +172,9 @@ assert.eq(gothash, wanthash)
 # TODO(adonovan): ordered comparisons
 
 # string % tuple formatting
+assert.eq("A" % (), "A")
 assert.eq("A %d %x Z" % (123, 456), "A 123 1c8 Z")
+assert.eq("A" % {'unused': 123}, "A")
 assert.eq("A %(foo)d %(bar)s Z" % {"foo": 123, "bar": "hi"}, "A 123 hi Z")
 assert.eq("%s %r" % ("hi", "hi"), 'hi "hi"')  # TODO(adonovan): use ''-quotation
 assert.eq("%%d %d" % 1, "%d 1")

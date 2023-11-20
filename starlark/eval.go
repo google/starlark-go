@@ -1659,8 +1659,10 @@ func interpolate(format string, x Value) (Value, error) {
 		index++
 	}
 
-	if index < nargs {
-		return nil, fmt.Errorf("too many arguments for format string")
+	if _, ok := x.(Mapping); !ok {
+		if index < nargs {
+			return nil, fmt.Errorf("too many arguments for format string")
+		}
 	}
 
 	return String(buf.String()), nil
