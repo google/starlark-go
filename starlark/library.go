@@ -40,7 +40,7 @@ func init() {
 		"True":      True,
 		"False":     False,
 		"abs":       NewBuiltin("abs", abs),
-		"any":       NewBuiltin("any", any),
+		"any":       NewBuiltin("any", any_),
 		"all":       NewBuiltin("all", all),
 		"bool":      NewBuiltin("bool", bool_),
 		"bytes":     NewBuiltin("bytes", bytes_),
@@ -210,7 +210,7 @@ func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#any
-func any(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+func any_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var iterable Iterable
 	if err := UnpackPositionalArgs("any", args, kwargs, 1, &iterable); err != nil {
 		return nil, err
