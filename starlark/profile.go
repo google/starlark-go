@@ -189,6 +189,7 @@ type profFrame struct {
 func profile(w io.Writer) {
 	// Field numbers from pprof protocol.
 	// See https://github.com/google/pprof/blob/master/proto/profile.proto
+	//nolint:revive,unused
 	const (
 		Profile_sample_type    = 1  // repeated ValueType
 		Profile_sample         = 2  // repeated Sample
@@ -250,9 +251,9 @@ func profile(w io.Writer) {
 	// function returns the ID of a Callable for use in Line.FunctionId.
 	// The ID is the same as the function's logical address,
 	// which is supplied by the caller to avoid the need to recompute it.
-	functionId := make(map[uintptr]uint64)
+	functionID := make(map[uintptr]uint64)
 	function := func(fn Callable, addr uintptr) uint64 {
-		id, ok := functionId[addr]
+		id, ok := functionID[addr]
 		if !ok {
 			id = uint64(addr)
 
@@ -277,7 +278,7 @@ func profile(w io.Writer) {
 			funenc.int(Function_start_line, int64(pos.Line))
 			enc.bytes(Profile_function, fun.Bytes())
 
-			functionId[addr] = id
+			functionID[addr] = id
 		}
 		return id
 	}
@@ -363,19 +364,19 @@ func profile(w io.Writer) {
 // monotonic system clock, which there is no portable way to access.
 // Should that function ever go away, these alternatives exist:
 //
-// 	// POSIX only. REALTIME not MONOTONIC. 17ns.
-// 	var tv syscall.Timeval
-// 	syscall.Gettimeofday(&tv) // can't fail
-// 	return tv.Nano()
+//		// POSIX only. REALTIME not MONOTONIC. 17ns.
+//		var tv syscall.Timeval
+//		syscall.Gettimeofday(&tv) // can't fail
+//		return tv.Nano()
 //
-// 	// Portable. REALTIME not MONOTONIC. 46ns.
-// 	return time.Now().Nanoseconds()
+//		// Portable. REALTIME not MONOTONIC. 46ns.
+//		return time.Now().Nanoseconds()
 //
-//      // POSIX only. Adds a dependency.
-//	import "golang.org/x/sys/unix"
-//	var ts unix.Timespec
-// 	unix.ClockGettime(CLOCK_MONOTONIC, &ts) // can't fail
-//	return unix.TimespecToNsec(ts)
+//	     // POSIX only. Adds a dependency.
+//		import "golang.org/x/sys/unix"
+//		var ts unix.Timespec
+//		unix.ClockGettime(CLOCK_MONOTONIC, &ts) // can't fail
+//		return unix.TimespecToNsec(ts)
 //
 //go:linkname nanotime runtime.nanotime
 func nanotime() int64

@@ -1,0 +1,76 @@
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - bidichk
+    - depguard
+    #- errcheck
+    - gci
+    - gofmt
+    - gosec
+    - gosimple
+    - govet
+    - importas
+    - ineffassign
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - typecheck
+    - unconvert
+    - unused
+
+linters-settings:
+  depguard:
+    list-type: blacklist
+    include-go-root: true
+    packages-with-error-message:
+      - errors: "use github.com/mna/pityache/internal/errors instead"
+
+  gosec:
+    excludes:
+      # Potential slowloris attack if read header timeout not set, but we do
+      # set it, just not when server is created
+      - G112
+
+  importas:
+    no-unaliased: true
+    alias:
+      - pkg: text/template
+        alias: ttemplate
+      - pkg: html/template
+        alias: htemplate
+
+  revive:
+    ignoreGeneratedHeader: false
+    severity: "warning"
+    confidence: 0.8
+    errorCode: 0
+    warningCode: 0
+
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
+      - name: redefines-builtin-id
