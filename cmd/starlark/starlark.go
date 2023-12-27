@@ -22,6 +22,7 @@ import (
 	"github.com/mna/nenuphar/repl"
 	"github.com/mna/nenuphar/resolve"
 	"github.com/mna/nenuphar/starlark"
+	"github.com/mna/nenuphar/syntax"
 	"golang.org/x/term"
 )
 
@@ -34,6 +35,7 @@ var (
 	execprog   = flag.String("c", "", "execute program `prog`")
 )
 
+//nolint:staticcheck
 func init() {
 	flag.BoolVar(&compile.Disassemble, "disassemble", compile.Disassemble, "show disassembly during compilation of each function")
 
@@ -41,10 +43,6 @@ func init() {
 	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
 	flag.BoolVar(&resolve.AllowRecursion, "recursion", resolve.AllowRecursion, "allow while statements and recursive functions")
 	flag.BoolVar(&resolve.AllowGlobalReassign, "globalreassign", resolve.AllowGlobalReassign, "allow reassignment of globals, and if/for/while statements at top level")
-
-	// flags that are now standard
-	flag.BoolVar(&resolve.AllowFloat, "float", resolve.AllowFloat, "obsolete; no effect")
-	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "obsolete; no effect")
 }
 
 func main() {
@@ -126,7 +124,7 @@ func doMain() int {
 			fmt.Println("Welcome to Nenuphar (github.com/mna/nenuphar)")
 		}
 		thread.Name = "REPL"
-		repl.REPL(thread, globals)
+		repl.REPL(syntax.LegacyFileOptions(), thread, globals)
 		if stdinIsTerminal {
 			fmt.Println()
 		}

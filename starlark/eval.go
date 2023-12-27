@@ -700,9 +700,8 @@ func getIndex(x, y Value) (Value, error) {
 func outOfRange(i, n int, x Value) error {
 	if n == 0 {
 		return fmt.Errorf("index %d out of range: empty %s", i, x.Type())
-	} else {
-		return fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), i, -n, n-1)
 	}
+	return fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), i, -n, n-1)
 }
 
 // setIndex implements x[y] = z.
@@ -1136,9 +1135,8 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 					return nil, fmt.Errorf("shift count too large: %v", y)
 				}
 				return x.Lsh(uint(y)), nil
-			} else {
-				return x.Rsh(uint(y)), nil
 			}
+			return x.Rsh(uint(y)), nil
 		}
 
 	default:

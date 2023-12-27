@@ -361,6 +361,7 @@ func (d *decoder) ints() []int {
 	return ints
 }
 
+//nolint:unused
 func (d *decoder) bool() bool { return d.int() != 0 }
 
 func (d *decoder) function() *Funcode {

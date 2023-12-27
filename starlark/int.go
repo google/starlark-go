@@ -236,79 +236,79 @@ func (i Int) finiteFloat() (Float, error) {
 	return f, nil
 }
 
-func (x Int) Sign() int {
-	xSmall, xBig := x.get()
+func (i Int) Sign() int {
+	xSmall, xBig := i.get()
 	if xBig != nil {
 		return xBig.Sign()
 	}
 	return signum64(xSmall)
 }
 
-func (x Int) Add(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Add(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Add(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).Add(i.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall + ySmall)
 }
-func (x Int) Sub(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Sub(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Sub(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).Sub(i.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall - ySmall)
 }
-func (x Int) Mul(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Mul(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Mul(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).Mul(i.bigInt(), y.bigInt()))
 	}
 	return MakeInt64(xSmall * ySmall)
 }
-func (x Int) Or(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Or(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Or(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).Or(i.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall | ySmall)
 }
-func (x Int) And(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) And(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).And(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).And(i.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall & ySmall)
 }
-func (x Int) Xor(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Xor(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		return MakeBigInt(new(big.Int).Xor(x.bigInt(), y.bigInt()))
+		return MakeBigInt(new(big.Int).Xor(i.bigInt(), y.bigInt()))
 	}
 	return makeSmallInt(xSmall ^ ySmall)
 }
-func (x Int) Not() Int {
-	xSmall, xBig := x.get()
+func (i Int) Not() Int {
+	xSmall, xBig := i.get()
 	if xBig != nil {
 		return MakeBigInt(new(big.Int).Not(xBig))
 	}
 	return makeSmallInt(^xSmall)
 }
-func (x Int) Lsh(y uint) Int { return MakeBigInt(new(big.Int).Lsh(x.bigInt(), y)) }
-func (x Int) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh(x.bigInt(), y)) }
+func (i Int) Lsh(y uint) Int { return MakeBigInt(new(big.Int).Lsh(i.bigInt(), y)) }
+func (i Int) Rsh(y uint) Int { return MakeBigInt(new(big.Int).Rsh(i.bigInt(), y)) }
 
 // Precondition: y is nonzero.
-func (x Int) Div(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Div(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	// http://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
 	if xBig != nil || yBig != nil {
-		xb, yb := x.bigInt(), y.bigInt()
+		xb, yb := i.bigInt(), y.bigInt()
 
 		var quo, rem big.Int
 		quo.QuoRem(xb, yb, &rem)
@@ -320,17 +320,17 @@ func (x Int) Div(y Int) Int {
 	quo := xSmall / ySmall
 	rem := xSmall % ySmall
 	if (xSmall < 0) != (ySmall < 0) && rem != 0 {
-		quo -= 1
+		quo--
 	}
 	return MakeInt64(quo)
 }
 
 // Precondition: y is nonzero.
-func (x Int) Mod(y Int) Int {
-	xSmall, xBig := x.get()
+func (i Int) Mod(y Int) Int {
+	xSmall, xBig := i.get()
 	ySmall, yBig := y.get()
 	if xBig != nil || yBig != nil {
-		xb, yb := x.bigInt(), y.bigInt()
+		xb, yb := i.bigInt(), y.bigInt()
 
 		var quo, rem big.Int
 		quo.QuoRem(xb, yb, &rem)
@@ -394,7 +394,7 @@ func AsInt(x Value, ptr interface{}) error {
 		case *int32:
 			*ptr = int32(i)
 		case *int64:
-			*ptr = int64(i)
+			*ptr = i
 		}
 
 	case *uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
@@ -412,7 +412,7 @@ func AsInt(x Value, ptr interface{}) error {
 		case *uint32:
 			*ptr = uint32(i)
 		case *uint64:
-			*ptr = uint64(i)
+			*ptr = i
 		case *uintptr:
 			*ptr = uintptr(i)
 		}

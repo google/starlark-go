@@ -1913,9 +1913,9 @@ func (fcomp *fcomp) ifelse(cond syntax.Expr, t, f *block) {
 			// if x not in y then goto t else goto f
 			//    =>
 			// if x in y then goto f else goto t
-			copy := *cond
-			copy.Op = syntax.IN
-			fcomp.expr(&copy)
+			clone := *cond
+			clone.Op = syntax.IN
+			fcomp.expr(&clone)
 			fcomp.condjump(CJMP, f, t)
 			return
 		}

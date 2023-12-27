@@ -339,16 +339,17 @@ func (is *intset) get(i int) bool {
 	return is.large[i]
 }
 
+//nolint:unused
 func (is *intset) len() int {
 	if is.large == nil {
 		// Suboptimal, but used only for error reporting.
-		len := 0
+		leni := 0
 		for i := 0; i < 64; i++ {
 			if is.small&(1<<uint(i)) != 0 {
-				len++
+				leni++
 			}
 		}
-		return len
+		return leni
 	}
 	return len(is.large)
 }

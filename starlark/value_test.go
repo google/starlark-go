@@ -16,6 +16,7 @@ import (
 
 func TestStringMethod(t *testing.T) {
 	s := starlark.String("hello")
+	//nolint:gosimple
 	for i, test := range [][2]string{
 		// quoted string:
 		{s.String(), `"hello"`},

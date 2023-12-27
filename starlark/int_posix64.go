@@ -46,11 +46,11 @@ type intImpl unsafe.Pointer
 func (i Int) get() (int64, *big.Int) {
 	if smallints == 0 {
 		// optimization disabled
-		if x := (*big.Int)(i.impl); isSmall(x) {
+		x := (*big.Int)(i.impl)
+		if isSmall(x) {
 			return x.Int64(), nil
-		} else {
-			return 0, x
 		}
+		return 0, x
 	}
 
 	if ptr := uintptr(i.impl); ptr >= smallints && ptr < smallints+1<<32 {

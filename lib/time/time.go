@@ -375,7 +375,7 @@ func (t Time) Freeze() {}
 // Hash returns a function of x such that Equals(x, y) => Hash(x) == Hash(y)
 // required by starlark.Value interface.
 func (t Time) Hash() (uint32, error) {
-	return uint32(time.Time(t).UnixNano()) ^ uint32(int64(time.Time(t).UnixNano())>>32), nil
+	return uint32(time.Time(t).UnixNano()) ^ uint32((time.Time(t).UnixNano())>>32), nil
 }
 
 // Truth returns the truth value of an object required by starlark.Value

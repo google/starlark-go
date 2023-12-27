@@ -96,7 +96,8 @@ const doesnt = "this Starlark dialect does not "
 
 // global options
 // These features are either not standard Starlark (yet), or deprecated
-// features of the BUILD language, so we put them behind flags.
+// features of the BUILD language, so we put them behind flags. Still used
+// via link name by syntax.LegacyFileOptions and the REPL.
 //
 // Deprecated: use an explicit [syntax.FileOptions] argument instead,
 // as it avoids all the usual problems of global variables.
@@ -105,12 +106,6 @@ var (
 	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
 	AllowRecursion      = false // allow while statements and recursive functions
 	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
-
-	// obsolete flags for features that are now standard. No effect.
-	AllowNestedDef = true
-	AllowLambda    = true
-	AllowFloat     = true
-	AllowBitwise   = true
 )
 
 // File resolves the specified file and records information about the
