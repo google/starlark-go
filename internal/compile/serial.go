@@ -206,9 +206,8 @@ func (e *encoder) function(fn *Funcode) {
 func b2i(b bool) int {
 	if b {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
 }
 
 // DecodeProgram decodes a compiled Starlark program from data.
@@ -306,26 +305,26 @@ func (d *decoder) int() int {
 }
 
 func (d *decoder) int64() int64 {
-	x, len := binary.Varint(d.p[:])
-	d.p = d.p[len:]
+	x, n := binary.Varint(d.p[:])
+	d.p = d.p[n:]
 	return x
 }
 
 func (d *decoder) uint64() uint64 {
-	x, len := binary.Uvarint(d.p[:])
-	d.p = d.p[len:]
+	x, n := binary.Uvarint(d.p[:])
+	d.p = d.p[n:]
 	return x
 }
 
 func (d *decoder) string() (s string) {
 	if slice := d.bytes(); len(slice) > 0 {
-		// Avoid a memory allocation for each string
+		// Avoid a memory allocation for each str
 		// by unsafely aliasing slice.
-		type string struct {
+		type str struct {
 			data *byte
 			len  int
 		}
-		ptr := (*string)(unsafe.Pointer(&s))
+		ptr := (*str)(unsafe.Pointer(&s))
 		ptr.data = &slice[0]
 		ptr.len = len(slice)
 	}
@@ -333,9 +332,9 @@ func (d *decoder) string() (s string) {
 }
 
 func (d *decoder) bytes() []byte {
-	len := d.int()
-	r := d.s[:len:len]
-	d.s = d.s[len:]
+	n := d.int()
+	r := d.s[:n:n]
+	d.s = d.s[n:]
 	return r
 }
 

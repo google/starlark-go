@@ -17,17 +17,17 @@ func TestHashtable(t *testing.T) {
 }
 
 func BenchmarkStringHash(b *testing.B) {
-	for len := 1; len <= 1024; len *= 2 {
-		buf := make([]byte, len)
-		rand.New(rand.NewSource(0)).Read(buf)
+	for slen := 1; slen <= 1024; slen *= 2 {
+		buf := make([]byte, slen)
+		rand.New(rand.NewSource(0)).Read(buf) //nolint:gosec
 		s := string(buf)
 
-		b.Run(fmt.Sprintf("hard-%d", len), func(b *testing.B) {
+		b.Run(fmt.Sprintf("hard-%d", slen), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				hashString(s)
 			}
 		})
-		b.Run(fmt.Sprintf("soft-%d", len), func(b *testing.B) {
+		b.Run(fmt.Sprintf("soft-%d", slen), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				softHashString(s)
 			}
@@ -57,7 +57,7 @@ var (
 )
 
 func makeTestInts() {
-	zipf := rand.NewZipf(rand.New(rand.NewSource(0)), 1.1, 1.0, 1000.0)
+	zipf := rand.NewZipf(rand.New(rand.NewSource(0)), 1.1, 1.0, 1000.0) //nolint:gosec
 	for i := range &testInts {
 		r := int(zipf.Uint64())
 		testInts[i].goInt = r

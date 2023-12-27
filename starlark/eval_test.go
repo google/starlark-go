@@ -439,11 +439,11 @@ def f(): print("hello", "world", sep=", ")
 f()
 `
 	buf := new(bytes.Buffer)
-	print := func(thread *starlark.Thread, msg string) {
+	printFn := func(thread *starlark.Thread, msg string) {
 		caller := thread.CallFrame(1)
 		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Pos, caller.Name, msg)
 	}
-	thread := &starlark.Thread{Print: print}
+	thread := &starlark.Thread{Print: printFn}
 	if _, err := starlark.ExecFile(thread, "foo.star", src, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -452,13 +452,6 @@ f()
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
-}
-
-func reportEvalError(tb testing.TB, err error) {
-	if err, ok := err.(*starlark.EvalError); ok {
-		tb.Fatal(err.Backtrace())
-	}
-	tb.Fatal(err)
 }
 
 // TestInt exercises the Int.Int64 and Int.Uint64 methods.
@@ -725,7 +718,7 @@ func TestUnpackNoneCoalescing(t *testing.T) {
 
 	// Success
 	args := starlark.Tuple{starlark.None}
-	kwargs := []starlark.Tuple{starlark.Tuple{starlark.String("b"), starlark.None}}
+	kwargs := []starlark.Tuple{{starlark.String("b"), starlark.None}}
 	if err := starlark.UnpackArgs("unpack", args, kwargs, "a??", &a, "b??", &a); err != nil {
 		t.Errorf("UnpackArgs failed: %v", err)
 	}
@@ -743,8 +736,8 @@ func TestUnpackNoneCoalescing(t *testing.T) {
 	}
 
 	err = starlark.UnpackArgs("unpack", nil, []starlark.Tuple{
-		starlark.Tuple{starlark.String("a"), starlark.None},
-		starlark.Tuple{starlark.String("a"), starlark.None},
+		{starlark.String("a"), starlark.None},
+		{starlark.String("a"), starlark.None},
 	}, "a??", &a)
 	if want := "unpack: got multiple values for keyword argument \"a\""; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)

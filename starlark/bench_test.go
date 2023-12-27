@@ -168,3 +168,10 @@ func BenchmarkProgram(b *testing.B) {
 		}
 	})
 }
+
+func reportEvalError(tb testing.TB, err error) {
+	if err, ok := err.(*starlark.EvalError); ok {
+		tb.Fatal(err.Backtrace())
+	}
+	tb.Fatal(err)
+}

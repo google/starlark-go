@@ -304,7 +304,7 @@ func BenchmarkScan(b *testing.B) {
 			b.Fatal(err)
 		}
 		var val tokenValue
-		for sc.nextToken(&val) != EOF {
+		for sc.nextToken(&val) != EOF { //nolint:revive
 		}
 	}
 }

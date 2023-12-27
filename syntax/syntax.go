@@ -455,9 +455,8 @@ type TupleExpr struct {
 func (x *TupleExpr) Span() (start, end Position) {
 	if x.Lparen.IsValid() {
 		return x.Lparen, x.Rparen
-	} else {
-		return Start(x.List[0]), End(x.List[len(x.List)-1])
 	}
+	return Start(x.List[0]), End(x.List[len(x.List)-1])
 }
 
 // A UnaryExpr represents a unary expression: Op X.

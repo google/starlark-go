@@ -93,23 +93,20 @@ func levenshtein(x, y string, max int) int {
 func b2i(b bool) int {
 	if b {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func min(x, y int) int {
 	if x < y {
 		return x
-	} else {
-		return y
 	}
+	return y
 }
 
 func abs(x int) int {
 	if x >= 0 {
 		return x
-	} else {
-		return -x
 	}
+	return -x
 }

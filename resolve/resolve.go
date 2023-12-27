@@ -452,7 +452,7 @@ func (r *resolver) useToplevel(use use) (bind *Binding) {
 // spellcheck returns the most likely misspelling of
 // the name use.id in the environment use.env.
 func (r *resolver) spellcheck(use use) string {
-	var names []string
+	names := make([]string, 0, len(r.moduleGlobals))
 
 	// locals
 	for b := use.env; b != nil; b = b.parent {

@@ -466,7 +466,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 				var j int
 				for j = i + 1; j < len(s); j++ {
 					b = s[j]
-					if isdigit(b) {
+					if isdigit(b) { // nolint:revive
 						// ok
 					} else if b == '.' ||
 						b == 'e' ||
@@ -498,13 +498,12 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 						fail("invalid number: %s", num)
 					}
 					return starlark.Float(x)
-				} else {
-					x, ok := new(big.Int).SetString(num, 10)
-					if !ok {
-						fail("invalid number: %s", num)
-					}
-					return starlark.MakeBigInt(x)
 				}
+				x, ok := new(big.Int).SetString(num, 10)
+				if !ok {
+					fail("invalid number: %s", num)
+				}
+				return starlark.MakeBigInt(x)
 			}
 		}
 		fail("unexpected character %q", b)

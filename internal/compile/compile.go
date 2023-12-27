@@ -55,7 +55,7 @@ type Opcode uint8
 //
 // OP<index> indicates an immediate operand that is an index into the
 // specified table: locals, names, freevars, constants.
-const (
+const ( //nolint:revive
 	NOP Opcode = iota // - NOP -
 
 	// stack operations
