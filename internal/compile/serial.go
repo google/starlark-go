@@ -88,7 +88,7 @@ import (
 	debugpkg "runtime/debug"
 	"unsafe"
 
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/syntax"
 )
 
 const magic = "!sky"

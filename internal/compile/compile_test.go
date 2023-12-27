@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/starlark"
+	"github.com/mna/nenuphar/starlark"
 )
 
 // TestSerialization verifies that a serialized program can be loaded,

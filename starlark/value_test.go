@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"go.starlark.net/starlark"
+	"github.com/mna/nenuphar/starlark"
 )
 
 func TestStringMethod(t *testing.T) {

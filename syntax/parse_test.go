@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/internal/chunkedfile"
-	"go.starlark.net/starlarktest"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/internal/chunkedfile"
+	"github.com/mna/nenuphar/starlarktest"
+	"github.com/mna/nenuphar/syntax"
 )
 
 func TestExprParseTrees(t *testing.T) {
@@ -466,7 +466,7 @@ func TestFilePortion(t *testing.T) {
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
-	return filepath.Join(build.Default.GOPATH, "src/go.starlark.net", pkgdir, filename)
+	return filepath.Join(build.Default.GOPATH, "src/github.com/mna/nenuphar", pkgdir, filename)
 }
 
 func BenchmarkParse(b *testing.B) {

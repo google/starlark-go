@@ -71,7 +71,7 @@ import (
 	"time"
 	"unsafe"
 
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/syntax"
 )
 
 // StartProfile enables time profiling of all Starlark threads,

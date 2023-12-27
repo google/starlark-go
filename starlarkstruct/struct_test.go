@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-	"go.starlark.net/starlarktest"
+	"github.com/mna/nenuphar/starlark"
+	"github.com/mna/nenuphar/starlarkstruct"
+	"github.com/mna/nenuphar/starlarktest"
 )
 
 func Test(t *testing.T) {

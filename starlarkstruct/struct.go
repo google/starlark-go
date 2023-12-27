@@ -4,8 +4,7 @@
 
 // Package starlarkstruct defines the Starlark types 'struct' and
 // 'module', both optional language extensions.
-//
-package starlarkstruct // import "go.starlark.net/starlarkstruct"
+package starlarkstruct
 
 // It is tempting to introduce a variant of Struct that is a wrapper
 // around a Go struct value, for stronger typing guarantees and more
@@ -27,8 +26,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.starlark.net/starlark"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/starlark"
+	"github.com/mna/nenuphar/syntax"
 )
 
 // Make is the implementation of a built-in function that instantiates
@@ -36,10 +35,9 @@ import (
 //
 // An application can add 'struct' to the Starlark environment like so:
 //
-// 	globals := starlark.StringDict{
-// 		"struct":  starlark.NewBuiltin("struct", starlarkstruct.Make),
-// 	}
-//
+//	globals := starlark.StringDict{
+//		"struct":  starlark.NewBuiltin("struct", starlarkstruct.Make),
+//	}
 func Make(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(args) > 0 {
 		return nil, fmt.Errorf("struct: unexpected positional arguments")
