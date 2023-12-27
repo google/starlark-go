@@ -828,9 +828,8 @@ func clip(x, min, max int32) (int32, bool) {
 		return max, false
 	} else if x < min {
 		return min, false
-	} else {
-		return x, true
 	}
+	return x, true
 }
 
 // addUint32 encodes x as 7-bit little-endian varint.

@@ -866,7 +866,7 @@ func TestUnpackErrorBadType(t *testing.T) {
 		{new(badType), "got NoneType, want badType"},       // Starlark type name
 		{nil, "got NoneType, want *starlark_test.badType"}, // Go type name
 	} {
-		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x)
+		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x) //nolint:gosec
 		if err == nil {
 			t.Errorf("UnpackArgs succeeded unexpectedly")
 			continue

@@ -893,9 +893,8 @@ func (r rangeValue) String() string {
 		return fmt.Sprintf("range(%d, %d, %d)", r.start, r.stop, r.step)
 	} else if r.start != 0 {
 		return fmt.Sprintf("range(%d, %d)", r.start, r.stop)
-	} else {
-		return fmt.Sprintf("range(%d)", r.stop)
 	}
+	return fmt.Sprintf("range(%d)", r.stop)
 }
 func (r rangeValue) Type() string          { return "range" }
 func (r rangeValue) Truth() Bool           { return r.len > 0 }
@@ -1289,9 +1288,8 @@ func dict_setdefault(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, 
 		return v, nil
 	} else if err := dict.SetKey(key, dflt); err != nil {
 		return nil, nameErr(b, err)
-	} else {
-		return dflt, nil
 	}
+	return dflt, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·update
