@@ -363,6 +363,8 @@ func (ht *hashtable) addAll(other *hashtable) error {
 }
 
 // dump is provided as an aid to debugging.
+//
+//nolint:unused
 func (ht *hashtable) dump() {
 	fmt.Printf("hashtable %p len=%d head=%p tailLink=%p",
 		ht, ht.len, ht.head, ht.tailLink)

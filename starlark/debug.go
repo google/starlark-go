@@ -1,6 +1,6 @@
 package starlark
 
-import "go.starlark.net/syntax"
+import "github.com/mna/nenuphar/syntax"
 
 // This file defines an experimental API for the debugging tools.
 // Some of these declarations expose details of internal packages.

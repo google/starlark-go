@@ -63,7 +63,7 @@
 // through Starlark code and into callbacks.  When evaluation fails it
 // returns an EvalError from which the application may obtain a
 // backtrace of active Starlark calls.
-package starlark // import "go.starlark.net/starlark"
+package starlark
 
 // This file defines the data types of Starlark and their basic operations.
 
@@ -76,8 +76,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"go.starlark.net/internal/compile"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/internal/compile"
+	"github.com/mna/nenuphar/syntax"
 )
 
 // Value is a value in the Starlark interpreter.
@@ -390,17 +390,16 @@ const (
 func (b Bool) String() string {
 	if b {
 		return "True"
-	} else {
-		return "False"
 	}
+	return "False"
 }
 func (b Bool) Type() string          { return "bool" }
 func (b Bool) Freeze()               {} // immutable
 func (b Bool) Truth() Bool           { return b }
 func (b Bool) Hash() (uint32, error) { return uint32(b2i(bool(b))), nil }
-func (x Bool) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (b Bool) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Bool)
-	return threeway(op, b2i(bool(x))-b2i(bool(y))), nil
+	return threeway(op, b2i(bool(b))-b2i(bool(y))), nil
 }
 
 // Float is the type of a Starlark float.
@@ -507,9 +506,9 @@ func AsFloat(x Value) (f float64, ok bool) {
 	return 0, false
 }
 
-func (x Float) Mod(y Float) Float {
-	z := Float(math.Mod(float64(x), float64(y)))
-	if (x < 0) != (y < 0) && z != 0 {
+func (f Float) Mod(y Float) Float {
+	z := Float(math.Mod(float64(f), float64(y)))
+	if (f < 0) != (y < 0) && z != 0 {
 		z += y
 	}
 	return z
@@ -572,9 +571,9 @@ func (s String) Slice(start, end, step int) Value {
 func (s String) Attr(name string) (Value, error) { return builtinAttr(s, name, stringMethods) }
 func (s String) AttrNames() []string             { return builtinAttrNames(stringMethods) }
 
-func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (s String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(String)
-	return threeway(op, strings.Compare(string(x), string(y))), nil
+	return threeway(op, strings.Compare(string(s), string(y))), nil
 }
 
 func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), ok }
@@ -595,9 +594,8 @@ var (
 func (si stringElems) String() string {
 	if si.ords {
 		return si.s.String() + ".elem_ords()"
-	} else {
-		return si.s.String() + ".elems()"
 	}
+	return si.s.String() + ".elems()"
 }
 func (si stringElems) Type() string          { return "string.elems" }
 func (si stringElems) Freeze()               {} // immutable
@@ -608,11 +606,10 @@ func (si stringElems) Len() int              { return len(si.s) }
 func (si stringElems) Index(i int) Value {
 	if si.ords {
 		return MakeInt(int(si.s[i]))
-	} else {
-		// TODO(adonovan): opt: preallocate canonical 1-byte strings
-		// to avoid interface allocation.
-		return si.s[i : i+1]
 	}
+	// TODO(adonovan): opt: preallocate canonical 1-byte strings
+	// to avoid interface allocation.
+	return si.s[i : i+1]
 }
 
 type stringElemsIterator struct {
@@ -644,9 +641,8 @@ var _ Iterable = (*stringCodepoints)(nil)
 func (si stringCodepoints) String() string {
 	if si.ords {
 		return si.s.String() + ".codepoint_ords()"
-	} else {
-		return si.s.String() + ".codepoints()"
 	}
+	return si.s.String() + ".codepoints()"
 }
 func (si stringCodepoints) Type() string          { return "string.codepoints" }
 func (si stringCodepoints) Freeze()               {} // immutable
@@ -848,10 +844,10 @@ func (d *Dict) Freeze()                                         { d.ht.freeze() 
 func (d *Dict) Truth() Bool                                     { return d.Len() > 0 }
 func (d *Dict) Hash() (uint32, error)                           { return 0, fmt.Errorf("unhashable type: dict") }
 
-func (x *Dict) Union(y *Dict) *Dict {
+func (d *Dict) Union(y *Dict) *Dict {
 	z := new(Dict)
-	z.ht.init(x.Len()) // a lower bound
-	z.ht.addAll(&x.ht) // can't fail
+	z.ht.init(d.Len()) // a lower bound
+	z.ht.addAll(&d.ht) // can't fail
 	z.ht.addAll(&y.ht) // can't fail
 	return z
 }
@@ -859,17 +855,17 @@ func (x *Dict) Union(y *Dict) *Dict {
 func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, dictMethods) }
 func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
 
-func (x *Dict) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (d *Dict) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Dict)
 	switch op {
 	case syntax.EQL:
-		ok, err := dictsEqual(x, y, depth)
+		ok, err := dictsEqual(d, y, depth)
 		return ok, err
 	case syntax.NEQ:
-		ok, err := dictsEqual(x, y, depth)
+		ok, err := dictsEqual(d, y, depth)
 		return !ok, err
 	default:
-		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
+		return false, fmt.Errorf("%s %s %s not implemented", d.Type(), op, y.Type())
 	}
 }
 
@@ -954,11 +950,11 @@ func (l *List) Iterate() Iterator {
 	return &listIterator{l: l}
 }
 
-func (x *List) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (l *List) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*List)
 	// It's tempting to check x == y as an optimization here,
 	// but wrong because a list containing NaN is not equal to itself.
-	return sliceCompare(op, x.elems, y.elems, depth)
+	return sliceCompare(op, l.elems, y.elems, depth)
 }
 
 func sliceCompare(op syntax.Token, x, y []Value, depth int) (bool, error) {
@@ -1062,9 +1058,9 @@ func (t Tuple) String() string { return toString(t) }
 func (t Tuple) Type() string   { return "tuple" }
 func (t Tuple) Truth() Bool    { return len(t) > 0 }
 
-func (x Tuple) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (t Tuple) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Tuple)
-	return sliceCompare(op, x, y, depth)
+	return sliceCompare(op, t, y, depth)
 }
 
 func (t Tuple) Hash() (uint32, error) {
@@ -1125,45 +1121,45 @@ func (s *Set) Truth() Bool                            { return s.Len() > 0 }
 func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
 func (s *Set) AttrNames() []string             { return builtinAttrNames(setMethods) }
 
-func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (s *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Set)
 	switch op {
 	case syntax.EQL:
-		ok, err := setsEqual(x, y, depth)
+		ok, err := setsEqual(s, y, depth)
 		return ok, err
 	case syntax.NEQ:
-		ok, err := setsEqual(x, y, depth)
+		ok, err := setsEqual(s, y, depth)
 		return !ok, err
 	case syntax.GE: // superset
-		if x.Len() < y.Len() {
+		if s.Len() < y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.IsSuperset(iter)
+		return s.IsSuperset(iter)
 	case syntax.LE: // subset
-		if x.Len() > y.Len() {
+		if s.Len() > y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.IsSubset(iter)
+		return s.IsSubset(iter)
 	case syntax.GT: // proper superset
-		if x.Len() <= y.Len() {
+		if s.Len() <= y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.IsSuperset(iter)
+		return s.IsSuperset(iter)
 	case syntax.LT: // proper subset
-		if x.Len() >= y.Len() {
+		if s.Len() >= y.Len() {
 			return false, nil
 		}
 		iter := y.Iterate()
 		defer iter.Done()
-		return x.IsSubset(iter)
+		return s.IsSubset(iter)
 	default:
-		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
+		return false, fmt.Errorf("%s %s %s not implemented", s.Type(), op, y.Type())
 	}
 }
 
@@ -1179,6 +1175,7 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 	return true, nil
 }
 
+//nolint:unused
 func setFromIterator(iter Iterator) (*Set, error) {
 	var x Value
 	set := new(Set)
@@ -1236,11 +1233,11 @@ func (s *Set) IsSuperset(other Iterator) (bool, error) {
 }
 
 func (s *Set) IsSubset(other Iterator) (bool, error) {
-	if count, err := s.ht.count(other); err != nil {
+	count, err := s.ht.count(other)
+	if err != nil {
 		return false, err
-	} else {
-		return count == s.Len(), nil
 	}
+	return count == s.Len(), nil
 }
 
 func (s *Set) Intersection(other Iterator) (Value, error) {
@@ -1527,9 +1524,8 @@ func threeway(op syntax.Token, cmp int) bool {
 func b2i(b bool) int {
 	if b {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
 }
 
 // Len returns the length of a string or sequence value,
@@ -1607,7 +1603,7 @@ func (b Bytes) Slice(start, end, step int) Value {
 	return Bytes(str)
 }
 
-func (x Bytes) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (b Bytes) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Bytes)
-	return threeway(op, strings.Compare(string(x), string(y))), nil
+	return threeway(op, strings.Compare(string(b), string(y))), nil
 }

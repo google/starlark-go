@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"go.starlark.net/internal/compile"
-	"go.starlark.net/internal/spell"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/internal/compile"
+	"github.com/mna/nenuphar/internal/spell"
+	"github.com/mna/nenuphar/syntax"
 )
 
 const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of error.

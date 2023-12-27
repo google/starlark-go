@@ -12,10 +12,8 @@ linters:
     - gosec
     - gosimple
     - govet
-    - importas
     - ineffassign
     - misspell
-    - nakedret
     - prealloc
     - revive
     - staticcheck
@@ -25,24 +23,14 @@ linters:
 
 linters-settings:
   depguard:
-    list-type: blacklist
-    include-go-root: true
-    packages-with-error-message:
-      - errors: "use github.com/mna/pityache/internal/errors instead"
-
-  gosec:
-    excludes:
-      # Potential slowloris attack if read header timeout not set, but we do
-      # set it, just not when server is created
-      - G112
-
-  importas:
-    no-unaliased: true
-    alias:
-      - pkg: text/template
-        alias: ttemplate
-      - pkg: html/template
-        alias: htemplate
+    rules:
+      main:
+        list-mode: strict
+        allow:
+          - $gostd
+          - github.com/mna/nenuphar
+          - github.com/chzyer/readline
+          - github.com/google/go-cmp/cmp
 
   revive:
     ignoreGeneratedHeader: false
@@ -61,8 +49,6 @@ linters-settings:
       - name: error-naming
       - name: exported
       - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
       - name: package-comments
       - name: range
       - name: receiver-naming

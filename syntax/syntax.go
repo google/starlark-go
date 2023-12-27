@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package syntax provides a Starlark parser and abstract syntax tree.
-package syntax // import "go.starlark.net/syntax"
+package syntax
 
 // A Node is a node in a Starlark syntax tree.
 type Node interface {
@@ -455,9 +455,8 @@ type TupleExpr struct {
 func (x *TupleExpr) Span() (start, end Position) {
 	if x.Lparen.IsValid() {
 		return x.Lparen, x.Rparen
-	} else {
-		return Start(x.List[0]), End(x.List[len(x.List)-1])
 	}
+	return Start(x.List[0]), End(x.List[len(x.List)-1])
 }
 
 // A UnaryExpr represents a unary expression: Op X.

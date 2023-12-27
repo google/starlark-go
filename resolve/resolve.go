@@ -10,7 +10,7 @@
 // free variable.  It also sets the Locals array of a File for locals
 // bound by top-level comprehensions and load statements.
 // Identifiers for global variables do not get an index.
-package resolve // import "go.starlark.net/resolve"
+package resolve
 
 // All references to names are statically resolved.  Names may be
 // predeclared, global, or local to a function or file.
@@ -87,8 +87,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.starlark.net/internal/spell"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/internal/spell"
+	"github.com/mna/nenuphar/syntax"
 )
 
 const debug = false
@@ -96,7 +96,8 @@ const doesnt = "this Starlark dialect does not "
 
 // global options
 // These features are either not standard Starlark (yet), or deprecated
-// features of the BUILD language, so we put them behind flags.
+// features of the BUILD language, so we put them behind flags. Still used
+// via link name by syntax.LegacyFileOptions and the REPL.
 //
 // Deprecated: use an explicit [syntax.FileOptions] argument instead,
 // as it avoids all the usual problems of global variables.
@@ -105,12 +106,6 @@ var (
 	AllowGlobalReassign = false // allow reassignment to top-level names; also, allow if/for/while at top-level
 	AllowRecursion      = false // allow while statements and recursive functions
 	LoadBindsGlobally   = false // load creates global not file-local bindings (deprecated)
-
-	// obsolete flags for features that are now standard. No effect.
-	AllowNestedDef = true
-	AllowLambda    = true
-	AllowFloat     = true
-	AllowBitwise   = true
 )
 
 // File resolves the specified file and records information about the
@@ -452,7 +447,7 @@ func (r *resolver) useToplevel(use use) (bind *Binding) {
 // spellcheck returns the most likely misspelling of
 // the name use.id in the environment use.env.
 func (r *resolver) spellcheck(use use) string {
-	var names []string
+	names := make([]string, 0, len(r.moduleGlobals))
 
 	// locals
 	for b := use.env; b != nil; b = b.parent {

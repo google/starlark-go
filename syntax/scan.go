@@ -21,6 +21,7 @@ import (
 // A Token represents a Starlark lexical token.
 type Token int8
 
+//nolint:revive
 const (
 	ILLEGAL Token = iota
 	EOF
@@ -528,10 +529,9 @@ start:
 		if sc.dents < 0 {
 			sc.dents++
 			return OUTDENT
-		} else {
-			sc.dents--
-			return INDENT
 		}
+		sc.dents--
+		return INDENT
 	}
 
 	// start of line proper
@@ -602,12 +602,11 @@ start:
 				sc.dents = 1 - len(sc.indentstk)
 				sc.indentstk = sc.indentstk[:1]
 				goto start
-			} else {
-				sc.lineStart = true
-				sc.startToken(val)
-				val.raw = "\n"
-				return NEWLINE
 			}
+			sc.lineStart = true
+			sc.startToken(val)
+			val.raw = "\n"
+			return NEWLINE
 		}
 
 		sc.startToken(val)
@@ -750,9 +749,8 @@ start:
 				if sc.peekRune() == '=' {
 					sc.readRune()
 					return LTLT_EQ
-				} else {
-					return LTLT
 				}
+				return LTLT
 			}
 			return LT
 		case '>':
@@ -761,9 +759,8 @@ start:
 				if sc.peekRune() == '=' {
 					sc.readRune()
 					return GTGT_EQ
-				} else {
-					return GTGT
 				}
+				return GTGT
 			}
 			return GT
 		case '!':
@@ -778,9 +775,8 @@ start:
 				if sc.peekRune() == '=' {
 					sc.readRune()
 					return SLASHSLASH_EQ
-				} else {
-					return SLASHSLASH
 				}
+				return SLASHSLASH
 			}
 			return SLASH
 		case '%':
@@ -901,9 +897,8 @@ func (sc *scanner) scanString(val *tokenValue, quote rune) Token {
 	val.string = s
 	if isByte {
 		return BYTES
-	} else {
-		return STRING
 	}
+	return STRING
 }
 
 func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
@@ -1040,30 +1035,29 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			sc.error(sc.pos, "invalid float literal")
 		}
 		return FLOAT
+	}
+	var err error
+	s := val.raw
+	val.bigInt = nil
+	if len(s) > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'O') {
+		val.int, err = strconv.ParseInt(s[2:], 8, 64)
+	} else if len(s) > 2 && s[0] == '0' && (s[1] == 'b' || s[1] == 'B') {
+		val.int, err = strconv.ParseInt(s[2:], 2, 64)
 	} else {
-		var err error
-		s := val.raw
-		val.bigInt = nil
-		if len(s) > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'O') {
-			val.int, err = strconv.ParseInt(s[2:], 8, 64)
-		} else if len(s) > 2 && s[0] == '0' && (s[1] == 'b' || s[1] == 'B') {
-			val.int, err = strconv.ParseInt(s[2:], 2, 64)
-		} else {
-			val.int, err = strconv.ParseInt(s, 0, 64)
-			if err != nil {
-				num := new(big.Int)
-				var ok bool
-				val.bigInt, ok = num.SetString(s, 0)
-				if ok {
-					err = nil
-				}
+		val.int, err = strconv.ParseInt(s, 0, 64)
+		if err != nil {
+			num := new(big.Int)
+			var ok bool
+			val.bigInt, ok = num.SetString(s, 0)
+			if ok {
+				err = nil
 			}
 		}
-		if err != nil {
-			sc.error(start, "invalid int literal")
-		}
-		return INT
 	}
+	if err != nil {
+		sc.error(start, "invalid int literal")
+	}
+	return INT
 }
 
 // isIdent reports whether c is an identifier rune.

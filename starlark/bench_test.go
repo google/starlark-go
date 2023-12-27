@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/lib/json"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarktest"
+	"github.com/mna/nenuphar/lib/json"
+	"github.com/mna/nenuphar/starlark"
+	"github.com/mna/nenuphar/starlarktest"
 )
 
 func BenchmarkStarlark(b *testing.B) {
@@ -167,4 +167,11 @@ func BenchmarkProgram(b *testing.B) {
 			}
 		}
 	})
+}
+
+func reportEvalError(tb testing.TB, err error) {
+	if err, ok := err.(*starlark.EvalError); ok {
+		tb.Fatal(err.Backtrace())
+	}
+	tb.Fatal(err)
 }

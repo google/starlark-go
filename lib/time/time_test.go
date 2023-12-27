@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go.starlark.net/starlark"
+	"github.com/mna/nenuphar/starlark"
 )
 
 func TestPerThreadNowReturnsCorrectTime(t *testing.T) {

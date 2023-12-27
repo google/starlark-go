@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/starlark"
+	"github.com/mna/nenuphar/starlark"
 )
 
 // TestProfile is a simple integration test that the profiler
@@ -46,7 +46,7 @@ fibonacci(100000)
 		t.Fatal(err)
 	}
 	prof.Sync()
-	cmd := exec.Command("go", "tool", "pprof", "-top", prof.Name())
+	cmd := exec.Command("go", "tool", "pprof", "-top", prof.Name()) //nolint:gosec
 	cmd.Stderr = new(bytes.Buffer)
 	cmd.Stdout = new(bytes.Buffer)
 	if err := cmd.Run(); err != nil {

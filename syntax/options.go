@@ -52,12 +52,12 @@ func LegacyFileOptions() *FileOptions {
 
 // Access resolver (legacy) flags, if they are linked in; false otherwise.
 var (
-	//go:linkname resolverAllowSet go.starlark.net/resolve.AllowSet
+	//go:linkname resolverAllowSet github.com/mna/nenuphar/resolve.AllowSet
 	resolverAllowSet bool
-	//go:linkname resolverAllowGlobalReassign go.starlark.net/resolve.AllowGlobalReassign
+	//go:linkname resolverAllowGlobalReassign github.com/mna/nenuphar/resolve.AllowGlobalReassign
 	resolverAllowGlobalReassign bool
-	//go:linkname resolverAllowRecursion go.starlark.net/resolve.AllowRecursion
+	//go:linkname resolverAllowRecursion github.com/mna/nenuphar/resolve.AllowRecursion
 	resolverAllowRecursion bool
-	//go:linkname resolverLoadBindsGlobally go.starlark.net/resolve.LoadBindsGlobally
+	//go:linkname resolverLoadBindsGlobally github.com/mna/nenuphar/resolve.LoadBindsGlobally
 	resolverLoadBindsGlobally bool
 )

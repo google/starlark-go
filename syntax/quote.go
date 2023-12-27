@@ -28,20 +28,6 @@ var unesc = [256]byte{
 	'"':  '"',
 }
 
-// esc maps escape-worthy bytes to the char that should follow \.
-var esc = [256]byte{
-	'\a': 'a',
-	'\b': 'b',
-	'\f': 'f',
-	'\n': 'n',
-	'\r': 'r',
-	'\t': 't',
-	'\v': 'v',
-	'\\': '\\',
-	'\'': '\'',
-	'"':  '"',
-}
-
 // unquote unquotes the quoted string, returning the actual
 // string value, whether the original was triple-quoted,
 // whether it was a byte string, and an error describing invalid input.
@@ -219,16 +205,6 @@ func unquote(quoted string) (s string, triple, isByte bool, err error) {
 
 	s = buf.String()
 	return
-}
-
-// indexByte returns the index of the first instance of b in s, or else -1.
-func indexByte(s string, b byte) int {
-	for i := 0; i < len(s); i++ {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
 }
 
 // Quote returns a Starlark literal that denotes s.

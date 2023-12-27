@@ -16,14 +16,14 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/internal/chunkedfile"
-	"go.starlark.net/lib/json"
-	starlarkmath "go.starlark.net/lib/math"
-	"go.starlark.net/lib/time"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-	"go.starlark.net/starlarktest"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/internal/chunkedfile"
+	"github.com/mna/nenuphar/lib/json"
+	starlarkmath "github.com/mna/nenuphar/lib/math"
+	"github.com/mna/nenuphar/lib/time"
+	"github.com/mna/nenuphar/starlark"
+	"github.com/mna/nenuphar/starlarkstruct"
+	"github.com/mna/nenuphar/starlarktest"
+	"github.com/mna/nenuphar/syntax"
 )
 
 // A test may enable non-standard options by containing (e.g.) "option:recursion".
@@ -439,11 +439,11 @@ def f(): print("hello", "world", sep=", ")
 f()
 `
 	buf := new(bytes.Buffer)
-	print := func(thread *starlark.Thread, msg string) {
+	printFn := func(thread *starlark.Thread, msg string) {
 		caller := thread.CallFrame(1)
 		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Pos, caller.Name, msg)
 	}
-	thread := &starlark.Thread{Print: print}
+	thread := &starlark.Thread{Print: printFn}
 	if _, err := starlark.ExecFile(thread, "foo.star", src, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -452,13 +452,6 @@ f()
 	if got := buf.String(); got != want {
 		t.Errorf("output was %s, want %s", got, want)
 	}
-}
-
-func reportEvalError(tb testing.TB, err error) {
-	if err, ok := err.(*starlark.EvalError); ok {
-		tb.Fatal(err.Backtrace())
-	}
-	tb.Fatal(err)
 }
 
 // TestInt exercises the Int.Int64 and Int.Uint64 methods.
@@ -725,7 +718,7 @@ func TestUnpackNoneCoalescing(t *testing.T) {
 
 	// Success
 	args := starlark.Tuple{starlark.None}
-	kwargs := []starlark.Tuple{starlark.Tuple{starlark.String("b"), starlark.None}}
+	kwargs := []starlark.Tuple{{starlark.String("b"), starlark.None}}
 	if err := starlark.UnpackArgs("unpack", args, kwargs, "a??", &a, "b??", &a); err != nil {
 		t.Errorf("UnpackArgs failed: %v", err)
 	}
@@ -743,8 +736,8 @@ func TestUnpackNoneCoalescing(t *testing.T) {
 	}
 
 	err = starlark.UnpackArgs("unpack", nil, []starlark.Tuple{
-		starlark.Tuple{starlark.String("a"), starlark.None},
-		starlark.Tuple{starlark.String("a"), starlark.None},
+		{starlark.String("a"), starlark.None},
+		{starlark.String("a"), starlark.None},
 	}, "a??", &a)
 	if want := "unpack: got multiple values for keyword argument \"a\""; fmt.Sprint(err) != want {
 		t.Errorf("unpack args error = %q, want %q", err, want)
@@ -873,7 +866,7 @@ func TestUnpackErrorBadType(t *testing.T) {
 		{new(badType), "got NoneType, want badType"},       // Starlark type name
 		{nil, "got NoneType, want *starlark_test.badType"}, // Go type name
 	} {
-		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x)
+		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x) //nolint:gosec
 		if err == nil {
 			t.Errorf("UnpackArgs succeeded unexpectedly")
 			continue
@@ -990,7 +983,7 @@ func TestDeps(t *testing.T) {
 		slash := strings.IndexByte(pkg, '/')
 		dot := strings.IndexByte(pkg, '.')
 		if 0 < dot && dot < slash {
-			if strings.HasPrefix(pkg, "go.starlark.net/") ||
+			if strings.HasPrefix(pkg, "github.com/mna/nenuphar/") ||
 				strings.HasPrefix(pkg, "golang.org/x/sys/") {
 				continue // permitted dependencies
 			}

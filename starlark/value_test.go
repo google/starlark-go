@@ -11,11 +11,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"go.starlark.net/starlark"
+	"github.com/mna/nenuphar/starlark"
 )
 
 func TestStringMethod(t *testing.T) {
 	s := starlark.String("hello")
+	//nolint:gosimple
 	for i, test := range [][2]string{
 		// quoted string:
 		{s.String(), `"hello"`},

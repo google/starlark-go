@@ -23,7 +23,7 @@
 //
 // Operands, logically uint32s, are encoded using little-endian 7-bit
 // varints, the top bit indicating that more bytes follow.
-package compile // import "go.starlark.net/internal/compile"
+package compile
 
 import (
 	"bytes"
@@ -35,8 +35,8 @@ import (
 	"strings"
 	"sync"
 
-	"go.starlark.net/resolve"
-	"go.starlark.net/syntax"
+	"github.com/mna/nenuphar/resolve"
+	"github.com/mna/nenuphar/syntax"
 )
 
 // Disassemble causes the assembly code for each function
@@ -55,7 +55,7 @@ type Opcode uint8
 //
 // OP<index> indicates an immediate operand that is an index into the
 // specified table: locals, names, freevars, constants.
-const (
+const ( //nolint:revive
 	NOP Opcode = iota // - NOP -
 
 	// stack operations
@@ -828,9 +828,8 @@ func clip(x, min, max int32) (int32, bool) {
 		return max, false
 	} else if x < min {
 		return min, false
-	} else {
-		return x, true
 	}
+	return x, true
 }
 
 // addUint32 encodes x as 7-bit little-endian varint.
@@ -1913,9 +1912,9 @@ func (fcomp *fcomp) ifelse(cond syntax.Expr, t, f *block) {
 			// if x not in y then goto t else goto f
 			//    =>
 			// if x in y then goto f else goto t
-			copy := *cond
-			copy.Op = syntax.IN
-			fcomp.expr(&copy)
+			clone := *cond
+			clone.Op = syntax.IN
+			fcomp.expr(&clone)
 			fcomp.condjump(CJMP, f, t)
 			return
 		}

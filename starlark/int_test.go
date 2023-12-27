@@ -119,7 +119,7 @@ func TestIntFallback(t *testing.T) {
 	}
 	// ulimit -v limits the address space in KB. Not portable.
 	// 4GB is enough for the Go runtime but not for the optimization.
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ulimit -v 4000000 && %q --entry=intfallback", exe))
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ulimit -v 4000000 && %q --entry=intfallback", exe)) //nolint:gosec
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("intfallback subcommand failed: %v\n%s", err, out)
