@@ -26,12 +26,6 @@ import (
 
 var interrupted = make(chan os.Signal, 1)
 
-//// REPL calls [REPLOptions] using [syntax.LegacyFileOptions].
-//// Deprecated: relies on legacy global variables.
-//func REPL(thread *starlark.Thread, globals starlark.StringDict) {
-//	REPLOptions(syntax.LegacyFileOptions(), thread, globals)
-//}
-
 // REPL executes a read, eval, print loop.
 //
 // Before evaluating each expression, it sets the Starlark thread local

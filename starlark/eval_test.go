@@ -17,9 +17,6 @@ import (
 	"testing"
 
 	"github.com/mna/nenuphar/internal/chunkedfile"
-	"github.com/mna/nenuphar/lib/json"
-	starlarkmath "github.com/mna/nenuphar/lib/math"
-	"github.com/mna/nenuphar/lib/time"
 	"github.com/mna/nenuphar/starlark"
 	"github.com/mna/nenuphar/starlarkstruct"
 	"github.com/mna/nenuphar/starlarktest"
@@ -121,13 +118,10 @@ func TestExecFile(t *testing.T) {
 		"testdata/float.star",
 		"testdata/function.star",
 		"testdata/int.star",
-		"testdata/json.star",
 		"testdata/list.star",
-		"testdata/math.star",
 		"testdata/misc.star",
 		"testdata/set.star",
 		"testdata/string.star",
-		"testdata/time.star",
 		"testdata/tuple.star",
 		"testdata/recursion.star",
 		"testdata/module.star",
@@ -190,15 +184,6 @@ func (it *fibIterator) Done() {}
 func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	if module == "assert.star" {
 		return starlarktest.LoadAssertModule()
-	}
-	if module == "json.star" {
-		return starlark.StringDict{"json": json.Module}, nil
-	}
-	if module == "time.star" {
-		return starlark.StringDict{"time": time.Module}, nil
-	}
-	if module == "math.star" {
-		return starlark.StringDict{"math": starlarkmath.Module}, nil
 	}
 
 	// TODO(adonovan): test load() using this execution path.

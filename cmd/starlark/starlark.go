@@ -16,9 +16,6 @@ import (
 	"strings"
 
 	"github.com/mna/nenuphar/internal/compile"
-	"github.com/mna/nenuphar/lib/json"
-	"github.com/mna/nenuphar/lib/math"
-	"github.com/mna/nenuphar/lib/time"
 	"github.com/mna/nenuphar/repl"
 	"github.com/mna/nenuphar/resolve"
 	"github.com/mna/nenuphar/starlark"
@@ -90,12 +87,6 @@ func doMain() int {
 
 	thread := &starlark.Thread{Load: repl.MakeLoad()}
 	globals := make(starlark.StringDict)
-
-	// Ideally this statement would update the predeclared environment.
-	// TODO(adonovan): plumb predeclared env through to the REPL.
-	starlark.Universe["json"] = json.Module
-	starlark.Universe["time"] = time.Module
-	starlark.Universe["math"] = math.Module
 
 	switch {
 	case flag.NArg() == 1 || *execprog != "":
