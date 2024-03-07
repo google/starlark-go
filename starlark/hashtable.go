@@ -6,8 +6,8 @@ package starlark
 
 import (
 	"fmt"
+	"hash/maphash"
 	"math/big"
-	_ "unsafe" // for go:linkname hack
 )
 
 // hashtable is used to represent Starlark dict and set values.
@@ -416,20 +416,18 @@ func (it *keyIterator) Done() {
 	}
 }
 
-// TODO(adonovan): use go1.19's maphash.String.
+var seed = maphash.MakeSeed()
 
 // hashString computes the hash of s.
 func hashString(s string) uint32 {
 	if len(s) >= 12 {
 		// Call the Go runtime's optimized hash implementation,
-		// which uses the AESENC instruction on amd64 machines.
-		return uint32(goStringHash(s, 0))
+		// which uses the AES instructions on amd64 and arm64 machines.
+		h := maphash.String(seed, s)
+		return uint32(h>>32) | uint32(h)
 	}
 	return softHashString(s)
 }
-
-//go:linkname goStringHash runtime.stringHash
-func goStringHash(s string, seed uintptr) uintptr
 
 // softHashString computes the 32-bit FNV-1a hash of s in software.
 func softHashString(s string) uint32 {
