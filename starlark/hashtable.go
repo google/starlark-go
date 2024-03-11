@@ -416,6 +416,16 @@ func (it *keyIterator) Done() {
 	}
 }
 
+// entries is a go1.23 iterator over the entries of the hash table.
+func (ht *hashtable) entries(yield func(k, v Value) bool) {
+	if !ht.frozen {
+		ht.itercount++
+		defer func() { ht.itercount-- }()
+	}
+	for e := ht.head; e != nil && yield(e.key, e.value); e = e.next {
+	}
+}
+
 var seed = maphash.MakeSeed()
 
 // hashString computes the hash of s.
