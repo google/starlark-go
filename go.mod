@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/google/go-cmp v0.5.1
+	github.com/google/go-cmp v0.5.5
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
