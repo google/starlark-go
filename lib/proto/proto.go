@@ -9,21 +9,22 @@
 //
 // This package defines several types of Starlark value:
 //
-//      Message                 -- a protocol message
-//      RepeatedField           -- a repeated field of a message, like a list
+//	Message                 -- a protocol message
+//	RepeatedField           -- a repeated field of a message, like a list
+//	MapField                -- a map field of a message, like a dict
 //
-//      FileDescriptor          -- information about a .proto file
-//      FieldDescriptor         -- information about a message field (or extension field)
-//      MessageDescriptor       -- information about the type of a message
-//      EnumDescriptor          -- information about an enumerated type
-//      EnumValueDescriptor     -- a value of an enumerated type
+//	FileDescriptor          -- information about a .proto file
+//	FieldDescriptor         -- information about a message field (or extension field)
+//	MessageDescriptor       -- information about the type of a message
+//	EnumDescriptor          -- information about an enumerated type
+//	EnumValueDescriptor     -- a value of an enumerated type
 //
 // A Message value is a wrapper around a protocol message instance.
 // Starlark programs may access and update Messages using dot notation:
 //
-//      x = msg.field
-//      msg.field = x + 1
-//      msg.field += 1
+//	x = msg.field
+//	msg.field = x + 1
+//	msg.field += 1
 //
 // Assignments to message fields perform dynamic checks on the type and
 // range of the value to ensure that the message is at all times valid.
@@ -35,31 +36,39 @@
 // performs a dynamic check to ensure that the RepeatedField holds
 // only elements of the correct type.
 //
-//      type(msg.uint32s)       # "proto.repeated<uint32>"
-//      msg.uint32s[0] = 1
-//      msg.uint32s[0] = -1     # error: invalid uint32: -1
+//	type(msg.uint32s)       # "proto.repeated<uint32>"
+//	msg.uint32s[0] = 1
+//	msg.uint32s[0] = -1     # error: invalid uint32: -1
 //
 // Any iterable may be assigned to a repeated field of a message.  If
 // the iterable is itself a value of type RepeatedField, the message
 // field holds a reference to it.
 //
-//      msg2.uint32s = msg.uint32s      # both messages share one RepeatedField
-//      msg.uint32s[0] = 123
-//      print(msg2.uint32s[0])          # "123"
+//	msg2.uint32s = msg.uint32s      # both messages share one RepeatedField
+//	msg.uint32s[0] = 123
+//	print(msg2.uint32s[0])          # "123"
 //
 // The RepeatedFields' element types must match.
 // It is not enough for the values to be merely valid:
 //
-//      msg.uint32s = [1, 2, 3]         # makes a copy
-//      msg.uint64s = msg.uint32s       # error: repeated field has wrong type
-//      msg.uint64s = list(msg.uint32s) # ok; makes a copy
+//	msg.uint32s = [1, 2, 3]         # makes a copy
+//	msg.uint64s = msg.uint32s       # error: repeated field has wrong type
+//	msg.uint64s = list(msg.uint32s) # ok; makes a copy
 //
 // For all other iterables, a new RepeatedField is constructed from the
 // elements of the iterable.
 //
-//      msg.uints32s = [1, 2, 3]
-//      print(type(msg.uints32s))       # "proto.repeated<uint32>"
+//	msg.uints32s = [1, 2, 3]
+//	print(type(msg.uints32s))       # "proto.repeated<uint32>"
 //
+// The value of a map field of a message is represented by the dict-like data
+// type, MapField. Its items can be set and access in the usual ways. As with
+// assignments to message fields, and assignment to a MapField performs a
+// dynamic check to ensure the key and value are of the correct type.
+//
+//	msg.string_map = {"a": "A", "b", "B"}
+//	msg.string_map["c"] = "C"
+//	print(type(msg.string_map))     # "proto.map<string, string>"
 //
 // To construct a Message from encoded binary or text data, call
 // Unmarshal or UnmarshalText.  These two functions are exposed to
@@ -72,16 +81,12 @@
 // are frozen.
 //
 // TODO(adonovan): document descriptors, enums, message instantiation.
-//
-// See proto_test.go for an example of how to use the 'proto'
-// module in an application that embeds Starlark.
-//
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
 // - Make Message and RepeatedField comparable.
 //   (NOTE: proto.Equal works only with generated message types.)
-// - Support maps, oneof, any. But not messageset if we can avoid it.
+// - Support oneof, any. But not messageset if we can avoid it.
 // - Support "well-known types".
 // - Defend against cycles in object graph.
 // - Test missing required fields in marshalling.
@@ -111,8 +116,8 @@ import (
 // for a Starlark thread to use this package.
 //
 // For example:
-//	SetPool(thread, protoregistry.GlobalFiles)
 //
+//	SetPool(thread, protoregistry.GlobalFiles)
 func SetPool(thread *starlark.Thread, pool DescriptorPool) {
 	thread.SetLocal(contextKey, pool)
 }
@@ -305,10 +310,9 @@ func getFieldStarlark(thread *starlark.Thread, fn *starlark.Builtin, args starla
 // When a message descriptor is called, it returns a new instance of the
 // protocol message it describes.
 //
-//      Message(msg)            -- return a shallow copy of an existing message
-//      Message(k=v, ...)       -- return a new message with the specified fields
-//      Message(dict(...))      -- return a new message with the specified fields
-//
+//	Message(msg)            -- return a shallow copy of an existing message
+//	Message(k=v, ...)       -- return a new message with the specified fields
+//	Message(dict(...))      -- return a new message with the specified fields
 func (d MessageDescriptor) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	dest := &Message{
 		msg:    newMessage(d.Desc),
@@ -597,6 +601,15 @@ func toStarlark(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen *
 			frozen: frozen,
 		}
 	}
+
+	if mp, ok := x.Interface().(protoreflect.Map); ok {
+		return &MapField{
+			typ:    typ,
+			mp:     mp,
+			frozen: frozen,
+		}
+	}
+
 	return toStarlark1(typ, x, frozen)
 }
 
@@ -654,7 +667,7 @@ func toStarlark1(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen 
 // or RepeatedField wrapper values derived from it.
 type Message struct {
 	msg    protoreflect.Message // any concrete type is allowed
-	frozen *bool                // shared by a group of related Message/RepeatedField wrappers
+	frozen *bool                // shared by a group of related Message/RepeatedField/MapField wrappers
 }
 
 // Message returns the wrapped message.
@@ -791,6 +804,11 @@ func defaultValue(fdesc protoreflect.FieldDescriptor) starlark.Value {
 		return &RepeatedField{typ: fdesc, list: emptyList{}, frozen: &frozen}
 	}
 
+	// The default value of a map field is an empty map.
+	if fdesc.IsMap() {
+		return &MapField{typ: fdesc, mp: emptyMap{}, frozen: &frozen}
+	}
+
 	// The zero value for a message type is an empty instance of that message.
 	if desc := fdesc.Message(); desc != nil {
 		return &Message{msg: newMessage(desc), frozen: &frozen}
@@ -805,6 +823,17 @@ func defaultValue(fdesc protoreflect.FieldDescriptor) starlark.Value {
 type emptyList struct{ protoreflect.List }
 
 func (emptyList) Len() int { return 0 }
+
+type emptyMap struct{ protoreflect.Map }
+
+func (emptyMap) Len() int { return 0 }
+
+func (emptyMap) Get(_ protoreflect.MapKey) protoreflect.Value {
+	// An invalid value, signalling the supplied key does not exist.
+	return protoreflect.Value{}
+}
+
+func (emptyMap) Range(_ func(protoreflect.MapKey, protoreflect.Value) bool) {}
 
 // newMessage returns a new empty instance of the message type described by desc.
 func newMessage(desc protoreflect.MessageDescriptor) protoreflect.Message {
@@ -898,18 +927,48 @@ type RepeatedField struct {
 	itercount int
 }
 
+var _ starlark.Iterable = (*RepeatedField)(nil)
 var _ starlark.HasSetIndex = (*RepeatedField)(nil)
+var _ starlark.HasAttrs = (*RepeatedField)(nil)
+
+func (rf *RepeatedField) AttrNames() []string {
+	return []string{"append"}
+}
+
+func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
+	if name != "append" {
+		return nil, nil
+	}
+	return starlark.NewBuiltin("append", repeatedFieldAppend).BindReceiver(rf), nil
+}
+
+func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var object starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &object); err != nil {
+		return nil, err
+	}
+	rf := b.Receiver().(*RepeatedField)
+
+	if err := rf.checkMutable("append to"); err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+
+	po, err := toProto(rf.typ, object)
+	if err != nil {
+		return nil, fmt.Errorf("appending to repeated field: %v", err)
+	}
+	rf.list.Append(po)
+
+	return starlark.None, nil
+}
 
 func (rf *RepeatedField) Type() string {
 	return fmt.Sprintf("proto.repeated<%s>", typeString(rf.typ))
 }
 
 func (rf *RepeatedField) SetIndex(i int, v starlark.Value) error {
-	if *rf.frozen {
-		return fmt.Errorf("cannot insert value in frozen repeated field")
-	}
-	if rf.itercount > 0 {
-		return fmt.Errorf("cannot insert value in repeated field with active iterators")
+	if err := rf.checkMutable("insert value in"); err != nil {
+		return err
 	}
 	x, err := toProto(rf.typ, v)
 	if err != nil {
@@ -919,6 +978,18 @@ func (rf *RepeatedField) SetIndex(i int, v starlark.Value) error {
 		return fmt.Errorf("setting element of repeated field: %v", err)
 	}
 	rf.list.Set(i, x)
+	return nil
+}
+
+// checkMutable reports an error if the repeated field should not be mutated.
+// verb+" repeated field" should describe the operation.
+func (rf *RepeatedField) checkMutable(verb string) error {
+	if *rf.frozen {
+		return fmt.Errorf("cannot %s frozen repeated field", verb)
+	}
+	if rf.itercount > 0 {
+		return fmt.Errorf("cannot %s repeated field during iteration", verb)
+	}
 	return nil
 }
 
@@ -966,6 +1037,145 @@ func (it *repeatedFieldIterator) Next(p *starlark.Value) bool {
 func (it *repeatedFieldIterator) Done() {
 	if !*it.rf.frozen {
 		it.rf.itercount--
+	}
+}
+
+type MapField struct {
+	typ protoreflect.FieldDescriptor
+
+	mp        protoreflect.Map
+	frozen    *bool
+	itercount int
+}
+
+var _ starlark.HasSetKey = (*MapField)(nil)
+var _ starlark.IterableMapping = (*MapField)(nil)
+
+func (mf *MapField) Type() string {
+	return fmt.Sprintf("proto.map<%s, %s>", typeString(mf.typ.MapKey()), typeString(mf.typ.MapValue()))
+}
+
+func (mf *MapField) SetKey(k, v starlark.Value) error {
+	if err := mf.checkMutable("set key in"); err != nil {
+		return err
+	}
+
+	kx, err := toProto(mf.typ.MapKey(), k)
+	if err != nil {
+		return fmt.Errorf("setting key of map field: %v", err)
+	}
+	vx, err := toProto(mf.typ.MapValue(), v)
+	if err != nil {
+		return fmt.Errorf("setting value of map field: %v", err)
+	}
+
+	mf.mp.Set(kx.MapKey(), vx)
+	return nil
+}
+
+// checkMutable reports an error if the map field should not be mutated.
+// verb+" map field" should describe the operation.
+func (mf *MapField) checkMutable(verb string) error {
+	if *mf.frozen {
+		return fmt.Errorf("cannot %s frozen map field", verb)
+	}
+	if mf.itercount > 0 {
+		return fmt.Errorf("cannot %s map field during iteration", verb)
+	}
+	return nil
+}
+
+func (mf *MapField) Get(k starlark.Value) (starlark.Value, bool, error) {
+	pk, err := toProto(mf.typ.MapKey(), k)
+	if err != nil {
+		return nil, false, fmt.Errorf("getting value of map field: %v", err)
+	}
+
+	v := mf.mp.Get(pk.MapKey())
+	if !v.IsValid() {
+		return nil, false, nil
+	}
+
+	return toStarlark1(mf.typ.MapValue(), v, mf.frozen), true, nil
+}
+
+func (mf *MapField) Freeze()               { *mf.frozen = true }
+func (mf *MapField) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", mf.Type()) }
+
+func (mf *MapField) Iterate() starlark.Iterator {
+	if !*mf.frozen {
+		mf.itercount++
+	}
+
+	// TODO(negz): Should we store only keys in the iterator? It doesn't
+	// consume the values.
+	return &mapFieldIterator{mf, mf.Items(), 0}
+}
+
+func (mf *MapField) Items() []starlark.Tuple {
+	out := make([]starlark.Tuple, 0, mf.mp.Len())
+
+	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+		out = append(out, starlark.Tuple{
+			toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen),
+			toStarlark1(mf.typ.MapValue(), v, mf.frozen),
+		})
+		return true // Keep iterating.
+	})
+
+	// A map key can be any scalar protobuf type except floats and bytes.
+	// In practice in starlark they should be Int, String, or Bool and thus
+	// either TotallyOrdered or Comparable. None of these return errors when
+	// compared to the same type.
+	sort.Slice(out, func(i, j int) bool {
+		less, _ := starlark.Compare(syntax.LT, out[i][0], out[j][0])
+		return less
+	})
+
+	return out
+}
+
+func (mf *MapField) Len() int { return mf.mp.Len() }
+
+func (mf *MapField) String() string {
+	// We want to use {k1: v1, k2: v2} notation, like a dict.
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
+
+	for i, kv := range mf.Items() {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(kv[0].String())
+		buf.WriteString(": ")
+		buf.WriteString(kv[1].String())
+	}
+
+	buf.WriteByte('}')
+	return buf.String()
+}
+
+func (rf *MapField) Truth() starlark.Bool { return rf.mp.Len() > 0 }
+
+type mapFieldIterator struct {
+	mf *MapField
+
+	items []starlark.Tuple
+	i     int
+}
+
+func (it *mapFieldIterator) Next(p *starlark.Value) bool {
+	if it.i < len(it.items) {
+		*p = it.items[it.i][0] // We're only iterating over keys.
+		it.i++
+		return true
+	}
+	return false
+}
+
+func (it *mapFieldIterator) Done() {
+	if !*it.mf.frozen {
+		it.mf.itercount--
 	}
 }
 
@@ -1219,11 +1429,10 @@ func enumValueOf(enum protoreflect.EnumDescriptor, x starlark.Value) (protorefle
 //
 // An EnumValueDescriptor has the following fields:
 //
-//      index   -- int, index of this value within the enum sequence
-//      name    -- string, name of this enum value
-//      number  -- int, numeric value of this enum value
-//      type    -- EnumDescriptor, the enum type to which this value belongs
-//
+//	index   -- int, index of this value within the enum sequence
+//	name    -- string, name of this enum value
+//	number  -- int, numeric value of this enum value
+//	type    -- EnumDescriptor, the enum type to which this value belongs
 type EnumValueDescriptor struct {
 	Desc protoreflect.EnumValueDescriptor
 }
