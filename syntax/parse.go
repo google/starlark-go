@@ -857,7 +857,9 @@ func (p *parser) parsePrimary() Expr {
 			X:     x,
 		}
 	}
-	p.in.errorf(p.in.pos, "got %#v, want primary expression", p.tok)
+
+	// Report start pos of final token as it may be a NEWLINE (#532).
+	p.in.errorf(p.tokval.pos, "got %#v, want primary expression", p.tok)
 	panic("unreachable")
 }
 
