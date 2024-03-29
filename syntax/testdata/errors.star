@@ -3,8 +3,8 @@
 #
 # TODO(adonovan): lots more tests.
 
-x = 1 +
-2 ### "got newline, want primary expression"
+x = 1 + ### "got newline, want primary expression"
+2 
 
 ---
 
@@ -174,8 +174,8 @@ def f(load): ### `not an identifier`
 # A load statement allows a trailing comma.
 load("module", "x",)
 ---
-x = 1 +
-2 ### "got newline, want primary expression"
+x = 1 + ### "got newline, want primary expression"
+2 
 ---
 def f():
     pass
