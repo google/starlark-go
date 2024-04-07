@@ -25,7 +25,7 @@ func TestTupleElements(t *testing.T) {
 	tuple := Tuple{MakeInt(1), MakeInt(2), MakeInt(3)}
 
 	var got []string
-	for elem := range tuple.Elements {
+	for elem := range tuple.Elements() {
 		got = append(got, fmt.Sprint(elem))
 		if len(got) == 2 {
 			break // skip 3
@@ -47,7 +47,7 @@ func TestListElements(t *testing.T) {
 	list := NewList([]Value{MakeInt(1), MakeInt(2), MakeInt(3)})
 
 	var got []string
-	for elem := range list.Elements {
+	for elem := range list.Elements() {
 		got = append(got, fmt.Sprint(elem))
 		if len(got) == 2 {
 			break // skip 3
@@ -72,7 +72,7 @@ func TestSetElements(t *testing.T) {
 	set.Insert(MakeInt(3))
 
 	var got []string
-	for elem := range set.Elements {
+	for elem := range set.Elements() {
 		got = append(got, fmt.Sprint(elem))
 		if len(got) == 2 {
 			break // skip 3
@@ -97,7 +97,7 @@ func TestDictEntries(t *testing.T) {
 	dict.SetKey(String("three"), MakeInt(3))
 
 	var got []string
-	for k, v := range dict.Entries {
+	for k, v := range dict.Entries() {
 		got = append(got, fmt.Sprintf("%v %v", k, v))
 		if len(got) == 2 {
 			break // skip 3
