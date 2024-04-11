@@ -541,7 +541,7 @@ loop:
 		case compile.MAKEFUNC:
 			funcode := f.Prog.Functions[arg]
 			tuple := stack[sp-1].(Tuple)
-			n := len(tuple) - len(funcode.Freevars)
+			n := len(tuple) - len(funcode.FreeVars)
 			defaults := tuple[:n:n]
 			freevars := tuple[n:]
 			stack[sp-1] = &Function{
@@ -622,7 +622,7 @@ loop:
 		case compile.FREECELL:
 			v := fn.freevars[arg].(*cell).v
 			if v == nil {
-				err = fmt.Errorf("local variable %s referenced before assignment", f.Freevars[arg].Name)
+				err = fmt.Errorf("local variable %s referenced before assignment", f.FreeVars[arg].Name)
 				break loop
 			}
 			stack[sp] = v
