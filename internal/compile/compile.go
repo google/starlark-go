@@ -335,7 +335,7 @@ type Funcode struct {
 	pclinetab             []uint16        // mapping from pc to linenum
 	Locals                []Binding       // locals, parameters first
 	Cells                 []int           // indices of Locals that require cells
-	FreeVars              []Binding       // for tracing
+	Freevars              []Binding       // for tracing
 	MaxStack              int
 	NumParams             int
 	NumKwonlyParams       int
@@ -520,7 +520,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			Name:     name,
 			Doc:      docStringFromBody(stmts),
 			Locals:   bindings(locals),
-			FreeVars: bindings(freevars),
+			Freevars: bindings(freevars),
 		},
 	}
 
@@ -887,7 +887,7 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 	case ATTR, SETFIELD, PREDECLARED, UNIVERSAL:
 		comment = fn.Prog.Names[arg]
 	case FREE:
-		comment = fn.FreeVars[arg].Name
+		comment = fn.Freevars[arg].Name
 	case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
 		comment = fmt.Sprintf("%d pos, %d named", arg>>8, arg&0xff)
 	default:

@@ -195,7 +195,7 @@ func (e *encoder) function(fn *Funcode) {
 	for _, index := range fn.Cells {
 		e.int(index)
 	}
-	e.bindings(fn.FreeVars)
+	e.bindings(fn.Freevars)
 	e.int(fn.MaxStack)
 	e.int(fn.NumParams)
 	e.int(fn.NumKwonlyParams)
@@ -389,7 +389,7 @@ func (d *decoder) function() *Funcode {
 		pclinetab:       pclinetab,
 		Locals:          locals,
 		Cells:           cells,
-		FreeVars:        freevars,
+		Freevars:        freevars,
 		MaxStack:        maxStack,
 		NumParams:       numParams,
 		NumKwonlyParams: numKwonlyParams,
