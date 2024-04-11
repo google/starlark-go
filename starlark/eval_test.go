@@ -824,7 +824,8 @@ func TestFrameLocals(t *testing.T) {
 						buf.WriteString(", ")
 					}
 					name, _ := fn.Param(i)
-					fmt.Fprintf(buf, "%s=%s", name, fr.Local(i))
+					_, v := fr.Local(i)
+					fmt.Fprintf(buf, "%s=%s", name, v)
 				}
 			} else {
 				buf.WriteString("...") // a built-in function
@@ -1054,5 +1055,57 @@ main()
 				t.Fatalf("ExecFile returned %v, expected panic", v)
 			}
 		}()
+	}
+}
+
+func TestDebugFrame(t *testing.T) {
+	predeclared := starlark.StringDict{
+		"env": starlark.NewBuiltin("env", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			if thread.CallStackDepth() < 2 {
+				return nil, fmt.Errorf("env must not be called directly")
+			}
+			fr := thread.DebugFrame(1) // parent
+			fn, ok := fr.Callable().(*starlark.Function)
+			if !ok {
+				return nil, fmt.Errorf("env must be called from a Starlark function")
+			}
+			dict := starlark.NewDict(0)
+			for i := 0; i < fr.NumLocals(); i++ {
+				bind, val := fr.Local(i)
+				if val == nil {
+					continue
+				}
+				dict.SetKey(starlark.String(bind.Name), val) // ignore error
+			}
+			for i := 0; i < fn.NumFreeVars(); i++ {
+				bind, val := fn.FreeVar(i)
+				dict.SetKey(starlark.String(bind.Name), val) // ignore error
+			}
+			dict.Freeze()
+			return dict, nil
+		}),
+	}
+	const src = `
+e = [None]
+
+def f(p):
+    outer = 3
+    def g(q):
+        inner = outer + 1
+        e[0] = env() # {"q": 2, "inner": 4, "outer": 3}
+	inner2 = None # not defined at call to env()
+    g(2)
+
+f(1)
+`
+	thread := new(starlark.Thread)
+	m, err := starlark.ExecFile(thread, "env.star", src, predeclared)
+	if err != nil {
+		t.Fatalf("ExecFile returned error %q, expected panic", err)
+	}
+	got := m["e"].(*starlark.List).Index(0).String()
+	want := `{"q": 2, "inner": 4, "outer": 3}`
+	if got != want {
+		t.Errorf("env() returned %s, want %s", got, want)
 	}
 }

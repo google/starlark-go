@@ -775,6 +775,15 @@ func (fn *Function) ParamDefault(i int) Value {
 func (fn *Function) HasVarargs() bool { return fn.funcode.HasVarargs }
 func (fn *Function) HasKwargs() bool  { return fn.funcode.HasKwargs }
 
+// NumFreeVars returns the number of free variables of this function.
+func (fn *Function) NumFreeVars() int { return len(fn.funcode.FreeVars) }
+
+// FreeVar returns the binding (name and binding position) and value
+// of the i'th free variable of function fn.
+func (fn *Function) FreeVar(i int) (Binding, Value) {
+	return Binding(fn.funcode.FreeVars[i]), fn.freevars[i].(*cell).v
+}
+
 // A Builtin is a function implemented in Go.
 type Builtin struct {
 	name string
