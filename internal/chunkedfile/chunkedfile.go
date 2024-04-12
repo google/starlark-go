@@ -13,10 +13,10 @@
 //
 // Example:
 //
-//      x = 1 / 0 ### "division by zero"
-//      ---
-//      x = 1
-//      print(x + "") ### "int + string not supported"
+//	x = 1 / 0 ### "division by zero"
+//	---
+//	x = 1
+//	print(x + "") ### "int + string not supported"
 //
 // A client test feeds each chunk of text into the program under test,
 // then calls chunk.GotError for each error that actually occurred.  Any
