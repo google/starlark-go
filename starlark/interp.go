@@ -161,7 +161,7 @@ loop:
 				err = err2
 				break loop
 			}
-			stack[sp] = Bool(ok)
+			stack[sp] = ok
 			sp++
 
 		case compile.PLUS,

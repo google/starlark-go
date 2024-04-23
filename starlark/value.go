@@ -26,6 +26,7 @@
 //
 //	Callable        -- value is callable like a function
 //	Comparable      -- value defines its own comparison operations
+//	CrossComparable -- value defines its own comparison operations, the return type is Value
 //	Iterable        -- value is iterable using 'for' loops
 //	Sequence        -- value is iterable sequence of known length
 //	Indexable       -- value is sequence with efficient random access
@@ -129,6 +130,13 @@ type Comparable interface {
 	// standalone Compare or Equals functions, which are defined for
 	// all pairs of operands.
 	CompareSameType(op syntax.Token, y Value, depth int) (bool, error)
+}
+
+// A CrossComparable is a value that similar to Comparable but the return value is of type Value.
+type CrossComparable interface {
+	Value
+
+	CompareWithType(op syntax.Token, y Value) (Value, error)
 }
 
 // A TotallyOrdered is a type whose values form a total order:
@@ -1475,8 +1483,19 @@ func EqualDepth(x, y Value, depth int) (bool, error) {
 //
 // Recursive comparisons by implementations of Value.CompareSameType
 // should use CompareDepth to prevent infinite recursion.
-func Compare(op syntax.Token, x, y Value) (bool, error) {
-	return CompareDepth(op, x, y, CompareLimit)
+func Compare(op syntax.Token, x, y Value) (Value, error) {
+	if c, ok := x.(CrossComparable); ok {
+		return c.CompareWithType(op, y)
+	}
+	if c, ok := y.(CrossComparable); ok {
+		return c.CompareWithType(op, x)
+	}
+
+	if r, err := CompareDepth(op, x, y, CompareLimit); err != nil {
+		return False, err
+	} else {
+		return Bool(r), nil
+	}
 }
 
 // CompareDepth compares two Starlark values.

@@ -756,7 +756,7 @@ func minmax(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 		if ok, err := Compare(op, key, extremeKey); err != nil {
 			return nil, nameErr(b, err)
-		} else if ok {
+		} else if ok.Truth() {
 			extremum = x
 			extremeKey = key
 		}
@@ -1068,8 +1068,9 @@ func (s *sortSlice) Less(i, j int) bool {
 	ok, err := Compare(syntax.LT, keys[i], keys[j])
 	if err != nil {
 		s.err = err
+		return false
 	}
-	return ok
+	return bool(ok.Truth())
 }
 func (s *sortSlice) Swap(i, j int) {
 	if s.keys != nil {
