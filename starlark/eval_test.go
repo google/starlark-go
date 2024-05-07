@@ -1109,3 +1109,36 @@ f(1)
 		t.Errorf("env() returned %s, want %s", got, want)
 	}
 }
+
+func TestUnpackArgsOptionalInference(t *testing.T) {
+	// success
+	kwargs := []starlark.Tuple{
+		{starlark.String("x"), starlark.MakeInt(1)},
+		{starlark.String("y"), starlark.MakeInt(2)},
+	}
+	var x, y, z int
+	if err := starlark.UnpackArgs("unpack", nil, kwargs,
+		"x", &x, "y?", &y, "z", &z); err != nil {
+		t.Errorf("UnpackArgs failed: %v", err)
+	}
+	got := fmt.Sprintf("x=%d y=%d z=%d", x, y, z)
+	want := "x=1 y=2 z=0"
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+
+	// success
+	args := starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}
+	x = 0
+	y = 0
+	z = 0
+	if err := starlark.UnpackArgs("unpack", args, nil,
+		"x", &x, "y?", &y, "z", &z); err != nil {
+		t.Errorf("UnpackArgs failed: %v", err)
+	}
+	got = fmt.Sprintf("x=%d y=%d z=%d", x, y, z)
+	want = "x=1 y=2 z=0"
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
