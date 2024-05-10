@@ -24,7 +24,9 @@ const (
 )
 
 // Parse calls the Parse method of LegacyFileOptions().
-// Deprecated: relies on legacy global variables.
+//
+// Deprecated: use [FileOptions.Parse] instead,
+// because this function relies on legacy global variables.
 func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 	return LegacyFileOptions().Parse(filename, src, mode)
 }
@@ -54,7 +56,9 @@ func (opts *FileOptions) Parse(filename string, src interface{}, mode Mode) (f *
 }
 
 // ParseCompoundStmt calls the ParseCompoundStmt method of LegacyFileOptions().
-// Deprecated: relies on legacy global variables.
+//
+// Deprecated: use [FileOptions.ParseCompoundStmt] instead,
+// because this function relies on legacy global variables.
 func ParseCompoundStmt(filename string, readline func() ([]byte, error)) (f *File, err error) {
 	return LegacyFileOptions().ParseCompoundStmt(filename, readline)
 }
@@ -95,7 +99,9 @@ func (opts *FileOptions) ParseCompoundStmt(filename string, readline func() ([]b
 }
 
 // ParseExpr calls the ParseExpr method of LegacyFileOptions().
-// Deprecated: relies on legacy global variables.
+//
+// Deprecated: use [FileOptions.ParseExpr] instead,
+// because this function relies on legacy global variables.
 func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
 	return LegacyFileOptions().ParseExpr(filename, src, mode)
 }
