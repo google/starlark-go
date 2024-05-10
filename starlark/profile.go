@@ -22,7 +22,7 @@ package starlark
 // stack and sends it to the profiler goroutine, along with the number
 // of quanta, which are subtracted. For example, if the accumulator
 // holds 3ms and then a completed span adds 25ms to it, its value is 28ms,
-// which exceeeds 10ms. The profiler records a stack with the value 20ms
+// which exceeds 10ms. The profiler records a stack with the value 20ms
 // (2 quanta), and the accumulator is left with 8ms.
 //
 // The profiler goroutine converts the stacks into the pprof format and
@@ -391,7 +391,7 @@ func profFuncAddr(fn Callable) uintptr {
 	}
 
 	// User-defined callable types are typically of
-	// of kind pointer-to-struct. Handle them specially.
+	// kind pointer-to-struct. Handle them specially.
 	if v := reflect.ValueOf(fn); v.Type().Kind() == reflect.Ptr {
 		return v.Pointer()
 	}

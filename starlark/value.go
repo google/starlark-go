@@ -535,7 +535,7 @@ func (f Float) Unary(op syntax.Token) (Value, error) {
 
 // String is the type of a Starlark text string.
 //
-// A String encapsulates an an immutable sequence of bytes,
+// A String encapsulates an immutable sequence of bytes,
 // but strings are not directly iterable. Instead, iterate
 // over the result of calling one of these four methods:
 // codepoints, codepoint_ords, elems, elem_ords.
@@ -1624,7 +1624,7 @@ func Iterate(x Value) Iterator {
 //
 //	for elem := range Elements(iterable) { ... }
 //
-// Push iterators are provided as a convience for Go client code. The
+// Push iterators are provided as a convenience for Go client code. The
 // core iteration behavior of Starlark for-loops is defined by the
 // [Iterable] interface.
 //
@@ -1654,7 +1654,7 @@ func Elements(iterable Iterable) func(yield func(Value) bool) {
 //
 //	for k, v := range Entries(mapping) { ... }
 //
-// Push iterators are provided as a convience for Go client code. The
+// Push iterators are provided as a convenience for Go client code. The
 // core iteration behavior of Starlark for-loops is defined by the
 // [Iterable] interface.
 //

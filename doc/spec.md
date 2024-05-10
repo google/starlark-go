@@ -1160,7 +1160,7 @@ A function call completes normally after the execution of either a
 `return` statement, or of the last statement in the function body.
 The result of the function call is the value of the return statement's
 operand, or `None` if the return statement had no operand or if the
-function completeted without executing a return statement.
+function completed without executing a return statement.
 
 ```python
 def f(x):
@@ -1345,7 +1345,7 @@ x = "hello"
 
 The same is also true for nested loops in comprehensions.
 In the (unnatural) examples below, the scope of the variables `x`, `y`, 
-and `z` is the entire compehension block, except the operand of the first
+and `z` is the entire comprehension block, except the operand of the first
 loop (`[]` or `[1]`), which is resolved in the enclosing environment.
 The second loop may thus refer to variables defined by the third (`z`),
 even though such references would fail if actually executed.
@@ -3983,7 +3983,7 @@ See also: `string·codepoints`.
 <a id='string·count'></a>
 ### string·count
 
-`S.count(sub[, start[, end]])` returns the number of occcurences of
+`S.count(sub[, start[, end]])` returns the number of occurrences of
 `sub` within the string S, or, if the optional substring indices
 `start` and `end` are provided, within the designated substring of S.
 They are interpreted according to Starlark's [indexing conventions](#indexing).
