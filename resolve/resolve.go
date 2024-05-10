@@ -155,7 +155,9 @@ func REPLChunk(file *syntax.File, isGlobal, isPredeclared, isUniversal func(name
 }
 
 // Expr calls [ExprOptions] using [syntax.LegacyFileOptions].
-// Deprecated: relies on legacy global variables.
+//
+// Deprecated: use [ExprOptions] with [syntax.FileOptions] instead,
+// because this function relies on legacy global variables.
 func Expr(expr syntax.Expr, isPredeclared, isUniversal func(name string) bool) ([]*Binding, error) {
 	return ExprOptions(syntax.LegacyFileOptions(), expr, isPredeclared, isUniversal)
 }
