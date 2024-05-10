@@ -556,7 +556,7 @@ func (p *parser) parseTest() Expr {
 	return x
 }
 
-// parseTestNoCond parses a a single-component expression without
+// parseTestNoCond parses a single-component expression without
 // consuming a trailing 'if expr else expr'.
 func (p *parser) parseTestNoCond() Expr {
 	if p.tok == LAMBDA {
