@@ -9,17 +9,17 @@ import _ "unsafe" // for linkname
 // FileOptions specifies various per-file options that affect static
 // aspects of an individual file such as parsing, name resolution, and
 // code generation. (Options that affect global dynamics are typically
-// controlled through [starlark.Thread].)
+// controlled through [go.starlark.net/starlark.Thread].)
 //
 // The zero value of FileOptions is the default behavior.
 //
 // Many functions in this package come in two versions: the legacy
 // standalone function (such as [Parse]) uses [LegacyFileOptions],
-// whereas the more recent method (such as [Options.Parse]) honors the
+// whereas the more recent method (such as [FileOptions.Parse]) honors the
 // provided options. The second form is preferred. In other packages,
 // the modern version is a standalone function with a leading
 // FileOptions parameter and the name suffix "Options", such as
-// [starlark.ExecFileOptions].
+// [go.starlark.net/starlark.ExecFileOptions].
 type FileOptions struct {
 	// resolver
 	Set               bool // allow references to the 'set' built-in function
