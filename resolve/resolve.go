@@ -567,9 +567,9 @@ func (r *resolver) stmt(stmt syntax.Stmt) {
 		// A load statement may not be nested in any other statement.
 		if r.container().function != nil {
 			r.errorf(stmt.Load, "load statement within a function")
-		} else if r.loops > 0 {
+		} else if r.loops > 0 && !r.options.LoopLoads {
 			r.errorf(stmt.Load, "load statement within a loop")
-		} else if r.ifstmts > 0 {
+		} else if r.ifstmts > 0 && !r.options.ConditionalLoads {
 			r.errorf(stmt.Load, "load statement within a conditional")
 		}
 
