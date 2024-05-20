@@ -357,28 +357,37 @@ func profile(w io.Writer) {
 	profiler.done <- err
 }
 
-// nanotime returns the time in nanoseconds since epoch.
-// It is implemented by runtime.nanotime using the linkname hack;
-// runtime.nanotime is defined for all OSs/ARCHS and uses the
-// monotonic system clock, which there is no portable way to access.
-// Should that function ever go away, these alternatives exist:
+// nanotime returns the time in nanoseconds since process start.
 //
-// 	// POSIX only. REALTIME not MONOTONIC. 17ns.
-// 	var tv syscall.Timeval
-// 	syscall.Gettimeofday(&tv) // can't fail
-// 	return tv.Nano()
+// This approach, described at
+// https://github.com/golang/go/issues/61765#issuecomment-1672090302,
+// is fast, monotonic, and portable, and avoids the previous
+// dependence on runtime.nanotime using the (unsafe) linkname hack.
+// In particular, time.Since does less work than time.Now.
 //
-// 	// Portable. REALTIME not MONOTONIC. 46ns.
-// 	return time.Now().Nanoseconds()
+// Rejected approaches:
 //
-//      // POSIX only. Adds a dependency.
+//	Using the linkname hack to unsafely access runtime.nanotime.
+//	See #546 and golang/go#67401.
+//
+//	// POSIX only. REALTIME not MONOTONIC. 17ns.
+//	var tv syscall.Timeval
+//	syscall.Gettimeofday(&tv) // can't fail
+//	return tv.Nano()
+//
+//	// Portable. REALTIME not MONOTONIC. 46ns.
+//	return time.Now().Nanoseconds()
+//
+//	// POSIX only. Adds a dependency.
 //	import "golang.org/x/sys/unix"
 //	var ts unix.Timespec
-// 	unix.ClockGettime(CLOCK_MONOTONIC, &ts) // can't fail
+//	unix.ClockGettime(CLOCK_MONOTONIC, &ts) // can't fail
 //	return unix.TimespecToNsec(ts)
-//
-//go:linkname nanotime runtime.nanotime
-func nanotime() int64
+func nanotime() int64 {
+	return time.Since(processStart).Nanoseconds()
+}
+
+var processStart = time.Now()
 
 // profFuncAddr returns the canonical "address"
 // of a Callable for use by the profiler.
