@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"math/bits"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -1192,8 +1193,8 @@ func tupleRepeat(elems Tuple, n Int) (Tuple, error) {
 		return nil, nil
 	}
 	// Inv: i > 0, len > 0
-	sz := len(elems) * i
-	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+	of, sz := bits.Mul(uint(len(elems)), uint(i))
+	if of != 0 || sz >= maxAlloc { // of != 0 => overflow
 		// Don't print sz.
 		return nil, fmt.Errorf("excessive repeat (%d * %d elements)", len(elems), i)
 	}
@@ -1224,8 +1225,8 @@ func stringRepeat(s String, n Int) (String, error) {
 		return "", nil
 	}
 	// Inv: i > 0, len > 0
-	sz := len(s) * i
-	if sz < 0 || sz >= maxAlloc { // sz < 0 => overflow
+	of, sz := bits.Mul(uint(len(s)), uint(i))
+	if of != 0 || sz >= maxAlloc { // of != 0 => overflow
 		// Don't print sz.
 		return "", fmt.Errorf("excessive repeat (%d * %d elements)", len(s), i)
 	}
