@@ -385,9 +385,6 @@ func (p *parser) parseLoadStmt() *LoadStmt {
 				Name:    lit.Value.(string),
 			})
 
-		case RPAREN:
-			p.in.errorf(p.in.pos, "trailing comma in load statement")
-
 		default:
 			p.in.errorf(p.in.pos, `load operand must be "name" or localname="name" (got %#v)`, p.tok)
 		}
