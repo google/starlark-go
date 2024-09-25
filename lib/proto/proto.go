@@ -9,21 +9,21 @@
 //
 // This package defines several types of Starlark value:
 //
-//      Message                 -- a protocol message
-//      RepeatedField           -- a repeated field of a message, like a list
+//	Message                 -- a protocol message
+//	RepeatedField           -- a repeated field of a message, like a list
 //
-//      FileDescriptor          -- information about a .proto file
-//      FieldDescriptor         -- information about a message field (or extension field)
-//      MessageDescriptor       -- information about the type of a message
-//      EnumDescriptor          -- information about an enumerated type
-//      EnumValueDescriptor     -- a value of an enumerated type
+//	FileDescriptor          -- information about a .proto file
+//	FieldDescriptor         -- information about a message field (or extension field)
+//	MessageDescriptor       -- information about the type of a message
+//	EnumDescriptor          -- information about an enumerated type
+//	EnumValueDescriptor     -- a value of an enumerated type
 //
 // A Message value is a wrapper around a protocol message instance.
 // Starlark programs may access and update Messages using dot notation:
 //
-//      x = msg.field
-//      msg.field = x + 1
-//      msg.field += 1
+//	x = msg.field
+//	msg.field = x + 1
+//	msg.field += 1
 //
 // Assignments to message fields perform dynamic checks on the type and
 // range of the value to ensure that the message is at all times valid.
@@ -35,31 +35,30 @@
 // performs a dynamic check to ensure that the RepeatedField holds
 // only elements of the correct type.
 //
-//      type(msg.uint32s)       # "proto.repeated<uint32>"
-//      msg.uint32s[0] = 1
-//      msg.uint32s[0] = -1     # error: invalid uint32: -1
+//	type(msg.uint32s)       # "proto.repeated<uint32>"
+//	msg.uint32s[0] = 1
+//	msg.uint32s[0] = -1     # error: invalid uint32: -1
 //
 // Any iterable may be assigned to a repeated field of a message.  If
 // the iterable is itself a value of type RepeatedField, the message
 // field holds a reference to it.
 //
-//      msg2.uint32s = msg.uint32s      # both messages share one RepeatedField
-//      msg.uint32s[0] = 123
-//      print(msg2.uint32s[0])          # "123"
+//	msg2.uint32s = msg.uint32s      # both messages share one RepeatedField
+//	msg.uint32s[0] = 123
+//	print(msg2.uint32s[0])          # "123"
 //
 // The RepeatedFields' element types must match.
 // It is not enough for the values to be merely valid:
 //
-//      msg.uint32s = [1, 2, 3]         # makes a copy
-//      msg.uint64s = msg.uint32s       # error: repeated field has wrong type
-//      msg.uint64s = list(msg.uint32s) # ok; makes a copy
+//	msg.uint32s = [1, 2, 3]         # makes a copy
+//	msg.uint64s = msg.uint32s       # error: repeated field has wrong type
+//	msg.uint64s = list(msg.uint32s) # ok; makes a copy
 //
 // For all other iterables, a new RepeatedField is constructed from the
 // elements of the iterable.
 //
-//      msg.uints32s = [1, 2, 3]
-//      print(type(msg.uints32s))       # "proto.repeated<uint32>"
-//
+//	msg.uints32s = [1, 2, 3]
+//	print(type(msg.uints32s))       # "proto.repeated<uint32>"
 //
 // To construct a Message from encoded binary or text data, call
 // Unmarshal or UnmarshalText.  These two functions are exposed to
@@ -75,7 +74,6 @@
 //
 // See proto_test.go for an example of how to use the 'proto'
 // module in an application that embeds Starlark.
-//
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
@@ -111,8 +109,8 @@ import (
 // for a Starlark thread to use this package.
 //
 // For example:
-//	SetPool(thread, protoregistry.GlobalFiles)
 //
+//	SetPool(thread, protoregistry.GlobalFiles)
 func SetPool(thread *starlark.Thread, pool DescriptorPool) {
 	thread.SetLocal(contextKey, pool)
 }
@@ -305,10 +303,9 @@ func getFieldStarlark(thread *starlark.Thread, fn *starlark.Builtin, args starla
 // When a message descriptor is called, it returns a new instance of the
 // protocol message it describes.
 //
-//      Message(msg)            -- return a shallow copy of an existing message
-//      Message(k=v, ...)       -- return a new message with the specified fields
-//      Message(dict(...))      -- return a new message with the specified fields
-//
+//	Message(msg)            -- return a shallow copy of an existing message
+//	Message(k=v, ...)       -- return a new message with the specified fields
+//	Message(dict(...))      -- return a new message with the specified fields
 func (d MessageDescriptor) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	dest := &Message{
 		msg:    newMessage(d.Desc),
@@ -1219,11 +1216,10 @@ func enumValueOf(enum protoreflect.EnumDescriptor, x starlark.Value) (protorefle
 //
 // An EnumValueDescriptor has the following fields:
 //
-//      index   -- int, index of this value within the enum sequence
-//      name    -- string, name of this enum value
-//      number  -- int, numeric value of this enum value
-//      type    -- EnumDescriptor, the enum type to which this value belongs
-//
+//	index   -- int, index of this value within the enum sequence
+//	name    -- string, name of this enum value
+//	number  -- int, numeric value of this enum value
+//	type    -- EnumDescriptor, the enum type to which this value belongs
 type EnumValueDescriptor struct {
 	Desc protoreflect.EnumValueDescriptor
 }
