@@ -144,8 +144,13 @@ numbers = [
     0, 1, -1, +1, 1.23e45, -1.23e-45,
     3539537889086624823140625,
     float(3539537889086624823140625),
+    float(1.0),
 ]
-assert.eq(codec(numbers), numbers)
+def number_roundtrip():
+    show = lambda n: (n, type(n))
+    for n in numbers:
+      assert.eq(show(codec(n)), show(n)) # ensure no int/float confusion
+number_roundtrip()
 
 ## json.indent
 
