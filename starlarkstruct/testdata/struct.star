@@ -61,3 +61,12 @@ assert.eq(alice + bob, person(age = 50, city = "NYC", name = "bob"))  # not comm
 assert.fails(lambda : alice + 1, "struct \\+ int")
 assert.eq(http + http, http)
 assert.fails(lambda : http + bob, "different constructors: hostport \\+ person")
+
+# Check that a struct with a circular reference doesn't crash when it gets frozen.
+def struct_with_a_circular_reference():
+    foo = lambda: print(self)
+    self = struct(foo = foo)
+    return self
+
+# A top-level assigment is what causes this value to be frozen at the end of the load.
+toplevel_struct_with_a_circular_reference = struct_with_a_circular_reference()

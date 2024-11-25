@@ -99,6 +99,7 @@ func FromStringDict(constructor starlark.Value, d starlark.StringDict) *Struct {
 type Struct struct {
 	constructor starlark.Value
 	entries     entries // sorted by name
+	frozen      bool
 }
 
 // Default is the default constructor for structs.
@@ -172,8 +173,11 @@ func (s *Struct) Hash() (uint32, error) {
 	return x, nil
 }
 func (s *Struct) Freeze() {
-	for _, e := range s.entries {
-		e.value.Freeze()
+	if !s.frozen {
+		s.frozen = true
+		for _, e := range s.entries {
+			e.value.Freeze()
+		}
 	}
 }
 
