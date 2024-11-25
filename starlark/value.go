@@ -95,6 +95,11 @@ type Value interface {
 	// structure through this API will fail dynamically, making the
 	// data structure immutable and safe for publishing to other
 	// Starlark interpreters running concurrently.
+	//
+	// Implementations of Freeze must be defensive against
+	// reference cycles; this can be achieved by first checking
+	// the value's frozen state, then setting it, and only then
+	// visiting any other values that it references.
 	Freeze()
 
 	// Truth returns the truth value of an object.
