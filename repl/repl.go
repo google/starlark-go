@@ -123,6 +123,9 @@ func rep(opts *syntax.FileOptions, rl *readline.Instance, thread *starlark.Threa
 			return nil
 		}
 
+		// store the result in "_" variable to hold the value of last expression, similar to Python REPL
+		globals["_"] = v
+
 		// print
 		if v != starlark.None {
 			fmt.Println(v)
