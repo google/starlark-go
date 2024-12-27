@@ -1,6 +1,9 @@
 
 <!-- This file is the project homepage for go.starlark.net -->
 
+# Purpose of this fork
+This is a folk of google/starlark-go for the purpose of protoyping a bot for data collection.
+
 # Starlark in Go
 
 [![Go Tests](https://github.com/google/starlark-go/actions/workflows/tests.yml/badge.svg)](https://github.com/google/starlark-go/actions/workflows/tests.yml)
