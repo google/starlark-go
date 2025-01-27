@@ -151,6 +151,7 @@ var (
 		"remove":               NewBuiltin("remove", set_remove),
 		"symmetric_difference": NewBuiltin("symmetric_difference", set_symmetric_difference),
 		"union":                NewBuiltin("union", set_union),
+		"update":               NewBuiltin("update", set_update),
 	}
 )
 
@@ -2347,6 +2348,22 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		return nil, nameErr(b, err)
 	}
 	return union, nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
+func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var iterable Iterable
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
+		return nil, err
+	}
+	if iterable != nil {
+		iter := iterable.Iterate()
+		defer iter.Done()
+		if err := b.Receiver().(*Set).InsertAll(iter); err != nil {
+			return None, nameErr(b, err)
+		}
+	}
+	return None, nil
 }
 
 // Common implementation of string_{r}{find,index}.

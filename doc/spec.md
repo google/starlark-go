@@ -3774,6 +3774,19 @@ y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
 ```
 
+<a id='set·update'></a>
+### set·update
+
+`S.update(iterable)` will have the effect of adding the members
+of the supplied iterable to the set. If no argument is provided
+then the method call will have no effect. The method will return
+`None`.
+
+```python
+x = set([1, 2])
+x.update([2, 3])
+```
+
 <a id='string·elem_ords'></a>
 ### string·elem_ords
 

@@ -1232,6 +1232,16 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 	return set, nil
 }
 
+func (s *Set) InsertAll(iter Iterator) error {
+	var x Value
+	for iter.Next(&x) {
+		if err := s.Insert(x); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Set) Difference(other Iterator) (Value, error) {
 	diff := s.clone()
 	var x Value
