@@ -2358,25 +2358,17 @@ func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 	receiverSet := b.Receiver().(*Set)
 
-	// factored out into a function so that the `defer` is scoped to this iterable
-	// rather than all iterables in the for loop below.
-	insertIterable := func(iterable Iterable) error {
-		iter := iterable.Iterate()
-		defer iter.Done()
-		if err := receiverSet.InsertAll(iter); err != nil {
-			return nameErr(b, err)
-		}
-		return nil
-	}
-
 	for i, arg := range args {
-		switch arg := arg.(type) {
-		case Iterable:
-			if err := insertIterable(arg); err != nil {
-				return nil, nameErr(b, err)
-			}
-		default:
+		iterable, ok := arg.(Iterable)
+		if !ok {
 			return nil, fmt.Errorf("update: argument #%d is not iterable: %s", i+1, arg.Type())
+		}
+		if err := func() error {
+			iter := iterable.Iterate()
+			defer iter.Done()
+			return receiverSet.InsertAll(iter)
+		}(); err != nil {
+			return nil, nameErr(b, err)
 		}
 	}
 
