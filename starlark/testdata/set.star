@@ -95,6 +95,13 @@ def test_update_set():
 
 test_update_set()
 
+def test_update_set_multiple_args():
+    s = set(x)
+    s.update([11, 12], [11, 13, 14])
+    assert.eq(list(s), [1, 2, 3, 11, 12, 13, 14])
+
+test_update_set_multiple_args()
+
 def test_update_list_intersecting():
     s = set(x)
     s.update([5, 1])
@@ -117,9 +124,15 @@ test_update_non_hashable()
 
 def test_update_non_iterable():
     s = set(x)
-    assert.fails(lambda: x.update(9), "update: for parameter 1: got int, want iterable")
+    assert.fails(lambda: x.update(9), "update: arg at 0 was int, want interable")
 
 test_update_non_iterable()
+
+def test_update_kwargs():
+    s = set(x)
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: kwargs disallowed")
+
+test_update_kwargs()
 
 def test_update_no_arg():
     s = set(x)

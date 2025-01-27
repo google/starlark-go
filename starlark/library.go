@@ -2352,17 +2352,25 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
 func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
-		return nil, err
+	if len(kwargs) > 0 {
+		return nil, nameErr(b, "kwargs disallowed")
 	}
-	if iterable != nil {
-		iter := iterable.Iterate()
-		defer iter.Done()
-		if err := b.Receiver().(*Set).InsertAll(iter); err != nil {
-			return None, nameErr(b, err)
+
+	for argIdx, arg := range args {
+		switch v := arg.(type) {
+		case Iterable:
+			iter := v.Iterate()
+			defer iter.Done()
+			if err := b.Receiver().(*Set).InsertAll(iter); err != nil {
+				return nil, nameErr(b, err)
+			}
+		default:
+			return nil, nameErr(b, fmt.Sprintf(
+				"arg at %d was %s, want interable",
+				argIdx, arg.Type()))
 		}
 	}
+
 	return None, nil
 }
 
