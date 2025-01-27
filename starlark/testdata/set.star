@@ -9,7 +9,6 @@
 
 # TODO(adonovan): support set mutation:
 # - del set[k]
-# - set.update
 # - set += iterable, perhaps?
 # Test iterator invalidation.
 
@@ -64,6 +63,83 @@ assert.eq(list(x.union(y)), [1, 2, 3, 4, 5])
 assert.eq(list(x.union([5, 1])), [1, 2, 3, 5])
 assert.eq(list(x.union((6, 5, 4))), [1, 2, 3, 6, 5, 4])
 assert.fails(lambda : x.union([1, 2, {}]), "unhashable type: dict")
+
+# set.update (allows any iterable for the right operand)
+# The update function will mutate the set so the tests below are
+# scoped using a function.
+def test_update_elems_singular():
+    s = set("a".elems())
+    s.update("b".elems())
+    assert.eq(list(s), ["a", "b"])
+
+test_update_elems_singular()
+
+def test_update_elems_multiple():
+    s = set("a".elems())
+    s.update("bc".elems())
+    assert.eq(list(s), ["a", "b", "c"])
+
+test_update_elems_multiple()
+
+def test_update_empty():
+    s = set()
+    s.update([])
+    assert.eq(s, set())
+
+test_update_empty()
+
+def test_update_set():
+    s = set(x)
+    s.update(y)
+    assert.eq(list(s), [1, 2, 3, 4, 5])
+
+test_update_set()
+
+def test_update_set_multiple_args():
+    s = set(x)
+    s.update([11, 12], [11, 13, 14])
+    assert.eq(list(s), [1, 2, 3, 11, 12, 13, 14])
+
+test_update_set_multiple_args()
+
+def test_update_list_intersecting():
+    s = set(x)
+    s.update([5, 1])
+    assert.eq(list(s), [1, 2, 3, 5])
+
+test_update_list_intersecting()
+
+def test_update_list_non_intersecting():
+    s = set(x)
+    s.update([6, 5, 4])
+    assert.eq(list(s), [1, 2, 3, 6, 5, 4])
+
+test_update_list_non_intersecting()
+
+def test_update_non_hashable():
+    s = set(x)
+    assert.fails(lambda: x.update([1, 2, {}]), "unhashable type: dict")
+
+test_update_non_hashable()
+
+def test_update_non_iterable():
+    s = set(x)
+    assert.fails(lambda: x.update(9), "update: argument #1 is not iterable: int")
+
+test_update_non_iterable()
+
+def test_update_kwargs():
+    s = set(x)
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: update does not accept keyword arguments")
+
+test_update_kwargs()
+
+def test_update_no_arg():
+    s = set(x)
+    s.update()
+    assert.eq(list(s), [1, 2, 3])
+
+test_update_no_arg()
 
 # intersection, set & set or set.intersection(iterable)
 assert.eq(list(set("a".elems()) & set("b".elems())), [])
@@ -143,6 +219,12 @@ freeze(discard_set)
 assert.eq(discard_set.discard(3), None)  # no mutation of frozen set because key doesn't exist
 assert.fails(lambda: discard_set.discard(1), "discard: cannot delete from frozen hash table")
 
+# update
+update_set = set([1, 2, 3])
+update_set.update([4])
+assert.true(4 in update_set)
+freeze(update_set)
+assert.fails(lambda: update_set.update([5]), "update: cannot insert into frozen hash table")
 
 # pop
 pop_set = set([1,2,3])

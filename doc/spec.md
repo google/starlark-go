@@ -839,7 +839,7 @@ A set has these methods:
 * [`remove`](#set·remove)
 * [`symmetric_difference`](#set·symmetric_difference)
 * [`union`](#set·union)
-
+* [`update`](#set·update)
 
 A set used in a Boolean context is considered true if it is non-empty.
 
@@ -3772,6 +3772,17 @@ must be iterable.
 x = set([1, 2])
 y = set([2, 3])
 x.union(y)                              # set([1, 2, 3])
+```
+
+<a id='set·update'></a>
+### set·update
+
+`S.update(iterable...)` adds to S each element of the iterable
+sequences. The method will return `None`.
+
+```python
+x = set([1, 2])
+x.update([2, 3], [4, 5])
 ```
 
 <a id='string·elem_ords'></a>
