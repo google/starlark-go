@@ -124,13 +124,13 @@ test_update_non_hashable()
 
 def test_update_non_iterable():
     s = set(x)
-    assert.fails(lambda: x.update(9), "update: arg at 0 was int, want interable")
+    assert.fails(lambda: x.update(9), "update: argument #1 is not iterable: int")
 
 test_update_non_iterable()
 
 def test_update_kwargs():
     s = set(x)
-    assert.fails(lambda: x.update(gee = [3, 4]), "update: kwargs disallowed")
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: update does not accept keyword arguments")
 
 test_update_kwargs()
 

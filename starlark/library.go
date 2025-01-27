@@ -2353,21 +2353,30 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
 func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {
-		return nil, nameErr(b, "kwargs disallowed")
+		return nil, nameErr(b, "update does not accept keyword arguments")
 	}
 
-	for argIdx, arg := range args {
-		switch v := arg.(type) {
+	receiverSet := b.Receiver().(*Set)
+
+	// factored out into a function so that the `defer` is scoped to this iterable
+	// rather than all iterables in the for loop below.
+	insertIterable := func(iterable Iterable) error {
+		iter := iterable.Iterate()
+		defer iter.Done()
+		if err := receiverSet.InsertAll(iter); err != nil {
+			return nameErr(b, err)
+		}
+		return nil
+	}
+
+	for i, arg := range args {
+		switch arg := arg.(type) {
 		case Iterable:
-			iter := v.Iterate()
-			defer iter.Done()
-			if err := b.Receiver().(*Set).InsertAll(iter); err != nil {
+			if err := insertIterable(arg); err != nil {
 				return nil, nameErr(b, err)
 			}
 		default:
-			return nil, nameErr(b, fmt.Sprintf(
-				"arg at %d was %s, want interable",
-				argIdx, arg.Type()))
+			return nil, fmt.Errorf("update: argument #%d is not iterable: %s", i+1, arg.Type())
 		}
 	}
 
