@@ -2337,41 +2337,18 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
 func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
-		return nil, err
-	}
-	iter := iterable.Iterate()
-	defer iter.Done()
-	union, err := b.Receiver().(*Set).Union(iter)
-	if err != nil {
+	receiverSet := b.Receiver().(*Set).clone()
+	if err := setUpdate(receiverSet, args, kwargs); err != nil {
 		return nil, nameErr(b, err)
 	}
-	return union, nil
+	return receiverSet, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
 func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, nameErr(b, "update does not accept keyword arguments")
+	if err := setUpdate(b.Receiver().(*Set), args, kwargs); err != nil {
+		return nil, nameErr(b, err)
 	}
-
-	receiverSet := b.Receiver().(*Set)
-
-	for i, arg := range args {
-		iterable, ok := arg.(Iterable)
-		if !ok {
-			return nil, fmt.Errorf("update: argument #%d is not iterable: %s", i+1, arg.Type())
-		}
-		if err := func() error {
-			iter := iterable.Iterate()
-			defer iter.Done()
-			return receiverSet.InsertAll(iter)
-		}(); err != nil {
-			return nil, nameErr(b, err)
-		}
-	}
-
 	return None, nil
 }
 
@@ -2468,6 +2445,28 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 				return fmt.Errorf("duplicate keyword arg: %v", k)
 			}
 			keys[k] = true
+		}
+	}
+
+	return nil
+}
+
+func setUpdate(s *Set, args Tuple, kwargs []Tuple) error {
+	if len(kwargs) > 0 {
+		return errors.New("does not accept keyword arguments")
+	}
+
+	for i, arg := range args {
+		iterable, ok := arg.(Iterable)
+		if !ok {
+			return fmt.Errorf("argument #%d is not iterable: %s", i+1, arg.Type())
+		}
+		if err := func() error {
+			iter := iterable.Iterate()
+			defer iter.Done()
+			return s.InsertAll(iter)
+		}(); err != nil {
+			return err
 		}
 	}
 

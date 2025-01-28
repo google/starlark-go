@@ -59,14 +59,23 @@ assert.eq(list(set("a".elems()).union("b".elems())), ["a", "b"])
 assert.eq(list(set("ab".elems()).union("bc".elems())), ["a", "b", "c"])
 assert.eq(set().union([]), set())
 assert.eq(type(x.union(y)), "set")
+assert.eq(list(x.union()), [1, 2, 3])
 assert.eq(list(x.union(y)), [1, 2, 3, 4, 5])
+assert.eq(list(x.union(y, [6, 7])), [1, 2, 3, 4, 5, 6, 7])
 assert.eq(list(x.union([5, 1])), [1, 2, 3, 5])
 assert.eq(list(x.union((6, 5, 4))), [1, 2, 3, 6, 5, 4])
 assert.fails(lambda : x.union([1, 2, {}]), "unhashable type: dict")
+assert.fails(lambda : x.union(1, 2, 3), "argument #1 is not iterable: int")
 
 # set.update (allows any iterable for the right operand)
 # The update function will mutate the set so the tests below are
 # scoped using a function.
+
+def test_update_return_value():
+    assert.eq(set(x).update(y), None)
+
+test_update_return_value()
+
 def test_update_elems_singular():
     s = set("a".elems())
     s.update("b".elems())
@@ -130,7 +139,7 @@ test_update_non_iterable()
 
 def test_update_kwargs():
     s = set(x)
-    assert.fails(lambda: x.update(gee = [3, 4]), "update: update does not accept keyword arguments")
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: does not accept keyword arguments")
 
 test_update_kwargs()
 
