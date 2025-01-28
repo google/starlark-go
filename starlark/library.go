@@ -2338,7 +2338,7 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
 func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	receiverSet := b.Receiver().(*Set).clone()
-	if err := insertIterablesIntoSet(receiverSet, args, kwargs); err != nil {
+	if err := setUpdate(receiverSet, args, kwargs); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return receiverSet, nil
@@ -2346,7 +2346,7 @@ func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
 func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := insertIterablesIntoSet(b.Receiver().(*Set), args, kwargs); err != nil {
+	if err := setUpdate(b.Receiver().(*Set), args, kwargs); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2451,7 +2451,7 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	return nil
 }
 
-func insertIterablesIntoSet(s *Set, args Tuple, kwargs []Tuple) error {
+func setUpdate(s *Set, args Tuple, kwargs []Tuple) error {
 	if len(kwargs) > 0 {
 		return errors.New("does not accept keyword arguments")
 	}
