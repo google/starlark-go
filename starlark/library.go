@@ -2337,17 +2337,27 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
 func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &iterable); err != nil {
-		return nil, err
+	if len(kwargs) > 0 {
+		return nil, nameErr(b, "update does not accept keyword arguments")
 	}
-	iter := iterable.Iterate()
-	defer iter.Done()
-	union, err := b.Receiver().(*Set).Union(iter)
-	if err != nil {
-		return nil, nameErr(b, err)
+
+	resultSet := b.Receiver().(*Set).clone()
+
+	for i, arg := range args {
+		iterable, ok := arg.(Iterable)
+		if !ok {
+			return nil, fmt.Errorf("update: argument #%d is not iterable: %s", i+1, arg.Type())
+		}
+		if err := func() error {
+			iter := iterable.Iterate()
+			defer iter.Done()
+			return resultSet.InsertAll(iter)
+		}(); err != nil {
+			return nil, err
+		}
 	}
-	return union, nil
+
+	return resultSet, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
