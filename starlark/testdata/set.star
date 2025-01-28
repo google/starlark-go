@@ -70,6 +70,12 @@ assert.fails(lambda : x.union(1, 2, 3), "argument #1 is not iterable: int")
 # set.update (allows any iterable for the right operand)
 # The update function will mutate the set so the tests below are
 # scoped using a function.
+
+def test_update_return_value():
+    assert.eq(set(x).update(y), None)
+
+test_update_return_value()
+
 def test_update_elems_singular():
     s = set("a".elems())
     s.update("b".elems())
@@ -133,7 +139,7 @@ test_update_non_iterable()
 
 def test_update_kwargs():
     s = set(x)
-    assert.fails(lambda: x.update(gee = [3, 4]), "update: update does not accept keyword arguments")
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: does not accept keyword arguments")
 
 test_update_kwargs()
 

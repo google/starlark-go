@@ -3765,7 +3765,8 @@ x.symmetric_difference([3, 4, 5])         # set([1, 2, 4, 5])
 `S.union(iterable...)` returns a new set into which have been inserted
 all the elements of set S and each element of the iterable sequences.
 
-`union` fails if any element of the iterable is not hashable.
+`union` fails if any argument is not an iterable sequence, or if any
+sequence element is not hashable.
 
 ```python
 x = set([1, 2])
