@@ -9,7 +9,7 @@
 This is the home of the _Starlark in Go_ project.
 Starlark in Go is an interpreter for Starlark, implemented in Go.
 Starlark was formerly known as Skylark.
-The new import path for Go packages is `"go.starlark.net/starlark"`.
+The import path for the Go package is `"go.starlark.net/starlark"`.
 
 Starlark is a dialect of Python intended for use as a configuration language.
 Like Python, it is an untyped dynamic language with high-level data
