@@ -1491,9 +1491,10 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 	}
 
 	// Bind keyword arguments to parameters.
+	paramIdents := fn.funcode.Locals[:nparams]
 	for _, pair := range kwargs {
 		k, v := pair[0].(String), pair[1]
-		if i := fn.funcode.Local(string(k)); i >= 0 && i < nparams {
+		if i := findParam(paramIdents, string(k)); i >= 0 {
 			if locals[i] != nil {
 				return fmt.Errorf("function %s got multiple values for parameter %s", fn.Name(), k)
 			}
@@ -1513,8 +1514,6 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 	// Are defaults required?
 	if n < nparams || fn.NumKwonlyParams() > 0 {
 		m := nparams - len(fn.defaults) // first default
-
-		paramIdents := fn.funcode.Locals[:nparams]
 
 		// Report errors for missing required arguments.
 		var missing []string
@@ -1543,6 +1542,15 @@ func setArgs(locals []Value, fn *Function, args Tuple, kwargs []Tuple) error {
 		}
 	}
 	return nil
+}
+
+func findParam(params []compile.Binding, name string) int {
+	for i, param := range params {
+		if param.Name == name {
+			return i
+		}
+	}
+	return -1
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string-interpolation

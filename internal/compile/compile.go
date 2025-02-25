@@ -345,8 +345,6 @@ type Funcode struct {
 
 	lntOnce sync.Once
 	lnt     []pclinecol // decoded line number table
-
-	localsMap map[string]int
 }
 
 type pclinecol struct {
@@ -403,24 +401,6 @@ type insn struct {
 	op        Opcode
 	arg       uint32
 	line, col int32
-}
-
-// finish is called to populate derived fields of Funcode.
-func (fn *Funcode) finish() {
-	// (We could populate this map on first use,
-	// but the sync adds 33% to bench_calling_kwargs.)
-	fn.localsMap = make(map[string]int, len(fn.Locals))
-	for index, binding := range fn.Locals {
-		fn.localsMap[binding.Name] = index
-	}
-}
-
-// Local returns the index of the named local, or -1.
-func (fn *Funcode) Local(name string) int {
-	if i, ok := fn.localsMap[name]; ok {
-		return i
-	}
-	return -1
 }
 
 // Position returns the source position for program counter pc.
@@ -700,7 +680,6 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 		fmt.Fprintf(os.Stderr, "end function(%s @ %s)\n", name, pos)
 	}
 
-	fcomp.fn.finish()
 	return fn
 }
 

@@ -380,7 +380,7 @@ func (d *decoder) function() *Funcode {
 	numKwonlyParams := d.int()
 	hasVarargs := d.int() != 0
 	hasKwargs := d.int() != 0
-	fn := &Funcode{
+	return &Funcode{
 		// Prog is filled in later.
 		Pos:             id.Pos,
 		Name:            id.Name,
@@ -396,6 +396,4 @@ func (d *decoder) function() *Funcode {
 		HasVarargs:      hasVarargs,
 		HasKwargs:       hasKwargs,
 	}
-	fn.finish()
-	return fn
 }
