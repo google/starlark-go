@@ -1,0 +1,13 @@
+
+ª
+
+test.protogo.starlark.net.testdata"ù
+Test!
+string_field (	RstringField
+int32_field (R
+int32Field%
+repeated_field (	RrepeatedFieldI
+	map_field (2,.go.starlark.net.testdata.Test.MapFieldEntryRmapField;
+MapFieldEntry
+key (	Rkey
+value (	Rvalue:8bproto3
