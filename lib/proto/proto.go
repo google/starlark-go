@@ -423,6 +423,7 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 
 		// Each value is converted using toProto as usual, passing the key/value
 		// field descriptors to check their types.
+		msg.Clear(fdesc)
 		mutMap := msg.Mutable(fdesc).Map()
 		var k starlark.Value
 		for iter.Next(&k) {
@@ -927,9 +928,11 @@ type RepeatedField struct {
 	itercount int
 }
 
-var _ starlark.Iterable = (*RepeatedField)(nil)
-var _ starlark.HasSetIndex = (*RepeatedField)(nil)
-var _ starlark.HasAttrs = (*RepeatedField)(nil)
+var (
+	_ starlark.Iterable    = (*RepeatedField)(nil)
+	_ starlark.HasSetIndex = (*RepeatedField)(nil)
+	_ starlark.HasAttrs    = (*RepeatedField)(nil)
+)
 
 func (rf *RepeatedField) AttrNames() []string {
 	return []string{"append"}
@@ -950,7 +953,7 @@ func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.
 	rf := b.Receiver().(*RepeatedField)
 
 	if err := rf.checkMutable("append to"); err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+		return nil, err
 	}
 
 	po, err := toProto(rf.typ, object)
@@ -967,7 +970,7 @@ func (rf *RepeatedField) Type() string {
 }
 
 func (rf *RepeatedField) SetIndex(i int, v starlark.Value) error {
-	if err := rf.checkMutable("insert value in"); err != nil {
+	if err := rf.checkMutable("insert into"); err != nil {
 		return err
 	}
 	x, err := toProto(rf.typ, v)
@@ -1040,6 +1043,11 @@ func (it *repeatedFieldIterator) Done() {
 	}
 }
 
+// MapField represents a protocol message field of type 'map'.
+//
+// Assigning value in the map incurs a dynamic check that the new value has (or
+// can be converted to) the correct type using conversions similar to those done
+// when calling a MessageDescriptor to construct a message.
 type MapField struct {
 	typ protoreflect.FieldDescriptor
 
@@ -1048,25 +1056,43 @@ type MapField struct {
 	itercount int
 }
 
-var _ starlark.HasSetKey = (*MapField)(nil)
-var _ starlark.IterableMapping = (*MapField)(nil)
+var (
+	_ starlark.HasSetKey       = (*MapField)(nil)
+	_ starlark.IterableMapping = (*MapField)(nil)
+)
 
 func (mf *MapField) Type() string {
 	return fmt.Sprintf("proto.map<%s, %s>", typeString(mf.typ.MapKey()), typeString(mf.typ.MapValue()))
 }
 
+func (mf *MapField) checkKeyType() error {
+	switch mf.typ.MapKey().Kind() {
+	case protoreflect.BoolKind, protoreflect.StringKind,
+		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
+		protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind,
+		protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind,
+		protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		return nil
+	default:
+		return fmt.Errorf("map key is %s, want string, int, or bool", mf.typ.MapKey().Kind())
+	}
+}
+
 func (mf *MapField) SetKey(k, v starlark.Value) error {
-	if err := mf.checkMutable("set key in"); err != nil {
+	if err := mf.checkKeyType(); err != nil {
+		return err
+	}
+	if err := mf.checkMutable("insert into"); err != nil {
 		return err
 	}
 
 	kx, err := toProto(mf.typ.MapKey(), k)
 	if err != nil {
-		return fmt.Errorf("setting key of map field: %v", err)
+		return fmt.Errorf("converting map key: %v", err)
 	}
 	vx, err := toProto(mf.typ.MapValue(), v)
 	if err != nil {
-		return fmt.Errorf("setting value of map field: %v", err)
+		return fmt.Errorf("converting map value: %v", err)
 	}
 
 	mf.mp.Set(kx.MapKey(), vx)
@@ -1086,9 +1112,12 @@ func (mf *MapField) checkMutable(verb string) error {
 }
 
 func (mf *MapField) Get(k starlark.Value) (starlark.Value, bool, error) {
+	if err := mf.checkKeyType(); err != nil {
+		return nil, false, err
+	}
 	pk, err := toProto(mf.typ.MapKey(), k)
 	if err != nil {
-		return nil, false, fmt.Errorf("getting value of map field: %v", err)
+		return nil, false, fmt.Errorf("converting map key: %v", err)
 	}
 
 	v := mf.mp.Get(pk.MapKey())
@@ -1107,19 +1136,30 @@ func (mf *MapField) Iterate() starlark.Iterator {
 		mf.itercount++
 	}
 
-	// TODO(negz): Should we store only keys in the iterator? It doesn't
-	// consume the values.
-	return &mapFieldIterator{mf, mf.Items(), 0}
+	it := &mapFieldIterator{mf: mf, keys: make([]starlark.Value, 0, mf.mp.Len())}
+	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+		it.keys = append(it.keys, toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen))
+		return true
+	})
+	// Ensure we iterate in sorted order.
+	sort.Slice(it.keys, func(i, j int) bool {
+		less, _ := starlark.Compare(syntax.LT, it.keys[i], it.keys[j])
+		return less
+	})
+	return it
 }
 
+// Items returns a slice of key-value pairs, sorted in key order.
 func (mf *MapField) Items() []starlark.Tuple {
 	out := make([]starlark.Tuple, 0, mf.mp.Len())
+	array := make([]starlark.Value, 2*mf.mp.Len()) // allocate a single backing array
 
 	mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
-		out = append(out, starlark.Tuple{
-			toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen),
-			toStarlark1(mf.typ.MapValue(), v, mf.frozen),
-		})
+		pair := array[:2:2]
+		array = array[2:]
+		pair[0] = toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen)
+		pair[1] = toStarlark1(mf.typ.MapValue(), v, mf.frozen)
+		out = append(out, pair)
 		return true // Keep iterating.
 	})
 
@@ -1127,6 +1167,9 @@ func (mf *MapField) Items() []starlark.Tuple {
 	// In practice in starlark they should be Int, String, or Bool and thus
 	// either TotallyOrdered or Comparable. None of these return errors when
 	// compared to the same type.
+	//
+    // Other key types are rejected, but only when an individual entry is
+    // accessed (as this is the only place with error reporting).
 	sort.Slice(out, func(i, j int) bool {
 		less, _ := starlark.Compare(syntax.LT, out[i][0], out[j][0])
 		return less
@@ -1139,7 +1182,7 @@ func (mf *MapField) Len() int { return mf.mp.Len() }
 
 func (mf *MapField) String() string {
 	// We want to use {k1: v1, k2: v2} notation, like a dict.
-	buf := new(bytes.Buffer)
+	buf := new(strings.Builder)
 	buf.WriteByte('{')
 
 	for i, kv := range mf.Items() {
@@ -1160,13 +1203,13 @@ func (rf *MapField) Truth() starlark.Bool { return rf.mp.Len() > 0 }
 type mapFieldIterator struct {
 	mf *MapField
 
-	items []starlark.Tuple
+	keys []starlark.Value
 	i     int
 }
 
 func (it *mapFieldIterator) Next(p *starlark.Value) bool {
-	if it.i < len(it.items) {
-		*p = it.items[it.i][0] // We're only iterating over keys.
+	if it.i < len(it.keys) {
+		*p = it.keys[it.i]
 		it.i++
 		return true
 	}

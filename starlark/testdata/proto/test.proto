@@ -1,3 +1,11 @@
+// This proto schema is used for tests in proto.star.
+// Re-generate the binary FileDescriptorSet file by
+// running:
+//
+//   % protoc --descriptor_set_out=test.fds test.proto
+//
+// (Requires the "protobuf" brew/apt package, see
+// https://protobuf.dev/installation/)
 syntax = "proto3";
 
 package go.starlark.net.testdata;
