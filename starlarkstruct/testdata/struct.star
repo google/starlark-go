@@ -62,6 +62,12 @@ assert.fails(lambda : alice + 1, "struct \\+ int")
 assert.eq(http + http, http)
 assert.fails(lambda : http + bob, "different constructors: hostport \\+ person")
 
+# Test that adding structs with overlapping fields fails for the default "struct" constructor (Bazel behavior)
+assert.fails(lambda : struct(foo = "bar") + struct(foo = "baz"), "common field 'foo'")
+assert.fails(lambda : struct(foo = "bar") + struct(foo = "bar"), "common field 'foo'")
+# But for other constructors, the existing behavior is maintained
+assert.eq(person(name = "bob", age = 50) + person(name = "alice", city = "NYC"), person(age = 50, city = "NYC", name = "alice"))
+
 # Check that a struct with a circular reference doesn't crash when it gets frozen.
 def struct_with_a_circular_reference():
     foo = lambda: print(self)

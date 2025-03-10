@@ -195,6 +195,32 @@ func (x *Struct) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (
 				x.constructor, y.constructor)
 		}
 
+		// Special case: if the structs are equal, just return one of them
+		if eq, err := structsEqual(x, y, 1); err == nil && eq {
+			return x, nil
+		}
+
+		// Check for overlapping fields only for the default "struct" constructor (Bazel behavior)
+		// For other constructors, maintain the existing behavior
+		isDefaultConstructor := false
+		if str, ok := x.constructor.(starlark.String); ok && str == Default {
+			isDefaultConstructor = true
+		}
+
+		if isDefaultConstructor {
+			// For the default "struct" constructor, check for overlapping fields
+			xFields := make(map[string]bool, x.len())
+			for _, e := range x.entries {
+				xFields[e.name] = true
+			}
+
+			for _, e := range y.entries {
+				if xFields[e.name] {
+					return nil, fmt.Errorf("cannot add struct instances with common field '%s'", e.name)
+				}
+			}
+		}
+
 		z := make(starlark.StringDict, x.len()+y.len())
 		for _, e := range x.entries {
 			z[e.name] = e.value
