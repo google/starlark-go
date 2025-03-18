@@ -939,10 +939,12 @@ func (rf *RepeatedField) AttrNames() []string {
 }
 
 func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
-	if name != "append" {
+	switch name {
+	case "append":
+		return starlark.NewBuiltin("append", repeatedFieldAppend).BindReceiver(rf), nil
+	default:
 		return nil, nil
 	}
-	return starlark.NewBuiltin("append", repeatedFieldAppend).BindReceiver(rf), nil
 }
 
 func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -1168,8 +1170,8 @@ func (mf *MapField) Items() []starlark.Tuple {
 	// either TotallyOrdered or Comparable. None of these return errors when
 	// compared to the same type.
 	//
-    // Other key types are rejected, but only when an individual entry is
-    // accessed (as this is the only place with error reporting).
+	// Other key types are rejected, but only when an individual entry is
+	// accessed (as this is the only place with error reporting).
 	sort.Slice(out, func(i, j int) bool {
 		less, _ := starlark.Compare(syntax.LT, out[i][0], out[j][0])
 		return less
@@ -1204,7 +1206,7 @@ type mapFieldIterator struct {
 	mf *MapField
 
 	keys []starlark.Value
-	i     int
+	i    int
 }
 
 func (it *mapFieldIterator) Next(p *starlark.Value) bool {
