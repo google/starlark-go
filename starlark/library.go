@@ -2185,16 +2185,17 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &elem); err != nil {
 		return nil, err
 	}
-	if found, err := b.Receiver().(*Set).Has(elem); err != nil {
+	recv := b.Receiver().(*Set)
+	// It is always an error to attempt to mutate a set that cannot be mutated
+	if err := recv.ht.checkMutable("insert into"); err != nil {
+		return nil, nameErr(b, err)
+	}
+	if found, err := recv.Has(elem); err != nil {
 		return nil, nameErr(b, err)
 	} else if found {
-		// It is always an error to attempt to mutate a set that cannot be mutated
-		if err := b.Receiver().(*Set).ht.checkMutable("insert into"); err != nil {
-			return nil, nameErr(b, err)
-		}
 		return None, nil
 	}
-	err := b.Receiver().(*Set).Insert(elem)
+	err := recv.Insert(elem)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
@@ -2282,16 +2283,17 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
 		return nil, err
 	}
-	if found, err := b.Receiver().(*Set).Has(k); err != nil {
+	recv := b.Receiver().(*Set)
+	// It is always an error to attempt to mutate a set that cannot be mutated
+	if err := recv.ht.checkMutable("delete from"); err != nil {
+		return nil, nameErr(b, err)
+	}
+	if found, err := recv.Has(k); err != nil {
 		return nil, nameErr(b, err)
 	} else if !found {
-		// It is always an error to attempt to mutate a set that cannot be mutated
-		if err := b.Receiver().(*Set).ht.checkMutable("delete from"); err != nil {
-			return nil, nameErr(b, err)
-		}
 		return None, nil
 	}
-	if _, err := b.Receiver().(*Set).Delete(k); err != nil {
+	if _, err := recv.Delete(k); err != nil {
 		return nil, nameErr(b, err) // set is frozen
 	}
 	return None, nil
