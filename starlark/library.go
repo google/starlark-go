@@ -140,18 +140,22 @@ var (
 	}
 
 	setMethods = map[string]*Builtin{
-		"add":                  NewBuiltin("add", set_add),
-		"clear":                NewBuiltin("clear", set_clear),
-		"difference":           NewBuiltin("difference", set_difference),
-		"discard":              NewBuiltin("discard", set_discard),
-		"intersection":         NewBuiltin("intersection", set_intersection),
-		"issubset":             NewBuiltin("issubset", set_issubset),
-		"issuperset":           NewBuiltin("issuperset", set_issuperset),
-		"pop":                  NewBuiltin("pop", set_pop),
-		"remove":               NewBuiltin("remove", set_remove),
-		"symmetric_difference": NewBuiltin("symmetric_difference", set_symmetric_difference),
-		"union":                NewBuiltin("union", set_union),
-		"update":               NewBuiltin("update", set_update),
+		"add":                         NewBuiltin("add", set_add),
+		"clear":                       NewBuiltin("clear", set_clear),
+		"difference":                  NewBuiltin("difference", set_difference),
+		"difference_update":           NewBuiltin("difference_update", set_difference_update),
+		"discard":                     NewBuiltin("discard", set_discard),
+		"intersection":                NewBuiltin("intersection", set_intersection),
+		"intersection_update":         NewBuiltin("intersection_update", set_intersection_update),
+		"isdisjoint":                  NewBuiltin("isdisjoint", set_isdisjoint),
+		"issubset":                    NewBuiltin("issubset", set_issubset),
+		"issuperset":                  NewBuiltin("issuperset", set_issuperset),
+		"pop":                         NewBuiltin("pop", set_pop),
+		"remove":                      NewBuiltin("remove", set_remove),
+		"symmetric_difference":        NewBuiltin("symmetric_difference", set_symmetric_difference),
+		"symmetric_difference_update": NewBuiltin("symmetric_difference_update", set_symmetric_difference_update),
+		"union":                       NewBuiltin("union", set_union),
+		"update":                      NewBuiltin("update", set_update),
 	}
 )
 
@@ -2218,34 +2222,89 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·difference.
 func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	// TODO: support multiple others: s.difference(*others)
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
-		return nil, err
-	}
-	iter := other.Iterate()
-	defer iter.Done()
-	diff, err := b.Receiver().(*Set).Difference(iter)
-	if err != nil {
+	accum := b.Receiver().(*Set).clone()
+	if err := forIterableArgsDo(accum.DifferenceUpdate, args, kwargs); err != nil {
 		return nil, nameErr(b, err)
 	}
-	return diff, nil
+	return accum, nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·difference_update.
+func set_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	recv := b.Receiver().(*Set)
+	if err := recv.ht.checkMutable("delete from"); err != nil {
+		// even if args is empty
+		return nil, nameErr(b, err)
+	}
+	if err := forIterableArgsDo(recv.DifferenceUpdate, args, kwargs); err != nil {
+		return nil, nameErr(b, err)
+	}
+	return None, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection.
 func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	// TODO: support multiple others: s.difference(*others)
+	accum := b.Receiver().(*Set).clone()
+	// TODO: use an intersection primitive that preserves lhs iteration order
+	operation := func(other Iterator) error {
+		result, error := accum.Intersection(other)
+		if error != nil {
+			return error
+		}
+		accum = result.(*Set)
+		return nil
+	}
+	if err := forIterableArgsDo(operation, args, kwargs); err != nil {
+		return nil, nameErr(b, err)
+	}
+	return accum, nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection_update.
+func set_intersection_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	recv := b.Receiver().(*Set)
+	if err := recv.ht.checkMutable("delete from"); err != nil {
+		// even if args is empty
+		return nil, nameErr(b, err)
+	}
+	var accum *Set = nil
+	// TODO: use an intersection primitive that preserves lhs iteration order
+	operation := func(other Iterator) error {
+		if accum == nil {
+			accum = recv
+		}
+		result, error := accum.Intersection(other)
+		if error != nil {
+			return error
+		}
+		accum = result.(*Set)
+		return nil
+	}
+	if err := forIterableArgsDo(operation, args, kwargs); err != nil {
+		return nil, nameErr(b, err)
+	}
+	if accum != nil {
+		recv.Clear()
+		accumIter := accum.Iterate()
+		defer accumIter.Done()
+		recv.InsertAll(accumIter)
+	}
+	return None, nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set_isdisjoint.
+func set_isdisjoint(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
 	defer iter.Done()
-	diff, err := b.Receiver().(*Set).Intersection(iter)
+	diff, err := b.Receiver().(*Set).IsDisjoint(iter)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
-	return diff, nil
+	return Bool(diff), nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issubset.
@@ -2335,7 +2394,7 @@ func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·symmetric_difference.
 func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2347,18 +2406,38 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 	return diff, nil
 }
 
-// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
-func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	receiverSet := b.Receiver().(*Set).clone()
-	if err := setUpdate(receiverSet, args, kwargs); err != nil {
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·symmetric_difference_update.
+func set_symmetric_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var other Iterable
+	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &other); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*Set)
+	iter := other.Iterate()
+	defer iter.Done()
+	if err := recv.symmetricDifferenceUpdate(recv.clone(), iter); err != nil {
 		return nil, nameErr(b, err)
 	}
-	return receiverSet, nil
+	return None, nil
+}
+
+// https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
+func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	accum := b.Receiver().(*Set).clone()
+	if err := forIterableArgsDo(accum.InsertAll, args, kwargs); err != nil {
+		return nil, nameErr(b, err)
+	}
+	return accum, nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·update.
 func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := setUpdate(b.Receiver().(*Set), args, kwargs); err != nil {
+	recv := b.Receiver().(*Set)
+	if err := recv.ht.checkMutable("insert into"); err != nil {
+		// even if args is empty
+		return nil, nameErr(b, err)
+	}
+	if err := forIterableArgsDo(recv.InsertAll, args, kwargs); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2463,20 +2542,24 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	return nil
 }
 
-func setUpdate(s *Set, args Tuple, kwargs []Tuple) error {
+// forIterableArgsDo is a helper for implementing methods which perform the
+// same operation on an iteratover over each iterable argument, and don't
+// allow keyword arguments - for example, set.update(*others),
+// set.union(*others), etc.
+func forIterableArgsDo(operation func(other Iterator) error, args Tuple, kwargs []Tuple) error {
 	if len(kwargs) > 0 {
-		return errors.New("does not accept keyword arguments")
+		return fmt.Errorf("unexpected keyword arguments")
 	}
 
 	for i, arg := range args {
-		iterable, ok := arg.(Iterable)
+		other, ok := arg.(Iterable)
 		if !ok {
-			return fmt.Errorf("argument #%d is not iterable: %s", i+1, arg.Type())
+			return fmt.Errorf("for parameter %d: got %s, want iterable", i+1, arg.Type())
 		}
 		if err := func() error {
-			iter := iterable.Iterate()
+			iter := other.Iterate()
 			defer iter.Done()
-			return s.InsertAll(iter)
+			return operation(iter)
 		}(); err != nil {
 			return err
 		}

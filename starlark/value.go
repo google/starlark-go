@@ -1221,20 +1221,18 @@ func (s *Set) clone() *Set {
 	return set
 }
 
-func (s *Set) Union(iter Iterator) (Value, error) {
+func (s *Set) Union(other Iterator) (Value, error) {
 	set := s.clone()
-	var x Value
-	for iter.Next(&x) {
-		if err := set.Insert(x); err != nil {
-			return nil, err
-		}
+	if err := set.InsertAll(other); err != nil {
+		return nil, err
 	}
 	return set, nil
 }
 
-func (s *Set) InsertAll(iter Iterator) error {
+// TODO: rename to Update()
+func (s *Set) InsertAll(other Iterator) error {
 	var x Value
-	for iter.Next(&x) {
+	for other.Next(&x) {
 		if err := s.Insert(x); err != nil {
 			return err
 		}
@@ -1243,14 +1241,35 @@ func (s *Set) InsertAll(iter Iterator) error {
 }
 
 func (s *Set) Difference(other Iterator) (Value, error) {
-	diff := s.clone()
+	set := s.clone()
+	if err := set.DifferenceUpdate(other); err != nil {
+		return nil, err
+	}
+	return set, nil
+}
+
+func (s *Set) DifferenceUpdate(other Iterator) error {
 	var x Value
 	for other.Next(&x) {
-		if _, err := diff.Delete(x); err != nil {
-			return nil, err
+		if _, err := s.Delete(x); err != nil {
+			return err
 		}
 	}
-	return diff, nil
+	return nil
+}
+
+func (s *Set) IsDisjoint(other Iterator) (bool, error) {
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return false, err
+		}
+		if found {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (s *Set) IsSuperset(other Iterator) (bool, error) {
@@ -1275,7 +1294,10 @@ func (s *Set) IsSubset(other Iterator) (bool, error) {
 	}
 }
 
+// Warning: the resulting set has the iteration order of other.
 func (s *Set) Intersection(other Iterator) (Value, error) {
+	// TODO: add an intersection primitive that preserves the receiver's iteration order
+	// and modifies the receiver's hashtable in place, akin to java's retainAll.
 	intersect := new(Set)
 	var x Value
 	for other.Next(&x) {
@@ -1295,17 +1317,33 @@ func (s *Set) Intersection(other Iterator) (Value, error) {
 
 func (s *Set) SymmetricDifference(other Iterator) (Value, error) {
 	diff := s.clone()
-	var x Value
-	for other.Next(&x) {
-		found, err := diff.Delete(x)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			diff.Insert(x)
-		}
+	if err := diff.symmetricDifferenceUpdate(s, other); err != nil {
+		return nil, err
 	}
 	return diff, nil
+}
+
+// s and sReadonlyCopy must contain the same elements; s will be modified,
+// while sReadonlyCopy is only read.
+func (s *Set) symmetricDifferenceUpdate(sReadonlyCopy *Set, other Iterator) error {
+	var x Value
+	for other.Next(&x) {
+		found, err := sReadonlyCopy.Has(x)
+		if err != nil {
+			return err
+		}
+		if found {
+			_, err := s.Delete(x)
+			if err != nil {
+				return err
+			}
+		} else {
+			if err := s.Insert(x); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // toString returns the string form of value v.
