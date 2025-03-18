@@ -2185,12 +2185,18 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &elem); err != nil {
 		return nil, err
 	}
-	if found, err := b.Receiver().(*Set).Has(elem); err != nil {
+	recv := b.Receiver().(*Set)
+	// It is always an error to attempt to mutate a set that cannot be mutated
+	if err := recv.ht.checkMutable("insert into"); err != nil {
+		return nil, nameErr(b, err)
+	}
+	// TODO(adonovan): opt: combine Has+Insert. (e.g. use Insert and re-check Len)
+	if found, err := recv.Has(elem); err != nil {
 		return nil, nameErr(b, err)
 	} else if found {
 		return None, nil
 	}
-	err := b.Receiver().(*Set).Insert(elem)
+	err := recv.Insert(elem)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
@@ -2278,12 +2284,18 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
 		return nil, err
 	}
-	if found, err := b.Receiver().(*Set).Has(k); err != nil {
+	recv := b.Receiver().(*Set)
+	// It is always an error to attempt to mutate a set that cannot be mutated
+	if err := recv.ht.checkMutable("delete from"); err != nil {
+		return nil, nameErr(b, err)
+	}
+	// TODO(adonovan): opt: combine Has+Delete (e.g. use Delete and re-check Len)
+	if found, err := recv.Has(k); err != nil {
 		return nil, nameErr(b, err)
 	} else if !found {
 		return None, nil
 	}
-	if _, err := b.Receiver().(*Set).Delete(k); err != nil {
+	if _, err := recv.Delete(k); err != nil {
 		return nil, nameErr(b, err) // set is frozen
 	}
 	return None, nil
