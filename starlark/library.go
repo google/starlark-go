@@ -2190,6 +2190,7 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	if err := recv.ht.checkMutable("insert into"); err != nil {
 		return nil, nameErr(b, err)
 	}
+	// TODO(adonovan): opt: combine Has+Insert. (e.g. use Insert and re-check Len)
 	if found, err := recv.Has(elem); err != nil {
 		return nil, nameErr(b, err)
 	} else if found {
@@ -2288,6 +2289,7 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	if err := recv.ht.checkMutable("delete from"); err != nil {
 		return nil, nameErr(b, err)
 	}
+	// TODO(adonovan): opt: combine Has+Delete (e.g. use Delete and re-check Len)
 	if found, err := recv.Has(k); err != nil {
 		return nil, nameErr(b, err)
 	} else if !found {
