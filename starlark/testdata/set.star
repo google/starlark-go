@@ -207,8 +207,15 @@ assert.fails(lambda : x[0], "unhandled.*operation")
 add_set = set([1,2,3])
 add_set.add(4)
 assert.true(4 in add_set)
-freeze(add_set) # no mutation of frozen set because key already present
-add_set.add(4)
+add_set.add(1)
+assert.eq(list(add_set), [1, 2, 3, 4]) # adding existing element is a no-op and doesn't change iteration order
+assert.fails(lambda: add_set.add([5]), "add: unhashable type: list")
+def add_during_iteration(s, v):
+    for _ in s:
+        s.add(v)
+assert.fails(lambda: add_during_iteration(add_set, 4), "add: cannot insert into hash table during iteration")
+freeze(add_set)
+assert.fails(lambda: add_set.add(4), "add: cannot insert into frozen hash table") # even a no-op mutation on a frozen set is an error
 assert.fails(lambda: add_set.add(5), "add: cannot insert into frozen hash table")
 
 # remove
@@ -224,8 +231,13 @@ discard_set = set([1,2,3])
 discard_set.discard(3)
 assert.true(3 not in discard_set)
 assert.eq(discard_set.discard(3), None)
+assert.fails(lambda: discard_set.discard([5]), "discard: unhashable type: list")
+def discard_during_iteration(s, v):
+    for _ in s:
+        s.discard(v)
+assert.fails(lambda: discard_during_iteration(discard_set, 2), "discard: cannot delete from hash table during iteration")
 freeze(discard_set)
-assert.eq(discard_set.discard(3), None)  # no mutation of frozen set because key doesn't exist
+assert.fails(lambda: discard_set.discard(3), "discard: cannot delete from frozen hash table") # even a no-op mutation on a frozen set is an error
 assert.fails(lambda: discard_set.discard(1), "discard: cannot delete from frozen hash table")
 
 # update

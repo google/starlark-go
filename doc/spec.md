@@ -3627,10 +3627,13 @@ x.remove(2)                             # error: element not found
 <a id='set·add'></a>
 ### set·add
 
-If `x` is not an element of set `S`, `S.add(x)` adds it to the set or fails if the set is frozen.
-If `x` already an element of the set, `add(x)` has no effect.
+`S.add(x)` adds the value `x` to the set `S`. It returns `None`.
 
-It returns None.
+It is permissible to `add` a value already present in the set; this leaves the
+set `S` unchanged.
+
+`add` fails if the set `S` is frozen or has active iterators, or if `x` is
+unhashable.
 
 ```python
 x = set([1, 2])
@@ -3668,10 +3671,14 @@ x.difference([3, 4, 5])                   # set([1, 2])
 <a id='set·discard'></a>
 ### set·discard
 
-If `x` is an element of set `S`, `S.discard(x)` removes `x` from the set, or fails if the
-set is frozen. If `x` is not an element of the set, discard has no effect.
+`S.discard(x)` removes the value `x` from the set `S` if present. It returns
+`None`.
 
-It returns None.
+It is permissible to `discard` a value not present in the set; this leaves the
+set `S` unchanged.
+
+`discard` fails if the set `S` is frozen or has active iterators, or if `x` is
+unhashable. This applies even if `x` is not a member of the set.
 
 ```python
 x = set([1, 2, 3])
