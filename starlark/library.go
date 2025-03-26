@@ -2223,7 +2223,7 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·difference.
 func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
-	if err := forIterableArgsDo(accum.DifferenceUpdate, args, kwargs); err != nil {
+	if err := forIterableArgsDo(args, kwargs, accum.DifferenceUpdate); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2236,7 +2236,7 @@ func set_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (V
 		// even if args is empty
 		return nil, nameErr(b, err)
 	}
-	if err := forIterableArgsDo(recv.DifferenceUpdate, args, kwargs); err != nil {
+	if err := forIterableArgsDo(args, kwargs, recv.DifferenceUpdate); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2246,15 +2246,14 @@ func set_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (V
 func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
 	// TODO: use an intersection primitive that preserves lhs iteration order
-	operation := func(other Iterator) error {
+	if err := forIterableArgsDo(args, kwargs, func(other Iterator) error {
 		result, error := accum.Intersection(other)
 		if error != nil {
 			return error
 		}
 		accum = result.(*Set)
 		return nil
-	}
-	if err := forIterableArgsDo(operation, args, kwargs); err != nil {
+	}); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2269,7 +2268,7 @@ func set_intersection_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) 
 	}
 	var accum *Set = nil
 	// TODO: use an intersection primitive that preserves lhs iteration order
-	operation := func(other Iterator) error {
+	if err := forIterableArgsDo(args, kwargs, func(other Iterator) error {
 		if accum == nil {
 			accum = recv
 		}
@@ -2279,8 +2278,7 @@ func set_intersection_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) 
 		}
 		accum = result.(*Set)
 		return nil
-	}
-	if err := forIterableArgsDo(operation, args, kwargs); err != nil {
+	}); err != nil {
 		return nil, nameErr(b, err)
 	}
 	if accum != nil {
@@ -2424,7 +2422,7 @@ func set_symmetric_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs [
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
 func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
-	if err := forIterableArgsDo(accum.InsertAll, args, kwargs); err != nil {
+	if err := forIterableArgsDo(args, kwargs, accum.InsertAll); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2437,7 +2435,7 @@ func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 		// even if args is empty
 		return nil, nameErr(b, err)
 	}
-	if err := forIterableArgsDo(recv.InsertAll, args, kwargs); err != nil {
+	if err := forIterableArgsDo(args, kwargs, recv.InsertAll); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2543,10 +2541,9 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 }
 
 // forIterableArgsDo is a helper for implementing methods which perform the
-// same operation on an iteratover over each iterable argument, and don't
-// allow keyword arguments - for example, set.update(*others),
-// set.union(*others), etc.
-func forIterableArgsDo(operation func(other Iterator) error, args Tuple, kwargs []Tuple) error {
+// same operation on an iterator over each iterable argument, and don't allow
+// keyword arguments: set.update(*others), set.union(*others), etc.
+func forIterableArgsDo(args Tuple, kwargs []Tuple, operation func(other Iterator) error) error {
 	if len(kwargs) > 0 {
 		return fmt.Errorf("unexpected keyword arguments")
 	}
