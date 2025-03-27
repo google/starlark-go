@@ -2223,7 +2223,7 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·difference.
 func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
-	if err := forIterableArgsDo(args, kwargs, accum.DifferenceUpdate); err != nil {
+	if err := forIterableArgsIterateAndDo(args, kwargs, accum.DifferenceUpdate); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2236,7 +2236,7 @@ func set_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (V
 		// even if args is empty
 		return nil, nameErr(b, err)
 	}
-	if err := forIterableArgsDo(args, kwargs, recv.DifferenceUpdate); err != nil {
+	if err := forIterableArgsIterateAndDo(args, kwargs, recv.DifferenceUpdate); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2245,15 +2245,7 @@ func set_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (V
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection.
 func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
-	// TODO: use an intersection primitive that preserves lhs iteration order
-	if err := forIterableArgsDo(args, kwargs, func(other Iterator) error {
-		result, error := accum.Intersection(other)
-		if error != nil {
-			return error
-		}
-		accum = result.(*Set)
-		return nil
-	}); err != nil {
+	if err := forIterableArgsDo(args, kwargs, accum.IntersectionUpdate); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2266,26 +2258,8 @@ func set_intersection_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) 
 		// even if args is empty
 		return nil, nameErr(b, err)
 	}
-	var accum *Set = nil
-	// TODO: use an intersection primitive that preserves lhs iteration order
-	if err := forIterableArgsDo(args, kwargs, func(other Iterator) error {
-		if accum == nil {
-			accum = recv
-		}
-		result, error := accum.Intersection(other)
-		if error != nil {
-			return error
-		}
-		accum = result.(*Set)
-		return nil
-	}); err != nil {
+	if err := forIterableArgsDo(args, kwargs, recv.IntersectionUpdate); err != nil {
 		return nil, nameErr(b, err)
-	}
-	if accum != nil {
-		recv.Clear()
-		accumIter := accum.Iterate()
-		defer accumIter.Done()
-		recv.InsertAll(accumIter)
 	}
 	return None, nil
 }
@@ -2395,9 +2369,7 @@ func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple)
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
-	iter := other.Iterate()
-	defer iter.Done()
-	diff, err := b.Receiver().(*Set).SymmetricDifference(iter)
+	diff, err := b.Receiver().(*Set).SymmetricDifference(other)
 	if err != nil {
 		return nil, nameErr(b, err)
 	}
@@ -2410,10 +2382,7 @@ func set_symmetric_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs [
 	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
-	recv := b.Receiver().(*Set)
-	iter := other.Iterate()
-	defer iter.Done()
-	if err := recv.symmetricDifferenceUpdate(recv.clone(), iter); err != nil {
+	if err := b.Receiver().(*Set).SymmetricDifferenceUpdate(other); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2422,7 +2391,7 @@ func set_symmetric_difference_update(_ *Thread, b *Builtin, args Tuple, kwargs [
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·union.
 func set_union(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	accum := b.Receiver().(*Set).clone()
-	if err := forIterableArgsDo(args, kwargs, accum.InsertAll); err != nil {
+	if err := forIterableArgsIterateAndDo(args, kwargs, accum.Update); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return accum, nil
@@ -2435,7 +2404,7 @@ func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 		// even if args is empty
 		return nil, nameErr(b, err)
 	}
-	if err := forIterableArgsDo(args, kwargs, recv.InsertAll); err != nil {
+	if err := forIterableArgsIterateAndDo(args, kwargs, recv.Update); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2540,10 +2509,10 @@ func updateDict(dict *Dict, updates Tuple, kwargs []Tuple) error {
 	return nil
 }
 
-// forIterableArgsDo is a helper for implementing methods which perform the
+// forIterableArgsIterateAndDo is a helper for implementing methods which perform the
 // same operation on an iterator over each iterable argument, and don't allow
 // keyword arguments: set.update(*others), set.union(*others), etc.
-func forIterableArgsDo(args Tuple, kwargs []Tuple, operation func(other Iterator) error) error {
+func forIterableArgsIterateAndDo(args Tuple, kwargs []Tuple, operation func(other Iterator) error) error {
 	if len(kwargs) > 0 {
 		return fmt.Errorf("unexpected keyword arguments")
 	}
@@ -2558,6 +2527,27 @@ func forIterableArgsDo(args Tuple, kwargs []Tuple, operation func(other Iterator
 			defer iter.Done()
 			return operation(iter)
 		}(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// forIterableArgsIterateAndDo is a helper for implementing methods which perform the
+// same operation on an iterator over each iterable argument, and don't allow
+// keyword arguments: set.update(*others), set.union(*others), etc.
+func forIterableArgsDo(args Tuple, kwargs []Tuple, operation func(other Iterable) error) error {
+	if len(kwargs) > 0 {
+		return fmt.Errorf("unexpected keyword arguments")
+	}
+
+	for i, arg := range args {
+		other, ok := arg.(Iterable)
+		if !ok {
+			return fmt.Errorf("for parameter %d: got %s, want iterable", i+1, arg.Type())
+		}
+		if err := operation(other); err != nil {
 			return err
 		}
 	}

@@ -152,36 +152,39 @@ def test_update_no_arg():
 test_update_no_arg()
 
 # intersection, set & set or set.intersection(*iterables)
-assert.eq(list(set("a".elems()) & set("b".elems())), [])
-assert.eq(list(set("ab".elems()) & set("bc".elems())), ["b"])
+assert.eq(list(set("abc".elems()) & set("def".elems())), [])
+assert.eq(list(set("abc".elems()) & set()), [])
+assert.eq(list(set() & set("def".elems())), [])
+assert.eq(list(set("abc".elems()) & set("dcb".elems())), ["b", "c"]) # preserves lhs iteration order
 assert.eq(list(set("a".elems()).intersection("b".elems())), [])
 assert.eq(list(set("ab".elems()).intersection("bc".elems())), ["b"])
-assert.eq(set([1, 2, 3]).intersection([2, 3, 4, 2, 3, 4]), set([2, 3]))
-assert.eq(set([1, 2, 3]).intersection([2, 3], {3: "three", 4: "four"}), set([3]))
+assert.eq(list(set([1, 2, 3]).intersection([2, 3, 4, 2, 3, 4])), [2, 3]) # handles duplicates in rhs
+assert.eq(list(set([1, 2, 3]).intersection([2, 3], {3: "three", 4: "four"})), [3])
+assert.eq(list(set([1, 2, 3]).intersection([4, 3, 2])), [2, 3]) # preserves lhs iteration order
 assert.fails(lambda: set([1, 2]).intersection([[3]]), "intersection: unhashable type: list")
 
 # intersection_update(*iterables)
 intersection_update_set = set([1, 2, 3])
 assert.eq(intersection_update_set.intersection_update(), None)  # no-op
-assert.eq(intersection_update_set, set([1, 2, 3]))  # unchanged
-assert.eq(intersection_update_set.intersection_update([2, 3, 4]), None)
-assert.eq(intersection_update_set, set([2, 3]))
+assert.eq(list(intersection_update_set), [1, 2, 3])  # unchanged
+assert.eq(intersection_update_set.intersection_update([4, 3, 2]), None)
+assert.eq(list(intersection_update_set), [2, 3])  # iteration order unchanged
 assert.eq(intersection_update_set.intersection_update([2, 3, 4, 2, 3, 4]), None)
-assert.eq(intersection_update_set, set([2, 3]))
+assert.eq(list(intersection_update_set), [2, 3]) # handles duplicates in rhs
 assert.eq(intersection_update_set.intersection_update([2, 3], {3: "three", 4: "four"}), None)
-assert.eq(intersection_update_set, set([3]))
+assert.eq(list(intersection_update_set), [3])
 assert.fails(lambda: intersection_update_set.intersection_update(3), "intersection_update: for parameter 1: got int, want iterable")
 freeze(intersection_update_set)
 assert.fails(lambda: intersection_update_set.intersection_update([1]), "intersection_update: cannot delete from frozen hash table")
 assert.fails(lambda: intersection_update_set.intersection_update(), "intersection_update: cannot delete from frozen hash table")
 
 # symmetric difference, set ^ set or set.symmetric_difference(*iterables)
-assert.eq(set([1, 2, 3]) ^ set([4, 5, 3]), set([1, 2, 4, 5]))
-assert.eq(set([1, 2, 3, 4]).symmetric_difference([3, 4, 5, 6]), set([1, 2, 5, 6]))
-assert.eq(set([1, 2, 3, 4]).symmetric_difference(set([])), set([1, 2, 3, 4]))
-assert.eq(set([1, 2, 3]).symmetric_difference([2, 3, 4]), set([1, 4]))
-assert.eq(set([1, 2, 3]).symmetric_difference([2, 3, 4, 2, 3, 4]), set([1, 4]))
-assert.eq(set([1, 2, 3]).symmetric_difference({0: "zero", 1: "one"}), set([2, 3, 0]))
+assert.eq(list(set([1, 2, 3]) ^ set([4, 5, 3])), [1, 2, 4, 5])
+assert.eq(list(set([1, 2, 3, 4]).symmetric_difference([3, 4, 5, 6])), [1, 2, 5, 6])
+assert.eq(list(set([1, 2, 3, 4]).symmetric_difference(set([]))), [1, 2, 3, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference([2, 3, 4])), [1, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference([2, 3, 4, 2, 3, 4])), [1, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference({0: "zero", 1: "one"})), [2, 3, 0])
 assert.fails(lambda: set([1, 2]).symmetric_difference(2), "symmetric_difference: for parameter 1: got int, want iterable")
 assert.fails(lambda: set([1, 2]).symmetric_difference([1], [2]), "symmetric_difference: got 2 arguments, want 1")
 assert.fails(lambda: set([1, 2]).symmetric_difference(), "symmetric_difference: got 0 arguments, want 1")

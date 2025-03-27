@@ -1113,9 +1113,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // intersection
 			if y, ok := y.(*Set); ok {
-				iter := y.Iterate()
-				defer iter.Done()
-				return x.Intersection(iter)
+				return x.IntersectIterable(y)
 			}
 		}
 
@@ -1127,9 +1125,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			}
 		case *Set: // symmetric difference
 			if y, ok := y.(*Set); ok {
-				iter := y.Iterate()
-				defer iter.Done()
-				return x.SymmetricDifference(iter)
+				return x.SymmetricDifference(y)
 			}
 		}
 

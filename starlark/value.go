@@ -1229,8 +1229,7 @@ func (s *Set) Union(other Iterator) (Value, error) {
 	return set, nil
 }
 
-// TODO: rename to Update()
-func (s *Set) InsertAll(other Iterator) error {
+func (s *Set) Update(other Iterator) error {
 	var x Value
 	for other.Next(&x) {
 		if err := s.Insert(x); err != nil {
@@ -1238,6 +1237,13 @@ func (s *Set) InsertAll(other Iterator) error {
 		}
 	}
 	return nil
+}
+
+// Deprecated: use Update
+//
+//go:fix inline
+func (s *Set) InsertAll(other Iterator) error {
+	return s.Update(other)
 }
 
 func (s *Set) Difference(other Iterator) (Value, error) {
@@ -1294,14 +1300,28 @@ func (s *Set) IsSubset(other Iterator) (bool, error) {
 	}
 }
 
-// Warning: the resulting set has the iteration order of other.
+// Deprecated: use IntersectIterable
+//
+//go:fix inline
 func (s *Set) Intersection(other Iterator) (Value, error) {
-	// TODO: add an intersection primitive that preserves the receiver's iteration order
-	// and modifies the receiver's hashtable in place, akin to java's retainAll.
+	otherSet, err := setFromIterator(other)
+	if err != nil {
+		return nil, err
+	}
+	return s.IntersectIterable(otherSet)
+}
+
+func (s *Set) IntersectIterable(other Iterable) (Value, error) {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return nil, err
+	}
 	intersect := new(Set)
 	var x Value
-	for other.Next(&x) {
-		found, err := s.Has(x)
+	iter := s.Iterate()
+	defer iter.Done()
+	for iter.Next(&x) {
+		_, found, err := dedup.lookup(x)
 		if err != nil {
 			return nil, err
 		}
@@ -1315,20 +1335,51 @@ func (s *Set) Intersection(other Iterator) (Value, error) {
 	return intersect, nil
 }
 
-func (s *Set) SymmetricDifference(other Iterator) (Value, error) {
+func (s *Set) IntersectionUpdate(other Iterable) error {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return err
+	}
+	// We (unsafely) manually iterate entries of s's hash table and for each entry, decide whether or not to delete it. Normal iteration doesn't allow deletion.
+	s.ht.checkMutable("delete from")
+	entry := s.ht.head
+	for entry != nil {
+		// Save next pointer, because s.Delete() may mutate entry.next
+		next := entry.next
+		value := entry.key
+		_, found, err := dedup.lookup(value)
+		if err != nil {
+			return err
+		}
+		if !found {
+			_, err := s.Delete(value)
+			if err != nil {
+				return err
+			}
+		}
+		entry = next
+	}
+	return nil
+}
+
+func (s *Set) SymmetricDifference(other Iterable) (Value, error) {
 	diff := s.clone()
-	if err := diff.symmetricDifferenceUpdate(s, other); err != nil {
+	if err := diff.SymmetricDifferenceUpdate(other); err != nil {
 		return nil, err
 	}
 	return diff, nil
 }
 
-// s and sReadonlyCopy must contain the same elements; s will be modified,
-// while sReadonlyCopy is only read.
-func (s *Set) symmetricDifferenceUpdate(sReadonlyCopy *Set, other Iterator) error {
+func (s *Set) SymmetricDifferenceUpdate(other Iterable) error {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return err
+	}
 	var x Value
-	for other.Next(&x) {
-		found, err := sReadonlyCopy.Has(x)
+	dedupIter := dedup.iterate()
+	defer dedupIter.Done()
+	for dedupIter.Next(&x) {
+		found, err := s.Has(x)
 		if err != nil {
 			return err
 		}
@@ -1344,6 +1395,23 @@ func (s *Set) symmetricDifferenceUpdate(sReadonlyCopy *Set, other Iterator) erro
 		}
 	}
 	return nil
+}
+
+func deduplicate(v Iterable) (*hashtable, error) {
+	switch v := v.(type) {
+	case *Set:
+		return &v.ht, nil
+	case *Dict:
+		return &v.ht, nil
+	default:
+		iter := v.Iterate()
+		defer iter.Done()
+		dedup, err := setFromIterator(iter)
+		if err != nil {
+			return nil, err
+		}
+		return &dedup.ht, nil
+	}
 }
 
 // toString returns the string form of value v.
