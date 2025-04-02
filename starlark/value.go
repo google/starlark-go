@@ -952,15 +952,32 @@ func (l *List) Len() int              { return len(l.elems) }
 func (l *List) Index(i int) Value     { return l.elems[i] }
 
 func (l *List) Slice(start, end, step int) Value {
+	// For slice operations, we don't need to check if the list is "mutable"
+	// since slice doesn't modify the original list. However, we need to
+	// increment the itercount to prevent other threads from modifying the list
+	// while we're iterating through it.
+	if !l.frozen {
+		l.itercount++
+		defer func() { l.itercount-- }()
+	}
+
+	// Create a defensive copy to safely access elements
+	elems := make([]Value, len(l.elems))
+	copy(elems, l.elems)
+
 	if step == 1 {
-		elems := append([]Value{}, l.elems[start:end]...)
-		return NewList(elems)
+		resultSlice := elems[start:end]
+		resultCopy := make([]Value, len(resultSlice))
+		copy(resultCopy, resultSlice)
+		return NewList(resultCopy)
 	}
 
 	sign := signum(step)
 	var list []Value
 	for i := start; signum(end-i) == sign; i += step {
-		list = append(list, l.elems[i])
+		if i < len(elems) { // Add bounds check for extra safety
+			list = append(list, elems[i])
+		}
 	}
 	return NewList(list)
 }
