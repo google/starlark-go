@@ -5,6 +5,7 @@
 package starlark
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -60,7 +61,7 @@ type Thread struct {
 	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
-	cancelReason *string
+	cancelReason error
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
@@ -92,6 +93,10 @@ func (thread *Thread) Uncancel() {
 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil)
 }
 
+var (
+	ErrExecutionCancelled = errors.New("Starlark computation cancelled")
+)
+
 // Cancel causes execution of Starlark code in the specified thread to
 // promptly fail with an EvalError that includes the specified reason.
 // There may be a delay before the interpreter observes the cancellation
@@ -102,8 +107,17 @@ func (thread *Thread) Uncancel() {
 // Unlike most methods of Thread, it is safe to call Cancel from any
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Cancel(reason string) {
+	heapErr := new(error)
+	*heapErr = fmt.Errorf("%w: %s", ErrExecutionCancelled, reason)
 	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(&reason))
+	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(heapErr))
+}
+
+func (thread *Thread) CancelWithError(err error) {
+	heapErr := new(error)
+	*heapErr = fmt.Errorf("%w: %w", ErrExecutionCancelled, err)
+	// Atomically set cancelReason, preserving earlier reason if any.
+	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(heapErr))
 }
 
 // SetLocal sets the thread-local value associated with the specified key.

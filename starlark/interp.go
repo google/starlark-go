@@ -105,8 +105,8 @@ loop:
 				thread.Cancel("too many steps")
 			}
 		}
-		if reason := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reason != nil {
-			err = fmt.Errorf("Starlark computation cancelled: %s", *(*string)(reason))
+		if reasonErr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reasonErr != nil {
+			err = *(*error)(reasonErr)
 			break loop
 		}
 
