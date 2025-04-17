@@ -119,7 +119,7 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...any) error {
 				continue
 			}
 		}
-		if err := unpackOneArg(arg, pairs[2*i+1]); err != nil {
+		if err := UnpackOneArg(arg, pairs[2*i+1]); err != nil {
 			return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 		}
 	}
@@ -144,7 +144,7 @@ kwloop:
 				}
 
 				ptr := pairs[2*i+1]
-				if err := unpackOneArg(arg, ptr); err != nil {
+				if err := UnpackOneArg(arg, ptr); err != nil {
 					return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 				}
 				continue kwloop
@@ -209,14 +209,24 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 		return fmt.Errorf("%s: got %d arguments, want %s%d", fnname, len(args), atmost, max)
 	}
 	for i, arg := range args {
-		if err := unpackOneArg(arg, vars[i]); err != nil {
+		if err := UnpackOneArg(arg, vars[i]); err != nil {
 			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
 		}
 	}
 	return nil
 }
 
-func unpackOneArg(v Value, ptr any) error {
+// UnpackOneArg unpacks a single argument, represented as a Value, into
+// the given target variable. The target must be a pointer to a supported
+// type, or implement the Unpacker interface (see UnpackArgs for more
+// details, including what types are supported).
+//
+// UnpackOneArg is used by both UnpackArgs and UnpackPositionalArgs to handle
+// the actual unpacking of individual arguments. It is exposed to facilitate
+// custom unpacking logic in user-defined types. Most users should use
+// UnpackArgs or UnpackPositionalArgs to implement unpacking of arguments
+// within a function or builtin implementation.
+func UnpackOneArg(v Value, ptr any) error {
 	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
 	case Unpacker:
