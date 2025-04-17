@@ -119,7 +119,7 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...any) error {
 				continue
 			}
 		}
-		if err := unpackOneArg(arg, pairs[2*i+1]); err != nil {
+		if err := UnpackArg(arg, pairs[2*i+1]); err != nil {
 			return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 		}
 	}
@@ -144,7 +144,7 @@ kwloop:
 				}
 
 				ptr := pairs[2*i+1]
-				if err := unpackOneArg(arg, ptr); err != nil {
+				if err := UnpackArg(arg, ptr); err != nil {
 					return fmt.Errorf("%s: for parameter %s: %s", fnname, name, err)
 				}
 				continue kwloop
@@ -209,14 +209,21 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 		return fmt.Errorf("%s: got %d arguments, want %s%d", fnname, len(args), atmost, max)
 	}
 	for i, arg := range args {
-		if err := unpackOneArg(arg, vars[i]); err != nil {
+		if err := UnpackArg(arg, vars[i]); err != nil {
 			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
 		}
 	}
 	return nil
 }
 
-func unpackOneArg(v Value, ptr any) error {
+// UnpackArg unpacks a Value v into the variable pointed to by ptr.
+// See [UnpackArgs] for details, including which types of variable are supported.
+//
+// This function defines the unpack operation for a single value.
+// The implementations of most built-in functions use [UnpackArgs] and
+// [UnpackPositionalArgs] to unpack a sequence of positional and/or
+// keyword arguments.
+func UnpackArg(v Value, ptr any) error {
 	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
 	case Unpacker:
