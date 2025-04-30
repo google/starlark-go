@@ -25,6 +25,13 @@ import (
 	"go.starlark.net/syntax"
 )
 
+var (
+	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
+	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
+	// to errors.Is(err, ErrCanceled).
+	ErrCanceled = errors.New("Starlark computation cancelled")
+)
+
 // A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
 // The Thread is threaded throughout the evaluator.
@@ -92,13 +99,6 @@ func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 func (thread *Thread) Uncancel() {
 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil)
 }
-
-var (
-	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
-	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
-	// to errors.Is(err, ErrCanceled).
-	ErrCanceled = errors.New("Starlark computation cancelled")
-)
 
 // Cancel causes execution of Starlark code in the specified thread to
 // promptly fail with an EvalError that includes the specified reason.
