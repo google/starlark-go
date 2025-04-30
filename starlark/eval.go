@@ -61,7 +61,7 @@ type Thread struct {
 	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
-	cancelReason error
+	cancelReason atomic.Pointer[error]
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
@@ -111,10 +111,13 @@ func (thread *Thread) Cancel(reason string) {
 }
 
 func (thread *Thread) CancelWithError(err error) {
-	heapErr := new(error)
-	*heapErr = fmt.Errorf("%w: %w", ErrExecutionCancelled, err)
+	if !errors.Is(err, ErrExecutionCanceled) {
+		// Wrap the user's error so that errors.Is will find both the user's
+		// error and ErrCanceled as causes.
+		err = fmt.Errorf("%w: %w", ErrExecutionCanceled, err)
+	}
 	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(heapErr))
+	thread.cancelReason.CompareAndSwap(nil, &err)
 }
 
 // SetLocal sets the thread-local value associated with the specified key.
