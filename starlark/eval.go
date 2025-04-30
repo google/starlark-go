@@ -94,6 +94,9 @@ func (thread *Thread) Uncancel() {
 }
 
 var (
+	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
+	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
+	// to errors.Is(err, ErrCanceled).
 	ErrExecutionCanceled = errors.New("Starlark computation cancelled")
 )
 
