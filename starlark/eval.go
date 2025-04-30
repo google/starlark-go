@@ -94,7 +94,7 @@ func (thread *Thread) Uncancel() {
 }
 
 var (
-	ErrExecutionCancelled = errors.New("Starlark computation cancelled")
+	ErrExecutionCanceled = errors.New("Starlark computation cancelled")
 )
 
 // Cancel causes execution of Starlark code in the specified thread to
