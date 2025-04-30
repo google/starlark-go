@@ -97,7 +97,7 @@ var (
 	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
 	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
 	// to errors.Is(err, ErrCanceled).
-	ErrExecutionCanceled = errors.New("Starlark computation cancelled")
+	ErrCanceled = errors.New("Starlark computation cancelled")
 )
 
 // Cancel causes execution of Starlark code in the specified thread to
@@ -116,8 +116,8 @@ func (thread *Thread) Cancel(reason string) {
 // Wrap the user's error so that errors.Is will find both the user's error and
 // ErrCanceled as causes.
 func (thread *Thread) CancelWithError(err error) {
-	if !errors.Is(err, ErrExecutionCanceled) {
-		err = fmt.Errorf("%w: %w", ErrExecutionCanceled, err)
+	if !errors.Is(err, ErrCanceled) {
+		err = fmt.Errorf("%w: %w", ErrCanceled, err)
 	}
 	// Atomically set cancelReason, preserving earlier reason if any.
 	thread.cancelReason.CompareAndSwap(nil, &err)
