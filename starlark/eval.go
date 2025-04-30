@@ -107,10 +107,7 @@ var (
 // Unlike most methods of Thread, it is safe to call Cancel from any
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Cancel(reason string) {
-	heapErr := new(error)
-	*heapErr = fmt.Errorf("%w: %s", ErrExecutionCancelled, reason)
-	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(heapErr))
+	thread.CancelWithError(errors.New(reason))
 }
 
 func (thread *Thread) CancelWithError(err error) {
