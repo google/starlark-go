@@ -29,7 +29,7 @@ var (
 	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
 	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
 	// to errors.Is(err, ErrCanceled).
-	ErrCanceled = errors.New("Starlark computation cancelled")
+	ErrCanceled = errors.New("Starlark computation canceled")
 )
 
 // A Thread contains the state of a Starlark thread,
