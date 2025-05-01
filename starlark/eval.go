@@ -113,9 +113,9 @@ func (thread *Thread) Cancel(reason string) {
 	thread.CancelWithError(errors.New(reason))
 }
 
-// Wrap the user's error so that errors.Is will find both the user's error and
-// ErrCanceled as causes.
 func (thread *Thread) CancelWithError(err error) {
+	// Wrap the user's error so that errors.Is will find both the user's error
+	// and ErrCanceled as causes.
 	if !errors.Is(err, ErrCanceled) {
 		err = fmt.Errorf("%w: %w", ErrCanceled, err)
 	}
