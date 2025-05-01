@@ -1148,6 +1148,9 @@ func TestExecutionSteps(t *testing.T) {
 	if fmt.Sprint(err) != "Starlark computation canceled: too many steps" {
 		t.Errorf("execution returned error %q, want cancellation", err)
 	}
+	if !errors.Is(err, starlark.ErrCanceled) {
+		t.Errorf("exectution didn't return error starlark.ErrCanceled")
+	}
 
 	thread.Steps = 0
 	thread.Uncancel()
