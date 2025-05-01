@@ -104,7 +104,7 @@ loop:
 			}
 		}
 		if reasonErr := thread.cancelReason.Load(); reasonErr != nil {
-			err = *(*error)(reasonErr)
+			err = *reasonErr
 			break loop
 		}
 
