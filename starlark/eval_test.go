@@ -13,10 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"go.starlark.net/internal/chunkedfile"
@@ -982,12 +980,10 @@ func TestCancel(t *testing.T) {
 	// expected backtrace.
 	{
 		thread := new(starlark.Thread)
-		var ready atomic.Bool
 		predeclared := starlark.StringDict{
-			"fibonacci": fib{},
-			"ready": starlark.NewBuiltin("ready", func(_ *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
-				ready.Store(true)
-				return starlark.True, nil
+			"cancel": starlark.NewBuiltin("cancel", func(thread *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+				thread.Cancel("nope")
+				return starlark.None, nil
 			}),
 		}
 		src := `
@@ -998,16 +994,10 @@ def g():
 	h()
 
 def h():
-	for x in fibonacci:
-		ready()
+	cancel()
 
 f()
 `
-		go func() {
-			for !ready.Load() {
-			}
-			thread.Cancel("nope")
-		}()
 		_, err := starlark.ExecFile(thread, "cancel.star", src, predeclared)
 		if fmt.Sprint(err) != "Starlark computation canceled: nope" {
 			t.Errorf("ExecFile returned error %q, want cancellation", err)
@@ -1020,11 +1010,12 @@ f()
 			t.Errorf("ExecFile: expected *starlark.EvalError; got %T, %v", err, err)
 		}
 		expectedBacktace := `
-  cancel.star:12:2: in <toplevel>
+  cancel.star:11:2: in <toplevel>
   cancel.star:3:3: in f
   cancel.star:6:3: in g
+  cancel.star:9:8: in h
 `
-		if !strings.Contains(evalErr.Backtrace(), expectedBacktace) || !regexp.MustCompile(`cancel\.star:(10:\d+|9:\d+): in h`).MatchString(evalErr.Backtrace()) {
+		if !strings.Contains(evalErr.Backtrace(), expectedBacktace) {
 			t.Errorf("ExecFile: expected backtrace to include calls to f(), g(), and h(); got %s", evalErr.Backtrace())
 		}
 	}
@@ -1085,12 +1076,11 @@ func TestCancelWithError(t *testing.T) {
 	// expected backtrace.
 	{
 		thread := new(starlark.Thread)
-		var ready atomic.Bool
+		cancelErr := errors.New("nope")
 		predeclared := starlark.StringDict{
-			"fibonacci": fib{},
-			"ready": starlark.NewBuiltin("ready", func(_ *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
-				ready.Store(true)
-				return starlark.True, nil
+			"cancel": starlark.NewBuiltin("cancel", func(thread *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+				thread.CancelWithError(cancelErr)
+				return starlark.None, nil
 			}),
 		}
 		src := `
@@ -1101,17 +1091,10 @@ def g():
 	h()
 
 def h():
-	for x in fibonacci:
-		ready()
+	cancel()
 
 f()
 `
-		cancelErr := errors.New("nope")
-		go func() {
-			for !ready.Load() {
-			}
-			thread.CancelWithError(cancelErr)
-		}()
 		_, err := starlark.ExecFile(thread, "cancel.star", src, predeclared)
 		if fmt.Sprint(err) != "Starlark computation canceled: nope" {
 			t.Errorf("ExecFile returned error %q, want cancellation", err)
@@ -1127,11 +1110,12 @@ f()
 			t.Errorf("ExecFile: expected *starlark.EvalError; got %T, %v", err, err)
 		}
 		expectedBacktace := `
-  cancel.star:12:2: in <toplevel>
+  cancel.star:11:2: in <toplevel>
   cancel.star:3:3: in f
   cancel.star:6:3: in g
+  cancel.star:9:8: in h
 `
-		if !strings.Contains(evalErr.Backtrace(), expectedBacktace) || !regexp.MustCompile(`cancel\.star:(10:\d+|9:\d+): in h`).MatchString(evalErr.Backtrace()) {
+		if !strings.Contains(evalErr.Backtrace(), expectedBacktace) {
 			t.Errorf("ExecFile: expected backtrace to include calls to f(), g(), and h(); got %s", evalErr.Backtrace())
 		}
 	}
