@@ -5,8 +5,6 @@ package starlark
 import (
 	"fmt"
 	"os"
-	"sync/atomic"
-	"unsafe"
 
 	"go.starlark.net/internal/compile"
 	"go.starlark.net/internal/spell"
@@ -105,8 +103,8 @@ loop:
 				thread.Cancel("too many steps")
 			}
 		}
-		if reason := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reason != nil {
-			err = fmt.Errorf("Starlark computation cancelled: %s", *(*string)(reason))
+		if reasonErr := thread.cancelReason.Load(); reasonErr != nil {
+			err = *reasonErr
 			break loop
 		}
 
