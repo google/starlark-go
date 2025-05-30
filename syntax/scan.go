@@ -22,7 +22,7 @@ import (
 type Token int8
 
 const (
-	ILLEGAL Token = iota
+	ILLEGAL Token = iota // deprecated: illegal tokens are at the bottom of this block
 	EOF
 
 	NEWLINE
@@ -97,6 +97,26 @@ const (
 	PASS
 	RETURN
 	WHILE
+
+	// Illegal tokens (reserved Python keywords that aren't part of the Starlark language)
+
+	AS // illegal
+	// ASSERT  // illegal  // heavily used in our tests
+	ASYNC    // illegal
+	AWAIT    // illegal
+	CLASS    // illegal
+	DEL      // illegal
+	EXCEPT   // illegal
+	FINALLY  // illegal
+	FROM     // illegal
+	GLOBAL   // illegal
+	IMPORT   // illegal
+	IS       // illegal
+	NONLOCAL // illegal
+	RAISE    // illegal
+	TRY      // illegal
+	WITH     // illegal
+	YIELD    // illegal
 
 	maxToken
 )
@@ -180,6 +200,25 @@ var tokenNames = [...]string{
 	PASS:          "pass",
 	RETURN:        "return",
 	WHILE:         "while",
+
+	// illegal tokens
+	AS: "as",
+	// ASSERT:   "assert", // heavily used in our tests
+	ASYNC:    "async",
+	AWAIT:    "await",
+	CLASS:    "class",
+	DEL:      "del",
+	EXCEPT:   "except",
+	FINALLY:  "finally",
+	FROM:     "from",
+	GLOBAL:   "global",
+	IMPORT:   "import",
+	IS:       "is",
+	NONLOCAL: "nonlocal",
+	RAISE:    "raise",
+	TRY:      "try",
+	WITH:     "with",
+	YIELD:    "yield",
 }
 
 // A FilePortion describes the content of a portion of a file.
@@ -1104,21 +1143,21 @@ var keywordToken = map[string]Token{
 	"while":    WHILE,
 
 	// reserved words:
-	"as": ILLEGAL,
-	// "assert":   ILLEGAL, // heavily used by our tests
-	"async":    ILLEGAL,
-	"await":    ILLEGAL,
-	"class":    ILLEGAL,
-	"del":      ILLEGAL,
-	"except":   ILLEGAL,
-	"finally":  ILLEGAL,
-	"from":     ILLEGAL,
-	"global":   ILLEGAL,
-	"import":   ILLEGAL,
-	"is":       ILLEGAL,
-	"nonlocal": ILLEGAL,
-	"raise":    ILLEGAL,
-	"try":      ILLEGAL,
-	"with":     ILLEGAL,
-	"yield":    ILLEGAL,
+	"as": AS,
+	// "assert":   ASSERT, // heavily used by our tests
+	"async":    ASYNC,
+	"await":    AWAIT,
+	"class":    CLASS,
+	"del":      DEL,
+	"except":   EXCEPT,
+	"finally":  FINALLY,
+	"from":     FROM,
+	"global":   GLOBAL,
+	"import":   IMPORT,
+	"is":       IS,
+	"nonlocal": NONLOCAL,
+	"raise":    RAISE,
+	"try":      TRY,
+	"with":     WITH,
+	"yield":    YIELD,
 }
