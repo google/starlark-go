@@ -11,10 +11,7 @@ package syntax
 // package.  Verify that error positions are correct using the
 // chunkedfile mechanism.
 
-import (
-	"fmt"
-	"log"
-)
+import "log"
 
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false
@@ -132,7 +129,7 @@ func (opts *FileOptions) ParseExpr(filename string, src interface{}, mode Mode) 
 	}
 
 	if p.tok != EOF {
-		p.in.errorf(p.in.pos, "got %s after expression, want EOF", p.tokStr())
+		p.in.errorf(p.in.pos, "got %#v after expression, want EOF", p.tok)
 	}
 	p.assignComments(expr)
 	return expr, nil
@@ -143,17 +140,6 @@ type parser struct {
 	in      *scanner
 	tok     Token
 	tokval  tokenValue
-}
-
-// tokStr returns a string representation of the current token.
-func (p *parser) tokStr() string {
-	if p.tok == ILLEGAL {
-		// ILLEGAL is a catch-all for Python keywords that aren't supported in Starlark.
-		// In this case, we return the raw token value alongside the "illegal token" string
-		// to output a more informative error message.
-		return fmt.Sprintf("%#v %q", p.tok, p.tokval.raw)
-	}
-	return fmt.Sprintf("%#v", p.tok)
 }
 
 // nextToken advances the scanner and returns the position of the
@@ -400,7 +386,7 @@ func (p *parser) parseLoadStmt() *LoadStmt {
 			})
 
 		default:
-			p.in.errorf(p.in.pos, `load operand must be "name" or localname="name" (got %s)`, p.tokStr())
+			p.in.errorf(p.in.pos, `load operand must be "name" or localname="name" (got %#v)`, p.tok)
 		}
 	}
 	rparen := p.consume(RPAREN)
@@ -448,7 +434,7 @@ func (p *parser) parseIdent() *Ident {
 
 func (p *parser) consume(t Token) Position {
 	if p.tok != t {
-		p.in.errorf(p.in.pos, "got %s, want %#v", p.tokStr(), t)
+		p.in.errorf(p.in.pos, "got %#v, want %#v", p.tok, t)
 	}
 	return p.nextToken()
 }
@@ -635,7 +621,7 @@ func (p *parser) parseBinopExpr(prec int) Expr {
 			// In this context, NOT must be followed by IN.
 			// Replace NOT IN by a single NOT_IN token.
 			if p.tok != IN {
-				p.in.errorf(p.in.pos, "got %#v, want in", p.tokStr())
+				p.in.errorf(p.in.pos, "got %#v, want in", p.tok)
 			}
 			p.tok = NOT_IN
 		}
@@ -876,7 +862,7 @@ func (p *parser) parsePrimary() Expr {
 	}
 
 	// Report start pos of final token as it may be a NEWLINE (#532).
-	p.in.errorf(p.tokval.pos, "got %#v, want primary expression", p.tokStr())
+	p.in.errorf(p.tokval.pos, "got %#v, want primary expression", p.tok)
 	panic("unreachable")
 }
 
@@ -976,7 +962,7 @@ func (p *parser) parseComprehensionSuffix(lbrace Position, body Expr, endBrace T
 			cond := p.parseTestNoCond()
 			clauses = append(clauses, &IfClause{If: pos, Cond: cond})
 		} else {
-			p.in.errorf(p.in.pos, "got %#v, want '%s', for, or if", p.tokStr(), endBrace)
+			p.in.errorf(p.in.pos, "got %#v, want '%s', for, or if", p.tok, endBrace)
 		}
 	}
 	rbrace := p.nextToken()
