@@ -5,6 +5,7 @@
 package starlark
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +23,13 @@ import (
 	"go.starlark.net/internal/spell"
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
+)
+
+var (
+	// When a Starlark function call is canceled by a call to [Thread.Cancel] or
+	// [Thread.CancelWithError], the EvalError returned by [Call] will respond
+	// to errors.Is(err, ErrCanceled).
+	ErrCanceled = errors.New("Starlark computation canceled")
 )
 
 // A Thread contains the state of a Starlark thread,
@@ -60,7 +68,7 @@ type Thread struct {
 	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
-	cancelReason *string
+	cancelReason atomic.Pointer[error]
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
@@ -102,8 +110,17 @@ func (thread *Thread) Uncancel() {
 // Unlike most methods of Thread, it is safe to call Cancel from any
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Cancel(reason string) {
+	thread.CancelWithError(errors.New(reason))
+}
+
+func (thread *Thread) CancelWithError(err error) {
+	// Wrap the user's error so that errors.Is will find both the user's error
+	// and ErrCanceled as causes.
+	if !errors.Is(err, ErrCanceled) {
+		err = fmt.Errorf("%w: %w", ErrCanceled, err)
+	}
 	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(&reason))
+	thread.cancelReason.CompareAndSwap(nil, &err)
 }
 
 // SetLocal sets the thread-local value associated with the specified key.
