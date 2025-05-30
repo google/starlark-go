@@ -98,6 +98,26 @@ const (
 	RETURN
 	WHILE
 
+	// Reserved words (following Python); unused in Starlark
+
+	AS
+	// ASSERT    // heavily used in our tests
+	ASYNC
+	AWAIT
+	CLASS
+	DEL
+	EXCEPT
+	FINALLY
+	FROM
+	GLOBAL
+	IMPORT
+	IS
+	NONLOCAL
+	RAISE
+	TRY
+	WITH
+	YIELD
+
 	maxToken
 )
 
@@ -180,6 +200,26 @@ var tokenNames = [...]string{
 	PASS:          "pass",
 	RETURN:        "return",
 	WHILE:         "while",
+
+	// Reserved words (following Python); unused in Starlark
+
+	AS: "as",
+	// ASSERT:   "assert", // heavily used in our tests
+	ASYNC:    "async",
+	AWAIT:    "await",
+	CLASS:    "class",
+	DEL:      "del",
+	EXCEPT:   "except",
+	FINALLY:  "finally",
+	FROM:     "from",
+	GLOBAL:   "global",
+	IMPORT:   "import",
+	IS:       "is",
+	NONLOCAL: "nonlocal",
+	RAISE:    "raise",
+	TRY:      "try",
+	WITH:     "with",
+	YIELD:    "yield",
 }
 
 // A FilePortion describes the content of a portion of a file.
@@ -1104,21 +1144,21 @@ var keywordToken = map[string]Token{
 	"while":    WHILE,
 
 	// reserved words:
-	"as": ILLEGAL,
-	// "assert":   ILLEGAL, // heavily used by our tests
-	"async":    ILLEGAL,
-	"await":    ILLEGAL,
-	"class":    ILLEGAL,
-	"del":      ILLEGAL,
-	"except":   ILLEGAL,
-	"finally":  ILLEGAL,
-	"from":     ILLEGAL,
-	"global":   ILLEGAL,
-	"import":   ILLEGAL,
-	"is":       ILLEGAL,
-	"nonlocal": ILLEGAL,
-	"raise":    ILLEGAL,
-	"try":      ILLEGAL,
-	"with":     ILLEGAL,
-	"yield":    ILLEGAL,
+	"as": AS,
+	// "assert":   ASSERT, // heavily used by our tests
+	"async":    ASYNC,
+	"await":    AWAIT,
+	"class":    CLASS,
+	"del":      DEL,
+	"except":   EXCEPT,
+	"finally":  FINALLY,
+	"from":     FROM,
+	"global":   GLOBAL,
+	"import":   IMPORT,
+	"is":       IS,
+	"nonlocal": NONLOCAL,
+	"raise":    RAISE,
+	"try":      TRY,
+	"with":     WITH,
+	"yield":    YIELD,
 }
