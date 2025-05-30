@@ -5,6 +5,7 @@ package starlark
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sync/atomic"
 	"unsafe"
 
@@ -300,7 +301,7 @@ loop:
 				kvpairs = make([]Tuple, 0, nkvpairs)
 				kvpairsAlloc := make(Tuple, 2*nkvpairs) // allocate a single backing array
 				sp -= 2 * nkvpairs
-				for i := 0; i < nkvpairs; i++ {
+				for i := range nkvpairs {
 					pair := kvpairsAlloc[:2:2]
 					kvpairsAlloc = kvpairsAlloc[2:]
 					pair[0] = stack[sp+2*i]   // name
@@ -339,7 +340,7 @@ loop:
 				// unless the callee is another Starlark function,
 				// in which case it can be trusted not to mutate them.
 				if _, ok := stack[sp-1].(*Function); !ok || args != nil {
-					positional = append(Tuple(nil), positional...)
+					positional = slices.Clone(positional)
 				}
 			}
 			if args != nil {
@@ -572,7 +573,7 @@ loop:
 				break loop
 			}
 
-			for i := 0; i < n; i++ {
+			for i := range n {
 				from := string(stack[sp-1-i].(String))
 				v, ok := dict[from]
 				if !ok {
