@@ -22,7 +22,7 @@ import (
 type Token int8
 
 const (
-	ILLEGAL Token = iota // deprecated: illegal tokens are at the bottom of this block
+	ILLEGAL Token = iota
 	EOF
 
 	NEWLINE
@@ -98,25 +98,25 @@ const (
 	RETURN
 	WHILE
 
-	// Illegal tokens (reserved Python keywords that aren't part of the Starlark language)
+	// Reserved words (following Python); unused in Starlark
 
-	AS // illegal
-	// ASSERT  // illegal  // heavily used in our tests
-	ASYNC    // illegal
-	AWAIT    // illegal
-	CLASS    // illegal
-	DEL      // illegal
-	EXCEPT   // illegal
-	FINALLY  // illegal
-	FROM     // illegal
-	GLOBAL   // illegal
-	IMPORT   // illegal
-	IS       // illegal
-	NONLOCAL // illegal
-	RAISE    // illegal
-	TRY      // illegal
-	WITH     // illegal
-	YIELD    // illegal
+	AS
+	// ASSERT    // heavily used in our tests
+	ASYNC
+	AWAIT
+	CLASS
+	DEL
+	EXCEPT
+	FINALLY
+	FROM
+	GLOBAL
+	IMPORT
+	IS
+	NONLOCAL
+	RAISE
+	TRY
+	WITH
+	YIELD
 
 	maxToken
 )
@@ -201,7 +201,8 @@ var tokenNames = [...]string{
 	RETURN:        "return",
 	WHILE:         "while",
 
-	// illegal tokens
+	// Reserved words (following Python); unused in Starlark
+
 	AS: "as",
 	// ASSERT:   "assert", // heavily used in our tests
 	ASYNC:    "async",
