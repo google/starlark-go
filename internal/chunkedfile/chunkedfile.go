@@ -61,12 +61,15 @@ func Read(filename string, report Reporter) (chunks []Chunk) {
 		report.Errorf("%s", err)
 		return
 	}
-	linenum := 1
-
 	eol := "\n"
 	if runtime.GOOS == "windows" {
 		eol = "\r\n"
 	}
+	return readBytes(filename, data, report, eol)
+}
+
+func readBytes(filename string, data []byte, report Reporter, eol string) (chunks []Chunk) {
+	linenum := 1
 
 	for i, chunk := range strings.Split(string(data), eol+"---"+eol) {
 		if debug {
