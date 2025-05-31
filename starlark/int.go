@@ -371,7 +371,7 @@ func AsInt32(x Value) (int, error) {
 // otherwise it returns an error.
 // The type of ptr must be one of the pointer types *int, *int8, *int16, *int32, or *int64,
 // or one of their unsigned counterparts including *uintptr.
-func AsInt(x Value, ptr interface{}) error {
+func AsInt(x Value, ptr any) error {
 	xint, ok := x.(Int)
 	if !ok {
 		return fmt.Errorf("got %s, want int", x.Type())
