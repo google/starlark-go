@@ -66,3 +66,15 @@ assert.fails(_assign_bad_value, "converting map value: got int, want string")
 
 # not hashable
 assert.fails(lambda: {m.map_field: 1}, "unhashable")
+
+# Extensions
+
+assert.eq(str(schema.ext_string_field), "go.starlark.net.testdata.ext_string_field")
+assert.eq(type(schema.ext_string_field), "proto.FieldDescriptor")
+assert.eq(dir(schema.ext_string_field), [])
+
+m2 = schema.Test(string_field="A")
+assert.eq(proto.has(m2, schema.ext_string_field), False)
+proto.set_field(m2, schema.ext_string_field, "B")
+assert.eq(proto.has(m2, schema.ext_string_field), True)
+assert.eq(proto.get_field(m2, schema.ext_string_field), "B")

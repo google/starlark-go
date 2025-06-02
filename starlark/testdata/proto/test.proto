@@ -6,7 +6,7 @@
 //
 // (Requires the "protobuf" brew/apt package, see
 // https://protobuf.dev/installation/)
-syntax = "proto3";
+edition = "2023";
 
 package go.starlark.net.testdata;
 
@@ -15,5 +15,10 @@ message Test {
     int32 int32_field = 2;
     repeated string repeated_field = 3;
     map<string, string> map_field = 4;
+
+    extensions 100 to 100;
 }
 
+extend Test {
+  string ext_string_field = 100;
+}
