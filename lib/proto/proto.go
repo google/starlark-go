@@ -218,6 +218,17 @@ func has(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 			return nil, fmt.Errorf("%s: %v does not have field %v", fn.Name(), msg.desc().FullName(), field)
 		}
 		fdesc = field.Desc
+		if fdesc.IsExtension() {
+			// The protoreflect.Message.NewField method must be able
+			// to return a new instance of the field type. Without
+			// having the Go type information available for extensions,
+			// the implementation of NewField won't know what to do.
+			//
+			// Thus we must augment the FieldDescriptor to one that
+			// additional holds Go representation type information
+			// (based in this case on dynamicpb).
+			fdesc = dynamicpb.NewExtensionType(fdesc).TypeDescriptor()
+		}
 
 	default:
 		return nil, fmt.Errorf("%s: for field argument, got %s, want string or proto.FieldDescriptor", fn.Name(), field.Type())
@@ -467,7 +478,6 @@ func setField(msg protoreflect.Message, fdesc protoreflect.FieldDescriptor, valu
 		// additional holds Go representation type information
 		// (based in this case on dynamicpb).
 		fdesc = dynamicpb.NewExtensionType(fdesc).TypeDescriptor()
-		_ = fdesc.(protoreflect.ExtensionTypeDescriptor)
 	}
 
 	msg.Set(fdesc, v)
