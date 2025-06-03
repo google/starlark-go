@@ -393,7 +393,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 			case reflect.Slice:
 				if n := f.Len(); n > 0 {
 					fmt.Fprintf(out, " %s=(", name)
-					for i := 0; i < n; i++ {
+					for i := range n {
 						if i > 0 {
 							out.WriteByte(' ')
 						}

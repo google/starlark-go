@@ -31,7 +31,7 @@ const localKey = "Reporter"
 // A Reporter is a value to which errors may be reported.
 // It is satisfied by *testing.T.
 type Reporter interface {
-	Error(args ...interface{})
+	Error(args ...any)
 }
 
 // SetReporter associates an error reporter (such as a testing.T in
