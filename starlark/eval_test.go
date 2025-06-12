@@ -1158,6 +1158,9 @@ func TestExecutionSteps(t *testing.T) {
 	if !errors.As(err, &canceledErr) {
 		t.Errorf("execution didn't return error starlark.CanceledError")
 	}
+	if !errors.Is(err, starlark.ErrTooManySteps) {
+		t.Errorf("execution didn't return error starlark.ErrTooManySteps")
+	}
 
 	thread.Steps = 0
 	thread.Uncancel()
