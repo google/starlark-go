@@ -710,7 +710,7 @@ type module struct {
 	constants   []Value
 }
 
-// makeGlobalDict returns a new, unfrozen StringDict containing all global
+// makeGlobalDict returns a new StringDict containing all global
 // variables so far defined in the module.
 func (m *module) makeGlobalDict() StringDict {
 	r := make(StringDict, len(m.program.Globals))
@@ -730,9 +730,19 @@ func (fn *Function) String() string        { return toString(fn) }
 func (fn *Function) Type() string          { return "function" }
 func (fn *Function) Truth() Bool           { return true }
 
-// Globals returns a new, unfrozen StringDict containing all global
+// Globals returns a new StringDict containing all global
 // variables so far defined in the function's module.
 func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
+
+// Predeclared returns a new StringDict containing the
+// predeclared names in the function's module.
+func (fn *Function) Predeclared() StringDict {
+	r := make(StringDict, len(fn.module.predeclared))
+	for name, val := range fn.module.predeclared {
+		r[name] = val
+	}
+	return r
+}
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }

@@ -828,6 +828,35 @@ def somefunc():
 	}
 }
 
+func TestFunctionGlobals(t *testing.T) {
+	predeclared := starlark.StringDict{
+		"predecl": starlark.String("foo"),
+	}
+	globals, _ := starlark.ExecFile(&starlark.Thread{}, "func.star", `
+def somefunc():
+	return predecl
+`, predeclared)
+
+	fn := globals["somefunc"].(*starlark.Function)
+	fnGlobals := fn.Globals()
+	if !reflect.DeepEqual(fnGlobals, globals) {
+		t.Errorf("somefunc.Globals(): got %q, want %q", fnGlobals, globals)
+	}
+	fnGlobals["shouldnt_appear"] = starlark.String("something_new")
+	if globals.Has("shouldnt_appear") {
+		t.Errorf("somefunc.Globals(): Globals() reflected onto ExecFile's returned globals")
+	}
+
+	fnPredeclared := fn.Predeclared()
+	if !reflect.DeepEqual(fnPredeclared, predeclared) {
+		t.Errorf("somefunc.Predeclared(): got %q, want %q", fnPredeclared, predeclared)
+	}
+	fnPredeclared["shouldnt_appear"] = starlark.String("something_new")
+	if predeclared.Has("shouldnt_appear") {
+		t.Errorf("somefunc.Predeclared(): Predeclared() reflected onto original predeclared")
+	}
+}
+
 func TestFrameLocals(t *testing.T) {
 	// trace prints a nice stack trace including argument
 	// values of calls to Starlark functions.
