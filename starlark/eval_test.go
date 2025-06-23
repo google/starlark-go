@@ -846,14 +846,40 @@ def somefunc():
 	if globals.Has("shouldnt_appear") {
 		t.Errorf("somefunc.Globals(): Globals() reflected onto ExecFile's returned globals")
 	}
+}
 
-	fnPredeclared := fn.Predeclared()
-	if !reflect.DeepEqual(fnPredeclared, predeclared) {
-		t.Errorf("somefunc.Predeclared(): got %q, want %q", fnPredeclared, predeclared)
+func TestFunctionModule(t *testing.T) {
+	predeclared := starlark.StringDict{
+		"predecl": starlark.String("foo"),
 	}
-	fnPredeclared["shouldnt_appear"] = starlark.String("something_new")
-	if predeclared.Has("shouldnt_appear") {
-		t.Errorf("somefunc.Predeclared(): Predeclared() reflected onto original predeclared")
+	globals, _ := starlark.ExecFile(&starlark.Thread{}, "func.star", `
+def somefunc1():
+	return predecl
+
+def somefunc2():
+	return 42
+`, predeclared)
+
+	fn1 := globals["somefunc1"].(*starlark.Function)
+	fn2 := globals["somefunc2"].(*starlark.Function)
+	if fn1.Module() != fn2.Module() {
+		t.Errorf("somefunc1 and somefunc2 have different modules: %p vs. %p", fn1.Module(), fn2.Module())
+	}
+
+	module := fn1.Module()
+
+	moduleGlobals := module.Globals()
+	if !reflect.DeepEqual(moduleGlobals, globals) {
+		t.Errorf("module.Globals(): got %q, want %q", moduleGlobals, globals)
+	}
+	moduleGlobals["shouldnt_appear"] = starlark.String("something_new")
+	if globals.Has("shouldnt_appear") {
+		t.Errorf("module.Globals(): Globals() reflected onto ExecFile's returned globals")
+	}
+
+	modulePredeclared := module.Predeclared()
+	if reflect.ValueOf(modulePredeclared).UnsafePointer() != reflect.ValueOf(predeclared).UnsafePointer() {
+		t.Errorf("module.Predeclared(): got %p=%q, want %p=%q", modulePredeclared, modulePredeclared, predeclared, predeclared)
 	}
 }
 

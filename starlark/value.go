@@ -696,30 +696,44 @@ func (*stringCodepointsIterator) Done() {}
 // The initialization behavior of a Starlark module is also represented by a Function.
 type Function struct {
 	funcode  *compile.Funcode
-	module   *module
+	module   *Module
 	defaults Tuple
 	freevars Tuple
 }
 
-// A module is the dynamic counterpart to a Program.
-// All functions in the same program share a module.
-type module struct {
-	program     *compile.Program
+// A Module represents an evaluated Starlark module.
+// It is the dynamic counterpart to a [Program].
+// All functions in the same program share a Module.
+type Module struct {
+	program     *Program
 	predeclared StringDict
 	globals     []Value
 	constants   []Value
 }
 
-// makeGlobalDict returns a new StringDict containing all global
+// Program returns the static Starlark program corresponding to this module.
+func (m *Module) Program() *Program {
+	return m.program
+}
+
+// Globals returns a new StringDict containing all global
 // variables so far defined in the module.
-func (m *module) makeGlobalDict() StringDict {
-	r := make(StringDict, len(m.program.Globals))
-	for i, id := range m.program.Globals {
+func (m *Module) Globals() StringDict {
+	r := make(StringDict, len(m.program.compiled.Globals))
+	for i, id := range m.program.compiled.Globals {
 		if v := m.globals[i]; v != nil {
 			r[id.Name] = v
 		}
 	}
 	return r
+}
+
+// Predeclared returns the [StringDict] containing the
+// predeclared names in the function's module.
+// This is the same [StringDict] value as what was passed in as
+// "predeclared", "globals", or "env".
+func (m *Module) Predeclared() StringDict {
+	return m.predeclared
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
@@ -729,20 +743,14 @@ func (fn *Function) Freeze()               { fn.defaults.Freeze(); fn.freevars.F
 func (fn *Function) String() string        { return toString(fn) }
 func (fn *Function) Type() string          { return "function" }
 func (fn *Function) Truth() Bool           { return true }
+func (fn *Function) Module() *Module       { return fn.module }
 
 // Globals returns a new StringDict containing all global
 // variables so far defined in the function's module.
-func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
-
-// Predeclared returns a new StringDict containing the
-// predeclared names in the function's module.
-func (fn *Function) Predeclared() StringDict {
-	r := make(StringDict, len(fn.module.predeclared))
-	for name, val := range fn.module.predeclared {
-		r[name] = val
-	}
-	return r
-}
+//
+// fn.Globals() is equivalent to fn.Module().Globals().
+// We maintain this function for compatibility.
+func (fn *Function) Globals() StringDict { return fn.module.Globals() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }

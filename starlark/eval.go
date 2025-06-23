@@ -435,13 +435,21 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
-	toplevel := makeToplevelFunction(prog.compiled, predeclared)
+	module, err := prog.InitModule(thread, predeclared)
+	return module.Globals(), err
+}
+
+// InitModule creates a set of global variables for the program,
+// executes the toplevel code of the specified program,
+// and returns the resulting [Module].
+// A non-nil module is returned even in case of error.
+func (prog *Program) InitModule(thread *Thread, predeclared StringDict) (*Module, error) {
+	toplevel := makeToplevelFunction(prog, predeclared)
 
 	_, err := Call(thread, toplevel, nil, nil)
 
-	// Convert the global environment to a map.
-	// We return a (partial) map even in case of error.
-	return toplevel.Globals(), err
+	// We return a (partial) module even in case of error.
+	return toplevel.Module(), err
 }
 
 // ExecREPLChunk compiles and executes file f in the specified thread
@@ -474,7 +482,7 @@ func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
 
 	// -- variant of Program.Init --
 
-	toplevel := makeToplevelFunction(prog.compiled, predeclared)
+	toplevel := makeToplevelFunction(prog, predeclared)
 
 	// Initialize module globals from parameter.
 	for i, id := range prog.compiled.Globals {
@@ -495,10 +503,10 @@ func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
 	return err
 }
 
-func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Function {
+func makeToplevelFunction(prog *Program, predeclared StringDict) *Function {
 	// Create the Starlark value denoted by each program constant c.
-	constants := make([]Value, len(prog.Constants))
-	for i, c := range prog.Constants {
+	constants := make([]Value, len(prog.compiled.Constants))
+	for i, c := range prog.compiled.Constants {
 		var v Value
 		switch c := c.(type) {
 		case int64:
@@ -518,11 +526,11 @@ func makeToplevelFunction(prog *compile.Program, predeclared StringDict) *Functi
 	}
 
 	return &Function{
-		funcode: prog.Toplevel,
-		module: &module{
+		funcode: prog.compiled.Toplevel,
+		module: &Module{
 			program:     prog,
 			predeclared: predeclared,
-			globals:     make([]Value, len(prog.Globals)),
+			globals:     make([]Value, len(prog.compiled.Globals)),
 			constants:   constants,
 		},
 	}
@@ -612,7 +620,8 @@ func makeExprFunc(opts *syntax.FileOptions, expr syntax.Expr, env StringDict) (*
 		return nil, err
 	}
 
-	return makeToplevelFunction(compile.Expr(opts, expr, "<expr>", locals), env), nil
+	prog := compile.Expr(opts, expr, "<expr>", locals)
+	return makeToplevelFunction(&Program{prog}, env), nil
 }
 
 // The following functions are primitive operations of the byte code interpreter.
