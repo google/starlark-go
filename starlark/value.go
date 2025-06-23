@@ -711,7 +711,7 @@ type Module struct {
 	constants   []Value
 }
 
-// Program returns the static Starlark program corresponding to this module.
+// Program returns the program from which this module was constructed.
 func (m *Module) Program() *Program {
 	return m.program
 }
@@ -728,10 +728,8 @@ func (m *Module) Globals() StringDict {
 	return r
 }
 
-// Predeclared returns the [StringDict] containing the
-// predeclared names in the function's module.
-// This is the same [StringDict] value as what was passed in as
-// "predeclared", "globals", or "env".
+// Predeclared returns the predeclared environment used
+// to construct this module.
 func (m *Module) Predeclared() StringDict {
 	return m.predeclared
 }
@@ -749,7 +747,6 @@ func (fn *Function) Module() *Module       { return fn.module }
 // variables so far defined in the function's module.
 //
 // fn.Globals() is equivalent to fn.Module().Globals().
-// We maintain this function for compatibility.
 func (fn *Function) Globals() StringDict { return fn.module.Globals() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }

@@ -435,21 +435,13 @@ func CompiledProgram(in io.Reader) (*Program, error) {
 // executes the toplevel code of the specified program,
 // and returns a new, unfrozen dictionary of the globals.
 func (prog *Program) Init(thread *Thread, predeclared StringDict) (StringDict, error) {
-	module, err := prog.InitModule(thread, predeclared)
-	return module.Globals(), err
-}
-
-// InitModule creates a set of global variables for the program,
-// executes the toplevel code of the specified program,
-// and returns the resulting [Module].
-// A non-nil module is returned even in case of error.
-func (prog *Program) InitModule(thread *Thread, predeclared StringDict) (*Module, error) {
 	toplevel := makeToplevelFunction(prog, predeclared)
 
 	_, err := Call(thread, toplevel, nil, nil)
 
-	// We return a (partial) module even in case of error.
-	return toplevel.Module(), err
+	// Convert the global environment to a map.
+	// We return a (partial) map even in case of error.
+	return toplevel.Globals(), err
 }
 
 // ExecREPLChunk compiles and executes file f in the specified thread

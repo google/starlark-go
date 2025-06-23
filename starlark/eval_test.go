@@ -828,7 +828,7 @@ def somefunc():
 	}
 }
 
-func TestFunctionGlobals(t *testing.T) {
+func TestFunction_Globals(t *testing.T) {
 	predeclared := starlark.StringDict{
 		"predecl": starlark.String("foo"),
 	}
@@ -848,7 +848,7 @@ def somefunc():
 	}
 }
 
-func TestFunctionModule(t *testing.T) {
+func TestFunction_Module(t *testing.T) {
 	predeclared := starlark.StringDict{
 		"predecl": starlark.String("foo"),
 	}
