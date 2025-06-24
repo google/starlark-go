@@ -746,8 +746,15 @@ func setIndex(x, y, z Value) error {
 	return nil
 }
 
-// Unary applies a unary operator (+, -, ~, not) to its operand.
-func Unary(op syntax.Token, x Value) (Value, error) {
+var (
+	// Unary is the default implementation of the unary operation and is used by current package. You can override this field.
+	Unary = UnaryDefault
+	// Binary is the default implementation of the binary operation and is used by current package. You can override this field.
+	Binary = BinaryDefault
+)
+
+// UnaryDefault applies a unary operator (+, -, ~, not) to its operand.
+func UnaryDefault(op syntax.Token, x Value) (Value, error) {
 	// The NOT operator is not customizable.
 	if op == syntax.NOT {
 		return !x.Truth(), nil
@@ -765,9 +772,9 @@ func Unary(op syntax.Token, x Value) (Value, error) {
 	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }
 
-// Binary applies a strict binary operator (not AND or OR) to its operands.
+// BinaryDefault applies a strict binary operator (not AND or OR) to its operands.
 // For equality tests or ordered comparisons, use Compare instead.
-func Binary(op syntax.Token, x, y Value) (Value, error) {
+func BinaryDefault(op syntax.Token, x, y Value) (Value, error) {
 	switch op {
 	case syntax.PLUS:
 		switch x := x.(type) {
@@ -1025,7 +1032,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 		}
 
 	case syntax.NOT_IN:
-		z, err := Binary(syntax.IN, x, y)
+		z, err := BinaryDefault(syntax.IN, x, y)
 		if err != nil {
 			return nil, err
 		}
