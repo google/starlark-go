@@ -1034,10 +1034,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 		switch y := y.(type) {
 		case Container: // List, Tuple, Set etc.
 			found, err := y.Has(x)
-			if err != nil {
-				return Bool(found), err
-			}
-			return Bool(found), nil
+			return Bool(found), err
 		case Mapping: // e.g. dict
 			// Ignore error from Get as we cannot distinguish true
 			// errors (value cycle, type error) from "key not found".
