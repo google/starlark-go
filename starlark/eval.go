@@ -1032,7 +1032,7 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 
 	case syntax.IN:
 		switch y := y.(type) {
-		case Container: // List, Tuple, Set etc.
+		case Container: // List, Tuple, Set, String, Bytes, rangeValue etc.
 			found, err := y.Has(x)
 			return Bool(found), err
 		case Mapping: // e.g. dict
@@ -1040,31 +1040,6 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			// errors (value cycle, type error) from "key not found".
 			_, found, _ := y.Get(x)
 			return Bool(found), nil
-		case String:
-			needle, ok := x.(String)
-			if !ok {
-				return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
-			}
-			return Bool(strings.Contains(string(y), string(needle))), nil
-		case Bytes:
-			switch needle := x.(type) {
-			case Bytes:
-				return Bool(strings.Contains(string(y), string(needle))), nil
-			case Int:
-				var b byte
-				if err := AsInt(needle, &b); err != nil {
-					return nil, fmt.Errorf("int in bytes: %s", err)
-				}
-				return Bool(strings.IndexByte(string(y), b) >= 0), nil
-			default:
-				return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
-			}
-		case rangeValue:
-			i, err := NumberToInt(x)
-			if err != nil {
-				return nil, fmt.Errorf("'in <range>' requires integer as left operand, not %s", x.Type())
-			}
-			return Bool(y.contains(i)), nil
 		}
 
 	case syntax.PIPE:

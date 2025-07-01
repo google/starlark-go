@@ -854,6 +854,7 @@ var (
 	_ Sequence   = rangeValue{}
 	_ Comparable = rangeValue{}
 	_ Sliceable  = rangeValue{}
+	_ Container  = rangeValue{}
 )
 
 func (r rangeValue) Len() int          { return r.len }
@@ -914,6 +915,14 @@ func (x rangeValue) CompareSameType(op syntax.Token, y_ Value, depth int) (bool,
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
+}
+
+func (r rangeValue) Has(y Value) (bool, error) {
+	i, err := NumberToInt(y)
+	if err != nil {
+		return false, fmt.Errorf("'in <range>' requires integer as left operand, not %s", y.Type())
+	}
+	return r.contains(i), nil
 }
 
 func rangeEqual(x, y rangeValue) bool {

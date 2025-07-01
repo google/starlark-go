@@ -258,8 +258,9 @@ var (
 	_ Sliceable   = Tuple(nil)
 	_ Sliceable   = String("")
 	_ Sliceable   = (*List)(nil)
-	_ Container   = (*List)(nil)
 	_ Container   = Tuple(nil)
+	_ Container   = String("")
+	_ Container   = (*List)(nil)
 	_ Container   = (*Set)(nil)
 )
 
@@ -598,6 +599,14 @@ func (s String) AttrNames() []string             { return builtinAttrNames(strin
 func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(String)
 	return threeway(op, strings.Compare(string(x), string(y))), nil
+}
+
+func (s String) Has(y Value) (bool, error) {
+	needle, ok := y.(String)
+	if !ok {
+		return false, fmt.Errorf("'in <string>' requires string as left operand, not %s", y.Type())
+	}
+	return strings.Contains(string(s), string(needle)), nil
 }
 
 func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), ok }
@@ -1646,6 +1655,7 @@ var (
 	_ Comparable = Bytes("")
 	_ Sliceable  = Bytes("")
 	_ Indexable  = Bytes("")
+	_ Container  = Bytes("")
 )
 
 func (b Bytes) String() string        { return syntax.Quote(string(b), true) }
@@ -1675,4 +1685,19 @@ func (b Bytes) Slice(start, end, step int) Value {
 func (x Bytes) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Bytes)
 	return threeway(op, strings.Compare(string(x), string(y))), nil
+}
+
+func (b Bytes) Has(y Value) (bool, error) {
+	switch needle := y.(type) {
+	case Bytes:
+		return strings.Contains(string(b), string(needle)), nil
+	case Int:
+		var by byte
+		if err := AsInt(needle, &by); err != nil {
+			return false, fmt.Errorf("int in bytes: %s", err)
+		}
+		return strings.IndexByte(string(b), by) >= 0, nil
+	default:
+		return false, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", y.Type())
+	}
 }
