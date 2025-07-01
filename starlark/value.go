@@ -26,6 +26,7 @@
 //
 //	Callable        -- value is callable like a function
 //	Comparable      -- value defines its own comparison operations
+//	Container       -- value supports the 'in' operator
 //	Iterable        -- value is iterable using 'for' loops
 //	Sequence        -- value is iterable sequence of known length
 //	Indexable       -- value is sequence with efficient random access
@@ -234,6 +235,13 @@ type Sliceable interface {
 	Slice(start, end, step int) Value
 }
 
+// A Container is a value that supports the 'in' operator.
+type Container interface {
+	Value
+	// Has reports whether the value contains the specified element.
+	Has(y Value) (bool, error)
+}
+
 // A HasSetIndex is an Indexable value whose elements may be assigned (x[i] = y).
 //
 // The implementation should not add Len to a negative index as the
@@ -250,6 +258,10 @@ var (
 	_ Sliceable   = Tuple(nil)
 	_ Sliceable   = String("")
 	_ Sliceable   = (*List)(nil)
+	_ Container   = Tuple(nil)
+	_ Container   = String("")
+	_ Container   = (*List)(nil)
+	_ Container   = (*Set)(nil)
 )
 
 // An Iterator provides a sequence of values to the caller.
@@ -587,6 +599,14 @@ func (s String) AttrNames() []string             { return builtinAttrNames(strin
 func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(String)
 	return threeway(op, strings.Compare(string(x), string(y))), nil
+}
+
+func (s String) Has(y Value) (bool, error) {
+	needle, ok := y.(String)
+	if !ok {
+		return false, fmt.Errorf("'in <string>' requires string as left operand, not %s", y.Type())
+	}
+	return strings.Contains(string(s), string(needle)), nil
 }
 
 func AsString(x Value) (string, bool) { v, ok := x.(String); return string(v), ok }
@@ -990,6 +1010,17 @@ func (l *List) Iterate() Iterator {
 	return &listIterator{l: l}
 }
 
+func (l *List) Has(y Value) (bool, error) {
+	for _, x := range l.elems {
+		if eq, err := Equal(x, y); err != nil {
+			return false, err
+		} else if eq {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (x *List) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*List)
 	// It's tempting to check x == y as an optimization here,
@@ -1102,6 +1133,17 @@ func (t Tuple) Truth() Bool    { return len(t) > 0 }
 func (x Tuple) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Tuple)
 	return sliceCompare(op, x, y, depth)
+}
+
+func (t Tuple) Has(y Value) (bool, error) {
+	for _, x := range t {
+		if eq, err := Equal(x, y); err != nil {
+			return false, err
+		} else if eq {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (t Tuple) Hash() (uint32, error) {
@@ -1628,6 +1670,7 @@ var (
 	_ Comparable = Bytes("")
 	_ Sliceable  = Bytes("")
 	_ Indexable  = Bytes("")
+	_ Container  = Bytes("")
 )
 
 func (b Bytes) String() string        { return syntax.Quote(string(b), true) }
@@ -1657,4 +1700,19 @@ func (b Bytes) Slice(start, end, step int) Value {
 func (x Bytes) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Bytes)
 	return threeway(op, strings.Compare(string(x), string(y))), nil
+}
+
+func (b Bytes) Has(y Value) (bool, error) {
+	switch needle := y.(type) {
+	case Bytes:
+		return strings.Contains(string(b), string(needle)), nil
+	case Int:
+		var by byte
+		if err := AsInt(needle, &by); err != nil {
+			return false, fmt.Errorf("int in bytes: %s", err)
+		}
+		return strings.IndexByte(string(b), by) >= 0, nil
+	default:
+		return false, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", y.Type())
+	}
 }
