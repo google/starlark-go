@@ -234,9 +234,9 @@ type Sliceable interface {
 	Slice(start, end, step int) Value
 }
 
-// A MembershipCheckable is a value that supports membership testing
-// via the Has method, which is used by the 'in'/'not in' operator.
-type MembershipCheckable interface {
+// A Container is a value that supports checking if other values are contained in
+// it via the Has method, which is used by the 'in'/'not in' operator.
+type Container interface {
 	Value
 	// Has reports whether the value contains the specified element.
 	Has(y Value) (bool, error)
@@ -258,6 +258,9 @@ var (
 	_ Sliceable   = Tuple(nil)
 	_ Sliceable   = String("")
 	_ Sliceable   = (*List)(nil)
+	_ Container   = (*List)(nil)
+	_ Container   = Tuple(nil)
+	_ Container   = (*Set)(nil)
 )
 
 // An Iterator provides a sequence of values to the caller.

@@ -1032,10 +1032,10 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 
 	case syntax.IN:
 		switch y := y.(type) {
-		case MembershipCheckable: // List, Tuple, Set etc.
+		case Container: // List, Tuple, Set etc.
 			found, err := y.Has(x)
 			if err != nil {
-				return False, nil
+				return False, err
 			}
 			return Bool(found), nil
 		case Mapping: // e.g. dict
