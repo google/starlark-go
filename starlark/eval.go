@@ -1032,32 +1032,17 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 
 	case syntax.IN:
 		switch y := y.(type) {
-		case *List:
-			for _, elem := range y.elems {
-				if eq, err := Equal(elem, x); err != nil {
-					return nil, err
-				} else if eq {
-					return True, nil
-				}
+		case MembershipCheckable: // List, Tuple, Set etc.
+			found, err := y.Has(x)
+			if err != nil {
+				return False, nil
 			}
-			return False, nil
-		case Tuple:
-			for _, elem := range y {
-				if eq, err := Equal(elem, x); err != nil {
-					return nil, err
-				} else if eq {
-					return True, nil
-				}
-			}
-			return False, nil
+			return Bool(found), nil
 		case Mapping: // e.g. dict
 			// Ignore error from Get as we cannot distinguish true
 			// errors (value cycle, type error) from "key not found".
 			_, found, _ := y.Get(x)
 			return Bool(found), nil
-		case *Set:
-			ok, err := y.Has(x)
-			return Bool(ok), err
 		case String:
 			needle, ok := x.(String)
 			if !ok {

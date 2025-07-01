@@ -234,6 +234,14 @@ type Sliceable interface {
 	Slice(start, end, step int) Value
 }
 
+// A MembershipCheckable is a value that supports membership testing
+// via the Has method, which is used by the 'in'/'not in' operator.
+type MembershipCheckable interface {
+	Value
+	// Has reports whether the value contains the specified element.
+	Has(y Value) (bool, error)
+}
+
 // A HasSetIndex is an Indexable value whose elements may be assigned (x[i] = y).
 //
 // The implementation should not add Len to a negative index as the
@@ -975,6 +983,17 @@ func (l *List) Iterate() Iterator {
 	return &listIterator{l: l}
 }
 
+func (l *List) Has(y Value) (bool, error) {
+	for _, x := range l.elems {
+		if eq, err := Equal(x, y); err != nil {
+			return false, err
+		} else if eq {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (x *List) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*List)
 	// It's tempting to check x == y as an optimization here,
@@ -1087,6 +1106,17 @@ func (t Tuple) Truth() Bool    { return len(t) > 0 }
 func (x Tuple) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(Tuple)
 	return sliceCompare(op, x, y, depth)
+}
+
+func (t Tuple) Has(y Value) (bool, error) {
+	for _, x := range t {
+		if eq, err := Equal(x, y); err != nil {
+			return false, err
+		} else if eq {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (t Tuple) Hash() (uint32, error) {
