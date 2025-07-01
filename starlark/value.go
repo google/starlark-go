@@ -26,6 +26,7 @@
 //
 //	Callable        -- value is callable like a function
 //	Comparable      -- value defines its own comparison operations
+//  Container       -- value supports the 'in' operator
 //	Iterable        -- value is iterable using 'for' loops
 //	Sequence        -- value is iterable sequence of known length
 //	Indexable       -- value is sequence with efficient random access
@@ -234,8 +235,7 @@ type Sliceable interface {
 	Slice(start, end, step int) Value
 }
 
-// A Container is a value that supports checking if other values are contained in
-// it via the Has method, which is used by the 'in'/'not in' operator.
+// A Container is a value that supports the 'in' operator.
 type Container interface {
 	Value
 	// Has reports whether the value contains the specified element.
