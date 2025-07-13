@@ -230,7 +230,7 @@ type resolver struct {
 	// isGlobal may be nil.
 	isGlobal, isPredeclared, isUniversal func(name string) bool
 
-	loops   int // number of enclosing for/while loops
+	loops   int // number of enclosing for/while loops in current function (or file, if top-level)
 	ifstmts int // number of enclosing if statements loops
 
 	errors ErrorList
@@ -822,6 +822,10 @@ func (r *resolver) function(function *Function, pos syntax.Position) {
 	b := &block{function: function}
 	r.push(b)
 
+	// Save the current loop count and reset it for the new function
+	outerLoops := r.loops
+	r.loops = 0
+
 	var seenOptional bool
 	var star *syntax.UnaryExpr // * or *args param
 	var starStar *syntax.Ident // **kwargs ident
@@ -904,6 +908,9 @@ func (r *resolver) function(function *Function, pos syntax.Position) {
 
 	// Leave function block.
 	r.pop()
+
+	// Restore the outer loop count
+	r.loops = outerLoops
 
 	// References within the function body to globals are not
 	// resolved until the end of the module.
