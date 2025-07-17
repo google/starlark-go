@@ -228,6 +228,18 @@ continue ### "continue not in a loop"
 pass
 
 ---
+# Test for bug #598: break statement inside nested function within a loop
+def fun1():
+  for a in [1, 2, 3]:
+    def nested():
+      break ### "break not in a loop"
+
+def fun2():
+  for a in [1, 2, 3]:
+    def nested():
+      continue ### "continue not in a loop"
+
+---
 # Positional arguments (and required parameters)
 # must appear before named arguments (and optional parameters).
 
