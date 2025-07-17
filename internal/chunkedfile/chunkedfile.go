@@ -46,7 +46,7 @@ type Chunk struct {
 
 // Reporter is implemented by *testing.T.
 type Reporter interface {
-	Errorf(format string, args ...interface{})
+	Errorf(format string, args ...any)
 }
 
 // Read parses a chunked file and returns its chunks.
