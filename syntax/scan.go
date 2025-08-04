@@ -370,7 +370,7 @@ func (sc *scanner) recover(err *error) {
 	case Error:
 		*err = e
 	default:
-		*err = Error{sc.pos, fmt.Sprintf("internal error: %v", e)}
+		*err = Error{sc.pos, fmt.Sprintf("internal error: %T %#v", e, e)}
 		if debug {
 			log.Fatal(*err)
 		}
