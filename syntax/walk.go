@@ -49,6 +49,10 @@ func Walk(n Node, f func(Node) bool) {
 		Walk(n.X, f)
 		walkStmts(n.Body, f)
 
+	case *WhileStmt:
+		Walk(n.Cond, f)
+		walkStmts(n.Body, f)
+
 	case *ReturnStmt:
 		if n.Result != nil {
 			Walk(n.Result, f)
