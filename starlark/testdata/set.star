@@ -58,6 +58,7 @@ assert.eq(list(x | set((6, 5, 4))), [1, 2, 3, 6, 5, 4])
 assert.eq(list(set("a".elems()).union("b".elems())), ["a", "b"])
 assert.eq(list(set("ab".elems()).union("bc".elems())), ["a", "b", "c"])
 assert.eq(set().union([]), set())
+assert.eq(x.union(), x)
 assert.eq(type(x.union(y)), "set")
 assert.eq(list(x.union()), [1, 2, 3])
 assert.eq(list(x.union(y)), [1, 2, 3, 4, 5])
@@ -65,7 +66,7 @@ assert.eq(list(x.union(y, [6, 7])), [1, 2, 3, 4, 5, 6, 7])
 assert.eq(list(x.union([5, 1])), [1, 2, 3, 5])
 assert.eq(list(x.union((6, 5, 4))), [1, 2, 3, 6, 5, 4])
 assert.fails(lambda : x.union([1, 2, {}]), "unhashable type: dict")
-assert.fails(lambda : x.union(1, 2, 3), "argument #1 is not iterable: int")
+assert.fails(lambda : x.union(1, 2, 3), "union: for parameter 1: got int, want iterable")
 
 # set.update (allows any iterable for the right operand)
 # The update function will mutate the set so the tests below are
@@ -133,13 +134,13 @@ test_update_non_hashable()
 
 def test_update_non_iterable():
     s = set(x)
-    assert.fails(lambda: x.update(9), "update: argument #1 is not iterable: int")
+    assert.fails(lambda: x.update(9), "update: for parameter 1: got int, want iterable")
 
 test_update_non_iterable()
 
 def test_update_kwargs():
     s = set(x)
-    assert.fails(lambda: x.update(gee = [3, 4]), "update: does not accept keyword arguments")
+    assert.fails(lambda: x.update(gee = [3, 4]), "update: unexpected keyword arguments")
 
 test_update_kwargs()
 
@@ -150,16 +151,57 @@ def test_update_no_arg():
 
 test_update_no_arg()
 
-# intersection, set & set or set.intersection(iterable)
-assert.eq(list(set("a".elems()) & set("b".elems())), [])
-assert.eq(list(set("ab".elems()) & set("bc".elems())), ["b"])
+# intersection, set & set or set.intersection(*iterables)
+assert.eq(list(set("abc".elems()) & set("def".elems())), [])
+assert.eq(list(set("abc".elems()) & set()), [])
+assert.eq(list(set() & set("def".elems())), [])
+assert.eq(list(set("abc".elems()) & set("dcb".elems())), ["b", "c"]) # preserves lhs iteration order
 assert.eq(list(set("a".elems()).intersection("b".elems())), [])
 assert.eq(list(set("ab".elems()).intersection("bc".elems())), ["b"])
+assert.eq(list(set([1, 2, 3]).intersection([2, 3, 4, 2, 3, 4])), [2, 3]) # handles duplicates in rhs
+assert.eq(list(set([1, 2, 3]).intersection([2, 3], {3: "three", 4: "four"})), [3])
+assert.eq(list(set([1, 2, 3]).intersection([4, 3, 2])), [2, 3]) # preserves lhs iteration order
+assert.fails(lambda: set([1, 2]).intersection([[3]]), "intersection: unhashable type: list")
 
-# symmetric difference, set ^ set or set.symmetric_difference(iterable)
-assert.eq(set([1, 2, 3]) ^ set([4, 5, 3]), set([1, 2, 4, 5]))
-assert.eq(set([1,2,3,4]).symmetric_difference([3,4,5,6]), set([1,2,5,6]))
-assert.eq(set([1,2,3,4]).symmetric_difference(set([])), set([1,2,3,4]))
+# intersection_update(*iterables)
+intersection_update_set = set([1, 2, 3])
+assert.eq(intersection_update_set.intersection_update(), None)  # no-op
+assert.eq(list(intersection_update_set), [1, 2, 3])  # unchanged
+assert.eq(intersection_update_set.intersection_update([4, 3, 2]), None)
+assert.eq(list(intersection_update_set), [2, 3])  # iteration order unchanged
+assert.eq(intersection_update_set.intersection_update([2, 3, 4, 2, 3, 4]), None)
+assert.eq(list(intersection_update_set), [2, 3]) # handles duplicates in rhs
+assert.eq(intersection_update_set.intersection_update([2, 3], {3: "three", 4: "four"}), None)
+assert.eq(list(intersection_update_set), [3])
+assert.fails(lambda: intersection_update_set.intersection_update(3), "intersection_update: for parameter 1: got int, want iterable")
+freeze(intersection_update_set)
+assert.fails(lambda: intersection_update_set.intersection_update([1]), "intersection_update: cannot delete from frozen hash table")
+assert.fails(lambda: intersection_update_set.intersection_update(), "intersection_update: cannot delete from frozen hash table")
+
+# symmetric difference, set ^ set or set.symmetric_difference(*iterables)
+assert.eq(list(set([1, 2, 3]) ^ set([4, 5, 3])), [1, 2, 4, 5])
+assert.eq(list(set([1, 2, 3, 4]).symmetric_difference([3, 4, 5, 6])), [1, 2, 5, 6])
+assert.eq(list(set([1, 2, 3, 4]).symmetric_difference(set([]))), [1, 2, 3, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference([2, 3, 4])), [1, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference([2, 3, 4, 2, 3, 4])), [1, 4])
+assert.eq(list(set([1, 2, 3]).symmetric_difference({0: "zero", 1: "one"})), [2, 3, 0])
+assert.fails(lambda: set([1, 2]).symmetric_difference(2), "symmetric_difference: for parameter 1: got int, want iterable")
+assert.fails(lambda: set([1, 2]).symmetric_difference([1], [2]), "symmetric_difference: got 2 arguments, want 1")
+assert.fails(lambda: set([1, 2]).symmetric_difference(), "symmetric_difference: got 0 arguments, want 1")
+
+# set.symmetric_difference_update(*iterables)
+symmetric_difference_update_set = set([1, 2, 3, 4])
+assert.eq(symmetric_difference_update_set.symmetric_difference_update([2]), None)
+assert.eq(symmetric_difference_update_set, set([1, 3, 4]))
+assert.eq(symmetric_difference_update_set.symmetric_difference_update([2, 3, 2, 3]), None)
+assert.eq(symmetric_difference_update_set, set([1, 2, 4]))
+assert.eq(symmetric_difference_update_set.symmetric_difference_update({0: "zero", 1: "one"}), None)
+assert.eq(symmetric_difference_update_set, set([0, 2, 4]))
+assert.fails(lambda: symmetric_difference_update_set.symmetric_difference_update(2), "symmetric_difference_update: for parameter 1: got int, want iterable")
+assert.fails(lambda: symmetric_difference_update_set.symmetric_difference_update([1], [2]), "symmetric_difference_update: got 2 arguments, want 1")
+assert.fails(lambda: symmetric_difference_update_set.symmetric_difference_update(), "symmetric_difference_update: got 0 arguments, want 1")
+freeze(symmetric_difference_update_set)
+assert.fails(lambda: symmetric_difference_update_set.symmetric_difference_update([1]), "symmetric_difference_update: cannot insert into frozen hash table")
 
 def test_set_augmented_assign():
     x = set([1, 2, 3])
@@ -242,10 +284,17 @@ assert.fails(lambda: discard_set.discard(1), "discard: cannot delete from frozen
 
 # update
 update_set = set([1, 2, 3])
-update_set.update([4])
-assert.true(4 in update_set)
+assert.eq(update_set.update(), None) # no-op
+assert.eq(update_set, set([1, 2, 3])) # unchanged
+assert.eq(update_set.update([]), None) # no-op
+assert.eq(update_set, set([1, 2, 3])) # unchanged
+assert.eq(update_set.update([4]), None)
+assert.eq(update_set.update([4, 5], [5, 6]), None)
+assert.eq(update_set, set([1, 2, 3, 4, 5, 6]))
+assert.fails(lambda: update_set.update(7), "update: for parameter 1: got int, want iterable")
 freeze(update_set)
-assert.fails(lambda: update_set.update([5]), "update: cannot insert into frozen hash table")
+assert.fails(lambda: update_set.update([7]), "update: cannot insert into frozen hash table")
+assert.fails(lambda: update_set.update(), "update: cannot insert into frozen hash table")
 
 # pop
 pop_set = set([1,2,3])
@@ -269,14 +318,43 @@ other_clear_set = set([1,2,3])
 freeze(other_clear_set)
 assert.fails(lambda: other_clear_set.clear(), "clear: cannot clear frozen hash table")
 
-# difference: set - set or set.difference(iterable)
+# difference: set - set or set.difference(*iterables)
 assert.eq(set([1,2,3,4]).difference([1,2,3,4]), set([]))
-assert.eq(set([1,2,3,4]).difference([1,2]), set([3,4]))
+assert.eq(set([1,2,3,4]).difference([0,1,2]), set([3,4]))
 assert.eq(set([1,2,3,4]).difference([]), set([1,2,3,4]))
+assert.eq(set([1,2,3,4]).difference(), set([1,2,3,4]))
 assert.eq(set([1,2,3,4]).difference(set([1,2,3])), set([4]))
+assert.eq(set([1,2,3,4]).difference(set([1,2]), [2,3]), set([4]))
 
 assert.eq(set([1,2,3,4]) - set([1,2,3,4]), set())
 assert.eq(set([1,2,3,4]) - set([1,2]), set([3,4]))
+
+# difference_update(*iterables)
+difference_update_set = set([1, 2, 3, 4])
+assert.eq(difference_update_set.difference_update(), None)  # no-op
+assert.eq(difference_update_set, set([1, 2, 3, 4]))  # unchanged
+assert.eq(difference_update_set.difference_update([2]), None)
+assert.eq(difference_update_set, set([1, 3, 4]))
+assert.eq(difference_update_set.difference_update([2, 3, 2, 3]), None)
+assert.eq(difference_update_set, set([1, 4]))
+assert.eq(difference_update_set.difference_update([2], {3: "three", 4: "four"}), None)
+assert.eq(difference_update_set, set([1]))
+assert.fails(lambda: difference_update_set.difference_update(2), "difference_update: for parameter 1: got int, want iterable")
+freeze(difference_update_set)
+assert.fails(lambda: difference_update_set.difference_update([1]), "difference_update: cannot delete from frozen hash table")
+assert.fails(lambda: difference_update_set.difference_update(), "difference_update: cannot delete from frozen hash table")
+
+# isdisjoint
+assert.eq(set([1, 2]).isdisjoint([3, 4]), True)
+assert.eq(set([1, 2]).isdisjoint([2, 3]), False)
+assert.eq(set([1, 2]).isdisjoint([1]), False)
+assert.eq(set([1, 2]).isdisjoint({2: "a", 3: "b"}), False)
+assert.eq(set([1, 2]).isdisjoint({}), True)
+assert.eq(set().isdisjoint({}), True)
+assert.eq(set().isdisjoint([2, 3]), True)
+assert.eq(set().isdisjoint([]), True)
+assert.fails(lambda: set([1, 2]).isdisjoint(2), "isdisjoint: for parameter 1: got int, want iterable")
+assert.fails(lambda: set([1, 2]).isdisjoint([1, 2], [3]), "isdisjoint: got 2 arguments, want at most 1")
 
 # issuperset: set >= set or set.issuperset(iterable)
 assert.true(set([1,2,3]).issuperset([1,2]))
