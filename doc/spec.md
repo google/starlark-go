@@ -2132,7 +2132,7 @@ or more _clauses_, the first of which must be a `for` clause.
 Each `for` clause resembles a `for` statement, and specifies an
 iterable operand and a set of variables to be assigned by successive
 values of the iterable.
-An `if` cause resembles an `if` statement, and specifies a condition
+An `if` clause resembles an `if` statement, and specifies a condition
 that must be met for the body expression to be evaluated.
 A sequence of `for` and `if` clauses acts like a nested sequence of
 `for` and `if` statements.
