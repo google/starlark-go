@@ -275,7 +275,7 @@ var (
 //	iter := seq.Iterate()
 //	defer iter.Done()
 //	var elem Value
-//	for iter.Next(elem) {
+//	for iter.Next(&elem) {
 //		...
 //	}
 //
