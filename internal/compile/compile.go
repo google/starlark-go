@@ -310,9 +310,9 @@ func (op Opcode) String() string {
 // Programs are serialized by the Program.Encode method,
 // which must be updated whenever this declaration is changed.
 type Program struct {
-	Loads     []Binding     // name (really, string) and position of each load stmt
-	Names     []string      // names of attributes and predeclared variables
-	Constants []interface{} // = string | int64 | float64 | *big.Int | Bytes
+	Loads     []Binding // name (really, string) and position of each load stmt
+	Names     []string  // names of attributes and predeclared variables
+	Constants []any     // = string | int64 | float64 | *big.Int | Bytes
 	Functions []*Funcode
 	Globals   []Binding // for error messages and tracing
 	Toplevel  *Funcode  // module initialization function
@@ -363,7 +363,7 @@ type pcomp struct {
 	prog *Program // what we're building
 
 	names     map[string]uint32
-	constants map[interface{}]uint32
+	constants map[any]uint32
 	functions map[*Funcode]uint32
 }
 
@@ -502,7 +502,7 @@ func File(opts *syntax.FileOptions, stmts []syntax.Stmt, pos syntax.Position, na
 			Recursion: opts.Recursion,
 		},
 		names:     make(map[string]uint32),
-		constants: make(map[interface{}]uint32),
+		constants: make(map[any]uint32),
 		functions: make(map[*Funcode]uint32),
 	}
 	pcomp.prog.Toplevel = pcomp.function(name, pos, stmts, locals, nil)
@@ -967,7 +967,7 @@ func (pcomp *pcomp) nameIndex(name string) uint32 {
 
 // constantIndex returns the index of the specified constant
 // within the constant pool, adding it if necessary.
-func (pcomp *pcomp) constantIndex(v interface{}) uint32 {
+func (pcomp *pcomp) constantIndex(v any) uint32 {
 	index, ok := pcomp.constants[v]
 	if !ok {
 		index = uint32(len(pcomp.prog.Constants))

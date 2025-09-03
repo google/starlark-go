@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func scan(src interface{}) (tokens string, err error) {
+func scan(src any) (tokens string, err error) {
 	sc, err := newScanner("foo.star", src, false)
 	if err != nil {
 		return "", err
