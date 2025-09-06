@@ -3018,7 +3018,7 @@ x.f = y
 ### enumerate
 
 `enumerate(x)` returns a list of (index, value) pairs, each containing
-successive values of the iterable sequence xand the index of the value
+successive values of the iterable sequence x and the index of the value
 within the sequence.
 
 The optional second parameter, `start`, specifies an integer value to
