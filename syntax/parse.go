@@ -27,7 +27,7 @@ const (
 //
 // Deprecated: use [FileOptions.Parse] instead,
 // because this function relies on legacy global variables.
-func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
+func Parse(filename string, src any, mode Mode) (f *File, err error) {
 	return LegacyFileOptions().Parse(filename, src, mode)
 }
 
@@ -38,7 +38,7 @@ func Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
 // The type of the argument for the src parameter must be string,
 // []byte, io.Reader, or FilePortion.
 // If src == nil, Parse parses the file specified by filename.
-func (opts *FileOptions) Parse(filename string, src interface{}, mode Mode) (f *File, err error) {
+func (opts *FileOptions) Parse(filename string, src any, mode Mode) (f *File, err error) {
 	in, err := newScanner(filename, src, mode&RetainComments != 0)
 	if err != nil {
 		return nil, err
@@ -102,14 +102,14 @@ func (opts *FileOptions) ParseCompoundStmt(filename string, readline func() ([]b
 //
 // Deprecated: use [FileOptions.ParseExpr] instead,
 // because this function relies on legacy global variables.
-func ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
+func ParseExpr(filename string, src any, mode Mode) (expr Expr, err error) {
 	return LegacyFileOptions().ParseExpr(filename, src, mode)
 }
 
 // ParseExpr parses a Starlark expression.
 // A comma-separated list of expressions is parsed as a tuple.
 // See Parse for explanation of parameters.
-func (opts *FileOptions) ParseExpr(filename string, src interface{}, mode Mode) (expr Expr, err error) {
+func (opts *FileOptions) ParseExpr(filename string, src any, mode Mode) (expr Expr, err error) {
 	in, err := newScanner(filename, src, mode&RetainComments != 0)
 	if err != nil {
 		return nil, err
@@ -811,7 +811,7 @@ func (p *parser) parsePrimary() Expr {
 		return p.parseIdent()
 
 	case INT, FLOAT, STRING, BYTES:
-		var val interface{}
+		var val any
 		tok := p.tok
 		switch tok {
 		case INT:

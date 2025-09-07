@@ -73,6 +73,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -988,7 +989,7 @@ func (l *List) Index(i int) Value     { return l.elems[i] }
 
 func (l *List) Slice(start, end, step int) Value {
 	if step == 1 {
-		elems := append([]Value{}, l.elems[start:end]...)
+		elems := slices.Clone(l.elems[start:end])
 		return NewList(elems)
 	}
 
@@ -1472,12 +1473,7 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 }
 
 func pathContains(path []Value, x Value) bool {
-	for _, y := range path {
-		if x == y {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(path, x)
 }
 
 // CompareLimit is the depth limit on recursive comparison operations such as == and <.

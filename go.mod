@@ -1,12 +1,12 @@
 module go.starlark.net
 
-go 1.19
+go 1.23.0
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/google/go-cmp v0.5.5
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
-	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
+	golang.org/x/sys v0.33.0
+	golang.org/x/term v0.32.0
 	google.golang.org/protobuf v1.33.0
 )
 
