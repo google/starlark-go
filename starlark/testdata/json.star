@@ -60,6 +60,9 @@ assert.eq(
     json.indent(json.encode({"x": 1, "y": ["one", "two"]}), prefix="", indent="\t")
 )
 
+assert.fails(lambda: json.encode_indent('foo', 'bar'), 'json.encode_indent: got 2 arguments, want 1')
+assert.fails(lambda: json.encode_indent(recursive_map), 'json.encode_indent: in dict key "r": cycle in JSON structure')
+
 ## json.decode
 
 assert.eq(json.decode("null"), None)

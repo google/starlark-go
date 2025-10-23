@@ -94,10 +94,6 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 
-	return encodeInternal(x)
-}
-
-func encodeInternal(x starlark.Value) (starlark.Value, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -238,7 +234,7 @@ func encodeInternal(x starlark.Value) (starlark.Value, error) {
 	}
 
 	if err := emit(x); err != nil {
-		return nil, fmt.Errorf("json.encode: %v", err)
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
 }
@@ -251,11 +247,9 @@ func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	); err != nil {
 		return nil, err
 	}
-	var x starlark.Value // positional-only
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &x); err != nil {
-		return nil, err
-	}
-	str, err := encodeInternal(x)
+	// Rely on encode() to parse the positional parameter (since the signature matches); use our b so
+	// error messages are attributed to json.encode_indent.
+	str, err := encode(thread, b, args, nil)
 	if err != nil {
 		return nil, err
 	}
