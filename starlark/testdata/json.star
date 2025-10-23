@@ -3,7 +3,7 @@
 load("assert.star", "assert")
 load("json.star", "json")
 
-assert.eq(dir(json), ["decode", "encode", "indent"])
+assert.eq(dir(json), ["decode", "encode", "encode_indent", "indent"])
 
 # Some of these cases were inspired by github.com/nst/JSONTestSuite.
 
@@ -48,6 +48,17 @@ encode_error(recursive_list, 'json.encode: at list index 0: cycle in JSON struct
 recursive_tuple = (1, 2, [])
 recursive_tuple[2].append(recursive_tuple)
 encode_error(recursive_tuple, 'json.encode: at tuple index 2: at list index 0: cycle in JSON structure')
+
+## json.encode_indent
+
+assert.eq(
+    json.encode_indent({"x": 1, "y": ["one", "two"]}, prefix="¶", indent="–––"),
+    json.indent(json.encode({"x": 1, "y": ["one", "two"]}), prefix="¶", indent="–––")
+)
+assert.eq(
+    json.encode_indent({"x": 1, "y": ["one", "two"]}),
+    json.indent(json.encode({"x": 1, "y": ["one", "two"]}), prefix="", indent="\t")
+)
 
 ## json.decode
 

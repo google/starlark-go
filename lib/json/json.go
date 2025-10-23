@@ -28,6 +28,7 @@ import (
 //
 //	json = module(
 //	   encode,
+//	   encode_indent,
 //	   decode,
 //	   indent,
 //	)
@@ -54,6 +55,10 @@ import (
 // (e.g. it implements both Iterable and HasFields), the first case takes precedence.
 // Encoding any other value yields an error.
 //
+// def encode_indent(x, *, prefix="", indent="\t"):
+//
+// Equivalent to json.indent(json.encode(x), prefix, indent).
+//
 // def decode(x[, default]):
 //
 // The decode function has one required positional parameter, a JSON string.
@@ -76,9 +81,10 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "json",
 	Members: starlark.StringDict{
-		"encode": starlark.NewBuiltin("json.encode", encode),
-		"decode": starlark.NewBuiltin("json.decode", decode),
-		"indent": starlark.NewBuiltin("json.indent", indent),
+		"encode":        starlark.NewBuiltin("json.encode", encode),
+		"encode_indent": starlark.NewBuiltin("json.encode_indent", encodeIndent),
+		"decode":        starlark.NewBuiltin("json.decode", decode),
+		"indent":        starlark.NewBuiltin("json.indent", indent),
 	},
 }
 
@@ -88,6 +94,10 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 
+	return encodeInternal(x)
+}
+
+func encodeInternal(x starlark.Value) (starlark.Value, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -228,6 +238,29 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 
 	if err := emit(x); err != nil {
+		return nil, fmt.Errorf("json.encode: %v", err)
+	}
+	return starlark.String(buf.String()), nil
+}
+
+func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	prefix, indent := "", "\t" // keyword-only
+	if err := starlark.UnpackArgs(b.Name(), nil, kwargs,
+		"prefix?", &prefix,
+		"indent?", &indent,
+	); err != nil {
+		return nil, err
+	}
+	var x starlark.Value // positional-only
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &x); err != nil {
+		return nil, err
+	}
+	str, err := encodeInternal(x)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	if err := json.Indent(buf, []byte(str.(starlark.String)), prefix, indent); err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
