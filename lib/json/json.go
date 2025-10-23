@@ -57,7 +57,7 @@ import (
 //
 // def encode_indent(x, *, prefix="", indent="\t"):
 //
-// Equivalent to json.indent(json.encode(x), prefix, indent).
+// Equivalent to json.indent(json.encode(x), prefix=prefix, indent=indent).
 //
 // def decode(x[, default]):
 //
