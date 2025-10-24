@@ -3466,7 +3466,7 @@ x.setdefault("one")                     # 1
 x.setdefault("three", 0)                # 0
 x                                       # {"one": 1, "two": 2, "three": 0}
 x.setdefault("four")                    # None
-x                                       # {"one": 1, "two": 2, "three": None}
+x                                       # {"one": 1, "two": 2, "three": 0, "four": None}
 ```
 
 <a id='dict·update'></a>
