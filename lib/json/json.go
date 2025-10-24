@@ -253,8 +253,8 @@ func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	if err != nil {
 		return nil, err
 	}
-	buf := new(bytes.Buffer)
-	if err := json.Indent(buf, []byte(str.(starlark.String)), prefix, indent); err != nil {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(str.(starlark.String)), prefix, indent); err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
