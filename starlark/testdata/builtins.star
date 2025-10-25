@@ -196,7 +196,27 @@ assert.eq(getattr(hf, "x"), 2)
 assert.eq(hf.x, 2)
 # built-in types can have attributes (methods) too.
 myset = set([])
-assert.eq(dir(myset), ["add", "clear", "difference", "discard", "intersection", "issubset", "issuperset", "pop", "remove", "symmetric_difference", "union", "update"])
+assert.eq(
+    dir(myset),
+    [
+        "add",
+        "clear",
+        "difference",
+        "difference_update",
+        "discard",
+        "intersection",
+        "intersection_update",
+        "isdisjoint",
+        "issubset",
+        "issuperset",
+        "pop",
+        "remove",
+        "symmetric_difference",
+        "symmetric_difference_update",
+        "union",
+        "update",
+    ],
+)
 assert.true(hasattr(myset, "union"))
 assert.true(not hasattr(myset, "onion"))
 assert.eq(str(getattr(myset, "union")), "<built-in method union of set value>")

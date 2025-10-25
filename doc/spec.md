@@ -3659,13 +3659,35 @@ x                                        # set([])
 <a id='set·difference'></a>
 ### set·difference
 
-`S.difference(y)` returns a new set into which have been inserted all the elements of set S which are not in y.
+`S.difference(*others)` returns a new set containing elements found in the set
+`S` but not found in any of the iterable sequences `*others`.
 
-y can be any type of iterable (e.g. set, list, tuple).
+It is permissible to call `difference` without any arguments; this returns a
+copy of the set `S`.
+
+`difference` fails if any element of any of the `*others` is unhashable.
 
 ```python
-x = set([1, 2, 3])
-x.difference([3, 4, 5])                   # set([1, 2])
+set([1, 2, 3]).difference([2])             # set([1, 3])
+set([1, 2, 3]).difference([0, 1], [3, 4])  # set([2])
+```
+
+<a id='set·difference_update'></a>
+### set·difference\_update
+
+`S.difference_update(*others)` removes from the set `S` any elements found in
+any of the iterable sequences `*others`. It returns `None`.
+
+It is permissible to call `difference_update` without any arguments; this leaves
+the set `S` unchanged.
+
+`difference_update` fails if the set `S` is frozen or has active iterators, or
+if any element of any of the `*others` is unhashable.
+
+```python
+s = set([1, 2, 3, 4])
+s.difference_update([2])             # None; s is set([1, 3, 4])
+s.difference_update([0, 1], [4, 5])  # None; s is set([3])
 ```
 
 <a id='set·discard'></a>
@@ -3691,14 +3713,44 @@ x                                        # set([1, 3])
 <a id='set·intersection'></a>
 ### set·intersection
 
-`S.intersection(y)` returns a new set into which have been inserted all the elements of set S which are also in y.
+`S.intersection(*others)` returns a new set containing those elements that the
+set `S` and all of the iterable sequences `*others` have in common.
 
-y can be any type of iterable (e.g. set, list, tuple).
+It is permissible to call `intersection` without any arguments; this returns a
+copy of the set `S`.
+
+`intersection` fails if any element of any of the `*others` is unhashable.
 
 ```python
-x = set([1, 2, 3])
-x.intersection([3, 4, 5])                # set([3])
+set([1, 2]).intersection([2, 3])             # set([2])
+set([1, 2, 3]).intersection([0, 1], [1, 2])  # set([1])
 ```
+
+<a id='set·intersection_update'></a>
+### set·intersection\_update
+
+`S.intersection_update(*others)` removes from the set `S` any elements not found
+in at least one of the iterable sequences `*others`. It returns `None`.
+
+It is permissible to call `intersection_update` without any arguments; this
+leaves the set `S` unchanged.
+
+`intersection_update` fails if the set `S` is frozen or has active iterators, or
+if any element of any of the `*others` is unhashable.
+
+```python
+s = set([1, 2, 3, 4])
+s.intersection_update([0, 1, 2])       # None; s is set([1, 2])
+s.intersection_update([0, 1], [1, 2])  # None; s is set([1])
+```
+
+<a id='set·isdisjoint'></a>
+### set·isdisjoint
+
+`S.isdisjoint(x)` returns `True` if the set `S` and the iterable sequence `x` do
+not have any values in common, and `False` otherwise.
+
+`isdisjoint` fails if any element of `x` is unhashable.
 
 <a id='set·issubset'></a>
 ### set·issubset
@@ -3755,41 +3807,65 @@ x.remove(2)                             # error: element not found
 ```
 
 <a id='set·symmetric_difference'></a>
-### set·symmetric_difference
+### set·symmetric\_difference
 
-`S.symmetric_difference(y)` creates a new set into which is inserted all of the items which are in S but not y, followed by all of the items which are in y but not S.
+`S.symmetric_difference(x)` returns a new set containing elements found only in
+the set `S` or in the iterable sequence `x` but not those found in both `S` and
+`x`.
 
-y can be any type of iterable (e.g. set, list, tuple).
+`symmetric_difference` fails if any element of `x` is unhashable.
 
 ```python
-x = set([1, 2, 3])
-x.symmetric_difference([3, 4, 5])         # set([1, 2, 4, 5])
+set([1, 2]).symmetric_difference([2, 3])  # set([1, 3])
+```
+
+<a id='set·symmetric_difference_update'></a>
+### set·symmetric\_difference\_update
+
+`S.symmetric_difference_update(x)` removes from the set `S` any elements found
+in both `S` and the iterable sequence `x`, and adds to `S` any elements found in
+`x` but not in `S`. It returns `None`.
+
+`symmetric_difference_update` fails if the set `S` is frozen or has active
+iterators, or if any element of `x` is unhashable.
+
+```python
+s = set([1, 2])
+s.symmetric_difference_update([2, 3])  # None; s is set([1, 3])
 ```
 
 <a id='set·union'></a>
 ### set·union
 
-`S.union(iterable...)` returns a new set into which have been inserted
-all the elements of set S and each element of the iterable sequences.
+`S.union(*others)` returns a new set containing elements found in the set `S` or
+in any of the iterable sequences `*others`.
 
-`union` fails if any argument is not an iterable sequence, or if any
-sequence element is not hashable.
+It is permissible to call `union` without any arguments; this returns a copy of
+the set `S`.
+
+`union` fails if any element of any of the `*others` is unhashable.
 
 ```python
-x = set([1, 2])
-y = set([2, 3])
-x.union(y)                              # set([1, 2, 3])
+set([1, 2]).union([2, 3])                    # set([1, 2, 3])
+set([1, 2]).union([2, 3], {3: "a", 4: "b"})  # set([1, 2, 3, 4])
 ```
 
 <a id='set·update'></a>
 ### set·update
 
-`S.update(iterable...)` adds to S each element of the iterable
-sequences. The method will return `None`.
+`S.update(*others)` adds to the set `S` any elements found in any of the
+iterable sequences `*others`. It returns `None`.
+
+It is permissible to call `update` without any arguments; this leaves the set
+`S` unchanged.
+
+`update` fails if the set `S` is frozen or has active iterators, or if any
+element of any of the `*others` is unhashable.
 
 ```python
-x = set([1, 2])
-x.update([2, 3], [4, 5])
+s = set()
+s.update([1, 2])          # None; s is set([1, 2])
+s.update([2, 3], [3, 4])  # None; s is set([1, 2, 3, 4])
 ```
 
 <a id='string·elem_ords'></a>
