@@ -37,14 +37,12 @@ var (
 	descriptors = flag.String("descriptors", "", "comma-separated list of names of files containing proto.FileDescriptorProto messages")
 )
 
-// Starlark dialect flags
+// obsolete Starlark dialect flags
 func init() {
-	flag.BoolVar(&resolve.AllowSet, "set", resolve.AllowSet, "allow set data type")
-
-	// obsolete, no effect:
-	flag.BoolVar(&resolve.AllowFloat, "fp", true, "allow floating-point numbers")
-	flag.BoolVar(&resolve.AllowLambda, "lambda", resolve.AllowLambda, "allow lambda expressions")
-	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", resolve.AllowNestedDef, "allow nested def statements")
+	flag.BoolVar(&resolve.AllowFloat, "fp", true, "obsolete; no effect")
+	flag.BoolVar(&resolve.AllowLambda, "lambda", true, "obsolete; no effect")
+	flag.BoolVar(&resolve.AllowNestedDef, "nesteddef", true, "obsolete; no effect")
+	flag.BoolVar(&resolve.AllowSet, "set", true, "obsolete; no effect")
 }
 
 func main() {
