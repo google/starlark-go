@@ -12,3 +12,10 @@ def fib(n):
 	return fib(n-1) + fib(n-2)
 
 assert.eq(fib(5), 8)
+
+def runaway():
+	return runaway()
+
+# Runaway recursion should not overflow the Go stack (#617).
+# The interpreter imposes a limit long before then.
+assert.fails(runaway, "Starlark stack overflow")
