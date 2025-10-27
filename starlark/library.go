@@ -63,7 +63,7 @@ func init() {
 		"range":     NewBuiltin("range", range_),
 		"repr":      NewBuiltin("repr", repr),
 		"reversed":  NewBuiltin("reversed", reversed),
-		"set":       NewBuiltin("set", set), // requires resolve.AllowSet
+		"set":       NewBuiltin("set", set),
 		"sorted":    NewBuiltin("sorted", sorted),
 		"str":       NewBuiltin("str", str),
 		"tuple":     NewBuiltin("tuple", tuple),
