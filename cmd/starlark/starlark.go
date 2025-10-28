@@ -103,7 +103,7 @@ func doMain() int {
 	case flag.NArg() == 1 || *execprog != "":
 		var (
 			filename string
-			src      interface{}
+			src      any
 			err      error
 		)
 		if *execprog != "" {

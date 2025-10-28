@@ -14,6 +14,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -233,7 +234,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	return starlark.String(buf.String()), nil
 }
 
-func pointer(i interface{}) unsafe.Pointer {
+func pointer(i any) unsafe.Pointer {
 	v := reflect.ValueOf(i)
 	switch v.Kind() {
 	case reflect.Ptr, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
@@ -245,13 +246,7 @@ func pointer(i interface{}) unsafe.Pointer {
 }
 
 func pathContains(path []unsafe.Pointer, item unsafe.Pointer) bool {
-	for _, p := range path {
-		if p == item {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(path, item)
 }
 
 // isPrintableASCII reports whether s contains only printable ASCII.
@@ -315,7 +310,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	// a distinguished, private failure type prevents the possibility of
 	// json.decode with "default" becoming abused as a try-catch mechanism.
 	type failure string
-	fail := func(format string, args ...interface{}) {
+	fail := func(format string, args ...any) {
 		panic(failure(fmt.Sprintf(format, args...)))
 	}
 
