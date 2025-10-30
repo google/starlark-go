@@ -1278,20 +1278,17 @@ func (s *Set) clone() *Set {
 	return set
 }
 
-func (s *Set) Union(iter Iterator) (Value, error) {
+func (s *Set) Union(other Iterator) (Value, error) {
 	set := s.clone()
-	var x Value
-	for iter.Next(&x) {
-		if err := set.Insert(x); err != nil {
-			return nil, err
-		}
+	if err := set.InsertAll(other); err != nil {
+		return nil, err
 	}
 	return set, nil
 }
 
-func (s *Set) InsertAll(iter Iterator) error {
+func (s *Set) Update(other Iterator) error {
 	var x Value
-	for iter.Next(&x) {
+	for other.Next(&x) {
 		if err := s.Insert(x); err != nil {
 			return err
 		}
@@ -1299,15 +1296,43 @@ func (s *Set) InsertAll(iter Iterator) error {
 	return nil
 }
 
+// Deprecated: use Update
+//
+//go:fix inline
+func (s *Set) InsertAll(other Iterator) error {
+	return s.Update(other)
+}
+
 func (s *Set) Difference(other Iterator) (Value, error) {
-	diff := s.clone()
+	set := s.clone()
+	if err := set.DifferenceUpdate(other); err != nil {
+		return nil, err
+	}
+	return set, nil
+}
+
+func (s *Set) DifferenceUpdate(other Iterator) error {
 	var x Value
 	for other.Next(&x) {
-		if _, err := diff.Delete(x); err != nil {
-			return nil, err
+		if _, err := s.Delete(x); err != nil {
+			return err
 		}
 	}
-	return diff, nil
+	return nil
+}
+
+func (s *Set) IsDisjoint(other Iterator) (bool, error) {
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return false, err
+		}
+		if found {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (s *Set) IsSuperset(other Iterator) (bool, error) {
@@ -1332,11 +1357,28 @@ func (s *Set) IsSubset(other Iterator) (bool, error) {
 	}
 }
 
+// Deprecated: use IntersectIterable
+//
+//go:fix inline
 func (s *Set) Intersection(other Iterator) (Value, error) {
+	otherSet, err := setFromIterator(other)
+	if err != nil {
+		return nil, err
+	}
+	return s.IntersectIterable(otherSet)
+}
+
+func (s *Set) IntersectIterable(other Iterable) (Value, error) {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return nil, err
+	}
 	intersect := new(Set)
 	var x Value
-	for other.Next(&x) {
-		found, err := s.Has(x)
+	iter := s.Iterate()
+	defer iter.Done()
+	for iter.Next(&x) {
+		_, found, err := dedup.lookup(x)
 		if err != nil {
 			return nil, err
 		}
@@ -1350,19 +1392,83 @@ func (s *Set) Intersection(other Iterator) (Value, error) {
 	return intersect, nil
 }
 
-func (s *Set) SymmetricDifference(other Iterator) (Value, error) {
+func (s *Set) IntersectionUpdate(other Iterable) error {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return err
+	}
+	// We (unsafely) manually iterate entries of s's hash table and for each entry, decide whether or not to delete it. Normal iteration doesn't allow deletion.
+	s.ht.checkMutable("delete from")
+	entry := s.ht.head
+	for entry != nil {
+		// Save next pointer, because s.Delete() may mutate entry.next
+		next := entry.next
+		value := entry.key
+		_, found, err := dedup.lookup(value)
+		if err != nil {
+			return err
+		}
+		if !found {
+			_, err := s.Delete(value)
+			if err != nil {
+				return err
+			}
+		}
+		entry = next
+	}
+	return nil
+}
+
+func (s *Set) SymmetricDifference(other Iterable) (Value, error) {
 	diff := s.clone()
+	if err := diff.SymmetricDifferenceUpdate(other); err != nil {
+		return nil, err
+	}
+	return diff, nil
+}
+
+func (s *Set) SymmetricDifferenceUpdate(other Iterable) error {
+	dedup, err := deduplicate(other)
+	if err != nil {
+		return err
+	}
 	var x Value
-	for other.Next(&x) {
-		found, err := diff.Delete(x)
+	dedupIter := dedup.iterate()
+	defer dedupIter.Done()
+	for dedupIter.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return err
+		}
+		if found {
+			_, err := s.Delete(x)
+			if err != nil {
+				return err
+			}
+		} else {
+			if err := s.Insert(x); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func deduplicate(v Iterable) (*hashtable, error) {
+	switch v := v.(type) {
+	case *Set:
+		return &v.ht, nil
+	case *Dict:
+		return &v.ht, nil
+	default:
+		iter := v.Iterate()
+		defer iter.Done()
+		dedup, err := setFromIterator(iter)
 		if err != nil {
 			return nil, err
 		}
-		if !found {
-			diff.Insert(x)
-		}
+		return &dedup.ht, nil
 	}
-	return diff, nil
 }
 
 // toString returns the string form of value v.
