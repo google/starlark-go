@@ -5,15 +5,16 @@ package starlark
 import (
 	"fmt"
 	"os"
-	"sync/atomic"
-	"unsafe"
 
+	"errors"
 	"go.starlark.net/internal/compile"
 	"go.starlark.net/internal/spell"
 	"go.starlark.net/syntax"
 )
 
 const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of error.
+
+var ErrTooManySteps = errors.New("too many steps")
 
 // TODO(adonovan):
 // - optimize position table.
@@ -112,11 +113,11 @@ loop:
 			if thread.OnMaxSteps != nil {
 				thread.OnMaxSteps(thread)
 			} else {
-				thread.Cancel("too many steps")
+				thread.CancelWithError(ErrTooManySteps)
 			}
 		}
-		if reason := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reason != nil {
-			err = fmt.Errorf("Starlark computation cancelled: %s", *(*string)(reason))
+		if reasonErr := thread.cancelReason.Load(); reasonErr != nil {
+			err = *reasonErr
 			break loop
 		}
 

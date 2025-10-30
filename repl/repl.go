@@ -37,7 +37,7 @@ func REPL(thread *starlark.Thread, globals starlark.StringDict) {
 // REPLOptions executes a read, eval, print loop.
 //
 // Before evaluating each expression, it sets the Starlark thread local
-// variable named "context" to a context.Context that is cancelled by a
+// variable named "context" to a context.Context that is canceled by a
 // SIGINT (Control-C). Client-supplied global functions may use this
 // context to make long-running operations interruptable.
 func REPLOptions(opts *syntax.FileOptions, thread *starlark.Thread, globals starlark.StringDict) {
@@ -67,7 +67,7 @@ func REPLOptions(opts *syntax.FileOptions, thread *starlark.Thread, globals star
 // only if readline failed. Starlark errors are printed.
 func rep(opts *syntax.FileOptions, rl *readline.Instance, thread *starlark.Thread, globals starlark.StringDict) error {
 	// Each item gets its own context,
-	// which is cancelled by a SIGINT.
+	// which is canceled by a SIGINT.
 	//
 	// Note: during Readline calls, Control-C causes Readline to return
 	// ErrInterrupt but does not generate a SIGINT.
