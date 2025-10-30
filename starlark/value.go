@@ -1679,7 +1679,7 @@ func (b Bytes) Freeze()               {} // immutable
 func (b Bytes) Truth() Bool           { return len(b) > 0 }
 func (b Bytes) Hash() (uint32, error) { return String(b).Hash() }
 func (b Bytes) Len() int              { return len(b) }
-func (b Bytes) Index(i int) Value     { return b[i : i+1] }
+func (b Bytes) Index(i int) Value     { return MakeInt(int(b[i])) }
 
 func (b Bytes) Attr(name string) (Value, error) { return builtinAttr(b, name, bytesMethods) }
 func (b Bytes) AttrNames() []string             { return builtinAttrNames(bytesMethods) }
