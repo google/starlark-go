@@ -208,7 +208,7 @@ func (d Duration) Hash() (uint32, error) {
 func (d Duration) Truth() starlark.Bool { return d != 0 }
 
 // Attr gets a value for a string attribute, implementing dot expression support
-// in starklark. required by starlark.HasAttrs interface.
+// in starlark. required by starlark.HasAttrs interface.
 func (d Duration) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "hours":
@@ -383,7 +383,7 @@ func (t Time) Hash() (uint32, error) {
 func (t Time) Truth() starlark.Bool { return !starlark.Bool(time.Time(t).IsZero()) }
 
 // Attr gets a value for a string attribute, implementing dot expression support
-// in starklark. required by starlark.HasAttrs interface.
+// in starlark. required by starlark.HasAttrs interface.
 func (t Time) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "year":
