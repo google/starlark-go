@@ -260,7 +260,7 @@ func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	return starlark.String(buf.String()), nil
 }
 
-func pointer(i interface{}) unsafe.Pointer {
+func pointer(i any) unsafe.Pointer {
 	v := reflect.ValueOf(i)
 	switch v.Kind() {
 	case reflect.Ptr, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
@@ -342,7 +342,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	// a distinguished, private failure type prevents the possibility of
 	// json.decode with "default" becoming abused as a try-catch mechanism.
 	type failure string
-	fail := func(format string, args ...interface{}) {
+	fail := func(format string, args ...any) {
 		panic(failure(fmt.Sprintf(format, args...)))
 	}
 

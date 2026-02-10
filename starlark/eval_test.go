@@ -790,7 +790,7 @@ func TestUnpackRequiredAfterOptional(t *testing.T) {
 func TestAsInt(t *testing.T) {
 	for _, test := range []struct {
 		val  starlark.Value
-		ptr  interface{}
+		ptr  any
 		want string
 	}{
 		{starlark.MakeInt(42), new(int32), "42"},

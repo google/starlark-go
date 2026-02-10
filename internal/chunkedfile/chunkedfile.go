@@ -46,7 +46,7 @@ type Chunk struct {
 
 // Reporter is implemented by *testing.T.
 type Reporter interface {
-	Errorf(format string, args ...interface{})
+	Errorf(format string, args ...any)
 }
 
 // Read parses a chunked file and returns its chunks.
@@ -82,11 +82,11 @@ func Read(filename string, report Reporter) (chunks []Chunk) {
 		lines := strings.Split(chunk, "\n")
 		for j := 0; j < len(lines); j, linenum = j+1, linenum+1 {
 			line := lines[j]
-			hashes := strings.Index(line, "###")
-			if hashes < 0 {
+			_, after, ok := strings.Cut(line, "###")
+			if !ok {
 				continue
 			}
-			rest := strings.TrimSpace(line[hashes+len("###"):])
+			rest := strings.TrimSpace(after)
 			pattern, err := strconv.Unquote(rest)
 			if err != nil {
 				report.Errorf("\n%s:%d: not a quoted regexp: %s", filename, linenum, rest)
