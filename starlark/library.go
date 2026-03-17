@@ -59,6 +59,7 @@ func init() {
 		"max":       NewBuiltin("max", minmax),
 		"min":       NewBuiltin("min", minmax),
 		"ord":       NewBuiltin("ord", ord),
+		"pow":       NewBuiltin("pow", pow),
 		"print":     NewBuiltin("print", print),
 		"range":     NewBuiltin("range", range_),
 		"repr":      NewBuiltin("repr", repr),
@@ -793,6 +794,40 @@ func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	default:
 		return nil, fmt.Errorf("ord: got %s, want string or bytes", x.Type())
 	}
+}
+
+// pow(base, exp[, mod]) — exponentiation.
+//
+// With two arguments, pow(x, y) is equivalent to x ** y.
+// With three arguments, pow(x, y, z) computes x**y mod z.
+// The three-argument form requires all arguments to be integers.
+func pow(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	var x, y, z Value
+	if err := UnpackPositionalArgs("pow", args, kwargs, 2, &x, &y, &z); err != nil {
+		return nil, err
+	}
+
+	// Three-argument form: all arguments must be integers.
+	if z != nil {
+		xi, xok := x.(Int)
+		yi, yok := y.(Int)
+		zi, zok := z.(Int)
+		if !xok || !yok || !zok {
+			return nil, fmt.Errorf("pow: 3rd argument not allowed unless all arguments are integers")
+		}
+		if zi.Sign() == 0 {
+			return nil, fmt.Errorf("pow: integer modulo by zero")
+		}
+		// big.Int.Exp returns nil if y < 0 and x and m are not coprime.
+		result := new(big.Int).Exp(xi.bigInt(), yi.bigInt(), zi.bigInt())
+		if result == nil {
+			return nil, fmt.Errorf("pow: base is not invertible for the given modulus")
+		}
+		return MakeBigInt(result), nil
+	}
+
+	// Two-argument form: equivalent to x ** y.
+	return Binary(syntax.STARSTAR, x, y)
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#print

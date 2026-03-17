@@ -212,6 +212,36 @@ assert.eq(2 >> 1, 1)
 assert.fails(lambda: 2 << -1, "negative shift count")
 assert.fails(lambda: 1 << 512, "shift count too large")
 
+# exponentiation
+assert.eq(2 ** 0, 1)
+assert.eq(2 ** 1, 2)
+assert.eq(2 ** 10, 1024)
+assert.eq(0 ** 0, 1)
+assert.eq(1 ** 1000, 1)
+assert.eq((-1) ** 0, 1)
+assert.eq((-1) ** 1, -1)
+assert.eq((-1) ** 2, 1)
+assert.eq((-2) ** 2, 4)
+assert.eq((-2) ** 3, -8)
+assert.eq(3 ** 3, 27)
+assert.eq(10 ** 100, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
+assert.eq(type(2 ** 10), "int")
+# right-associativity
+assert.eq(2 ** 3 ** 2, 512)  # 2 ** (3 ** 2) = 2 ** 9 = 512
+# augmented assignment
+def augmented_pow():
+    x = 2
+    x **= 10
+    assert.eq(x, 1024)
+augmented_pow()
+# negative exponent: result is float
+assert.eq(2 ** -1, 0.5)
+assert.eq(4 ** -1, 0.25)
+assert.eq(type(2 ** -1), "float")
+# errors
+assert.fails(lambda: 0 ** -1, "zero raised to negative power")
+assert.fails(lambda: 2 ** 10000, "exponent too large")
+
 # comparisons
 # TODO(adonovan): test: < > == != etc
 def comparisons():
