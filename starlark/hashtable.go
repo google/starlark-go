@@ -434,7 +434,7 @@ func hashString(s string) uint32 {
 		// Call the Go runtime's optimized hash implementation,
 		// which uses the AES instructions on amd64 and arm64 machines.
 		h := maphash.String(seed, s)
-		return uint32(h>>32) | uint32(h)
+		return uint32(h>>32) ^ uint32(h)
 	}
 	return softHashString(s)
 }
