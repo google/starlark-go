@@ -154,9 +154,9 @@ stage in the project, although we will endeavor to keep them to a minimum.
 Once the Bazel team has finalized the version 1 language specification,
 we will be more rigorous with interface stability.
 
-We aim to support the most recent four (go1.x) releases of the Go
-toolchain. For example, if the latest release is go1.20, we support it
-along with go1.19, go1.18, and go1.17, but not go1.16.
+We aim to support the most recent two (go1.x) releases of the Go
+toolchain. For example, if the latest release is go1.25, we support it
+along with go1.24, but not go1.23.
 
 ### Credits
 
