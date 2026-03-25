@@ -14,6 +14,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -263,7 +264,7 @@ func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 func pointer(i any) unsafe.Pointer {
 	v := reflect.ValueOf(i)
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
+	case reflect.Pointer, reflect.Chan, reflect.Map, reflect.UnsafePointer, reflect.Slice:
 		// TODO(adonovan): use v.Pointer() when we drop go1.17.
 		return unsafe.Pointer(v.Pointer())
 	default:
@@ -272,13 +273,7 @@ func pointer(i any) unsafe.Pointer {
 }
 
 func pathContains(path []unsafe.Pointer, item unsafe.Pointer) bool {
-	for _, p := range path {
-		if p == item {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(path, item)
 }
 
 // isPrintableASCII reports whether s contains only printable ASCII.

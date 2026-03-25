@@ -73,7 +73,7 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 	var ht hashtable
 
 	// Insert 10000 random ints into the map.
-	for j := 0; j < testIters; j++ {
+	for range testIters {
 		k := testInts[i]
 		i++
 		if err := ht.insert(k.Int, None); err != nil {
@@ -85,7 +85,7 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 	}
 
 	// Do 10000 random lookups in the map.
-	for j := 0; j < testIters; j++ {
+	for range testIters {
 		k := testInts[i]
 		i++
 		_, found, err := ht.lookup(k.Int)
@@ -101,7 +101,7 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 	}
 
 	// Do 10000 random deletes from the map.
-	for j := 0; j < testIters; j++ {
+	for range testIters {
 		k := testInts[i]
 		i++
 		_, found, err := ht.delete(k.Int)
@@ -127,7 +127,7 @@ func testHashtable(tb testing.TB, sane map[int]bool) {
 func TestHashtableCount(t *testing.T) {
 	const count = 1000
 	ht := new(hashtable)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		ht.insert(MakeInt(i), None)
 	}
 

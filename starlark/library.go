@@ -15,6 +15,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -496,10 +497,8 @@ func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 		// absence of a field: it could occur while computing
 		// the value of a present attribute, or it could be a
 		// "no such attribute" error with details.
-		for _, x := range object.AttrNames() {
-			if x == name {
-				return True, nil
-			}
+		if slices.Contains(object.AttrNames(), name) {
+			return True, nil
 		}
 	}
 	return False, nil
@@ -1832,7 +1831,7 @@ func string_format(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, er
 // decimal interprets s as a sequence of decimal digits.
 func decimal(s string) (x int, ok bool) {
 	n := len(s)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		digit := s[i] - '0'
 		if digit > 9 {
 			return 0, false

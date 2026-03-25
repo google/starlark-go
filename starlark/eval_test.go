@@ -1068,7 +1068,7 @@ func TestDeps(t *testing.T) {
 	if err != nil {
 		t.Skipf("'go list' failed: %s", err)
 	}
-	for _, pkg := range strings.Split(string(out), "\n") {
+	for pkg := range strings.SplitSeq(string(out), "\n") {
 		// Does pkg have form "domain.name/dir"?
 		slash := strings.IndexByte(pkg, '/')
 		dot := strings.IndexByte(pkg, '.')

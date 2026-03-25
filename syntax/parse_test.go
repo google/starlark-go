@@ -352,7 +352,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 	switch x.Kind() {
 	case reflect.String, reflect.Int, reflect.Bool:
 		fmt.Fprintf(out, "%v", x.Interface())
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		if elem := x.Elem(); elem.Kind() == 0 {
 			out.WriteString("nil")
 		} else {
@@ -377,14 +377,14 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 		fmt.Fprintf(out, "(%s", strings.TrimPrefix(x.Type().String(), "syntax."))
 		for i, n := 0, x.NumField(); i < n; i++ {
 			f := x.Field(i)
-			if f.Type() == reflect.TypeOf(syntax.Position{}) {
+			if f.Type() == reflect.TypeFor[syntax.Position]() {
 				continue // skip positions
 			}
 			name := x.Type().Field(i).Name
 			if name == "commentsRef" {
 				continue // skip comments fields
 			}
-			if f.Type() == reflect.TypeOf(syntax.Token(0)) {
+			if f.Type() == reflect.TypeFor[syntax.Token]() {
 				fmt.Fprintf(out, " %s=%s", name, f.Interface())
 				continue
 			}
@@ -393,7 +393,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 			case reflect.Slice:
 				if n := f.Len(); n > 0 {
 					fmt.Fprintf(out, " %s=(", name)
-					for i := 0; i < n; i++ {
+					for i := range n {
 						if i > 0 {
 							out.WriteByte(' ')
 						}
@@ -402,7 +402,7 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 					out.WriteByte(')')
 				}
 				continue
-			case reflect.Ptr, reflect.Interface:
+			case reflect.Pointer, reflect.Interface:
 				if f.IsNil() {
 					continue
 				}

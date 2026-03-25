@@ -73,6 +73,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -1472,12 +1473,7 @@ func writeValue(out *strings.Builder, x Value, path []Value) {
 }
 
 func pathContains(path []Value, x Value) bool {
-	for _, y := range path {
-		if x == y {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(path, x)
 }
 
 // CompareLimit is the depth limit on recursive comparison operations such as == and <.

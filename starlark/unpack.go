@@ -96,8 +96,8 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...any) error {
 
 	paramName := func(x any) (name string, skipNone bool) { // (no free variables)
 		name = x.(string)
-		if strings.HasSuffix(name, "??") {
-			name = strings.TrimSuffix(name, "??")
+		if before, ok := strings.CutSuffix(name, "??"); ok {
+			name = before
 			skipNone = true
 		} else if name[len(name)-1] == '?' {
 			name = name[:len(name)-1]
@@ -128,7 +128,7 @@ func UnpackArgs(fnname string, args Tuple, kwargs []Tuple, pairs ...any) error {
 kwloop:
 	for _, item := range kwargs {
 		name, arg := item[0].(String), item[1]
-		for i := 0; i < nparams; i++ {
+		for i := range nparams {
 			pName, skipNone := paramName(pairs[2*i])
 			if pName == string(name) {
 				// found it
@@ -163,7 +163,7 @@ kwloop:
 	}
 
 	// Check that all non-optional parameters are defined.
-	for i := 0; i < nparams; i++ {
+	for i := range nparams {
 		name := pairs[2*i].(string)
 		if strings.HasSuffix(name, "?") {
 			break // optional
@@ -278,7 +278,7 @@ func UnpackArg(v Value, ptr any) error {
 	default:
 		// v must have type *V, where V is some subtype of starlark.Value.
 		ptrv := reflect.ValueOf(ptr)
-		if ptrv.Kind() != reflect.Ptr {
+		if ptrv.Kind() != reflect.Pointer {
 			log.Panicf("internal error: not a pointer: %T", ptr)
 		}
 		paramVar := ptrv.Elem()
@@ -288,7 +288,7 @@ func UnpackArg(v Value, ptr any) error {
 			// Detect a possible bug in the Go program that called Unpack:
 			// If the variable *ptr is not a subtype of Value,
 			// no value of v can possibly work.
-			if !paramVar.Type().AssignableTo(reflect.TypeOf(new(Value)).Elem()) {
+			if !paramVar.Type().AssignableTo(reflect.TypeFor[Value]()) {
 				log.Panicf("pointer element type does not implement Value: %T", ptr)
 			}
 
@@ -353,7 +353,7 @@ func (is *intset) len() int {
 	if is.large == nil {
 		// Suboptimal, but used only for error reporting.
 		len := 0
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			if is.small&(1<<uint(i)) != 0 {
 				len++
 			}

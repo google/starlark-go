@@ -310,7 +310,7 @@ loop:
 				kvpairs = make([]Tuple, 0, nkvpairs)
 				kvpairsAlloc := make(Tuple, 2*nkvpairs) // allocate a single backing array
 				sp -= 2 * nkvpairs
-				for i := 0; i < nkvpairs; i++ {
+				for i := range nkvpairs {
 					pair := kvpairsAlloc[:2:2]
 					kvpairsAlloc = kvpairsAlloc[2:]
 					pair[0] = stack[sp+2*i]   // name
@@ -582,7 +582,7 @@ loop:
 				break loop
 			}
 
-			for i := 0; i < n; i++ {
+			for i := range n {
 				from := string(stack[sp-1-i].(String))
 				v, ok := dict[from]
 				if !ok {

@@ -401,7 +401,7 @@ func profFuncAddr(fn Callable) uintptr {
 
 	// User-defined callable types are typically of
 	// kind pointer-to-struct. Handle them specially.
-	if v := reflect.ValueOf(fn); v.Type().Kind() == reflect.Ptr {
+	if v := reflect.ValueOf(fn); v.Type().Kind() == reflect.Pointer {
 		return v.Pointer()
 	}
 

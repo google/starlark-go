@@ -98,14 +98,6 @@ func b2i(b bool) int {
 	}
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	} else {
-		return y
-	}
-}
-
 func abs(x int) int {
 	if x >= 0 {
 		return x
