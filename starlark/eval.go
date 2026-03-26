@@ -5,6 +5,7 @@
 package starlark
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -23,6 +24,23 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/syntax"
 )
+
+// When a Starlark function call is canceled by a call to [Thread.Cancel] or
+// [Thread.CancelWithError], the EvalError returned by [Call] will respond
+// to errors.As(err, &canceledErr).
+type CanceledError struct {
+	err error
+}
+
+func (ce *CanceledError) Unwrap() error {
+	return ce.err
+}
+
+func (ce *CanceledError) Error() string {
+	return fmt.Sprintf("Starlark computation canceled: %s", ce.err.Error())
+}
+
+var _ error = (*CanceledError)(nil)
 
 // A Thread contains the state of a Starlark thread,
 // such as its call stack and thread-local storage.
@@ -47,8 +65,9 @@ type Thread struct {
 	// See example_test.go for some example implementations of Load.
 	Load func(thread *Thread, module string) (StringDict, error)
 
-	// OnMaxSteps is called when the thread reaches the limit set by SetMaxExecutionSteps.
-	// The default behavior is to call thread.Cancel("too many steps").
+	// OnMaxSteps is called when the thread reaches the limit set by
+	// SetMaxExecutionSteps.  The default behavior is to call
+	// thread.CancelWithError(starlark.ErrTooManySteps).
 	OnMaxSteps func(thread *Thread)
 
 	// Steps a count of abstract computation steps executed
@@ -60,7 +79,7 @@ type Thread struct {
 	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
-	cancelReason *string
+	cancelReason atomic.Pointer[error]
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
@@ -79,7 +98,7 @@ func (thread *Thread) ExecutionSteps() uint64 {
 // computation steps that may be executed by this thread. If the
 // thread's step counter exceeds this limit, the interpreter calls
 // the optional OnMaxSteps function or the default behavior
-// of calling thread.Cancel("too many steps").
+// of calling thread.CancelWithError(starlark.ErrTooManySteps).
 func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 	thread.maxSteps = max
 }
@@ -102,8 +121,18 @@ func (thread *Thread) Uncancel() {
 // Unlike most methods of Thread, it is safe to call Cancel from any
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Cancel(reason string) {
+	thread.CancelWithError(errors.New(reason))
+}
+
+func (thread *Thread) CancelWithError(err error) {
+	// Wrap the user's error so that errors.As will find both the user's error
+	// and ErrCanceled as causes.
+	var canceledErr *CanceledError
+	if !errors.As(err, &canceledErr) {
+		err = &CanceledError{err: err}
+	}
 	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(&reason))
+	thread.cancelReason.CompareAndSwap(nil, &err)
 }
 
 // SetLocal sets the thread-local value associated with the specified key.
