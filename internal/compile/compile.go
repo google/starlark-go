@@ -1307,6 +1307,14 @@ func (fcomp *fcomp) expr(e syntax.Expr) {
 		}
 		fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
 
+	case *syntax.FStringExpr:
+		body := strings.Join(e.StringParts, "{}")
+		fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(body))
+		fcomp.setPos(e.TokenPos)
+		fcomp.emit1(ATTR, fcomp.pcomp.nameIndex("format"))
+		op, arg := fcomp.args(e.Args)
+		fcomp.emit1(op, arg)
+
 	case *syntax.ListExpr:
 		for _, x := range e.List {
 			fcomp.expr(x)
@@ -1659,7 +1667,7 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 
 	// usual case
 	fcomp.expr(call.Fn)
-	op, arg := fcomp.args(call)
+	op, arg := fcomp.args(call.Args)
 	fcomp.setPos(call.Lparen)
 	fcomp.emit1(op, arg)
 }
@@ -1667,12 +1675,12 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 // args emits code to push a tuple of positional arguments
 // and a tuple of named arguments containing alternating keys and values.
 // Either or both tuples may be empty (TODO(adonovan): optimize).
-func (fcomp *fcomp) args(call *syntax.CallExpr) (op Opcode, arg uint32) {
+func (fcomp *fcomp) args(callargs []syntax.Expr) (op Opcode, arg uint32) {
 	var callmode int
 	// Compute the number of each kind of parameter.
 	var p, n int // number of  positional, named arguments
 	var varargs, kwargs syntax.Expr
-	for _, arg := range call.Args {
+	for _, arg := range callargs {
 		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
 
 			// named argument (name, value)

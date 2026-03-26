@@ -142,6 +142,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/control.star",
 		"testdata/dict.star",
 		"testdata/float.star",
+		"testdata/fstring.star",
 		"testdata/function.star",
 		"testdata/int.star",
 		"testdata/json.star",

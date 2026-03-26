@@ -58,6 +58,11 @@ func unquote(quoted string) (s string, triple, isByte bool, err error) {
 		quoted = quoted[1:]
 	}
 
+	if strings.HasPrefix(quoted, "f") {
+		isByte = true
+		quoted = quoted[1:]
+	}
+
 	if len(quoted) < 2 {
 		err = fmt.Errorf("string literal too short")
 		return

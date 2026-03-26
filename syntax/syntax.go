@@ -238,6 +238,20 @@ func (*ParenExpr) expr()     {}
 func (*SliceExpr) expr()     {}
 func (*TupleExpr) expr()     {}
 func (*UnaryExpr) expr()     {}
+func (*FStringExpr) expr()   {}
+
+type FStringExpr struct {
+	commentsRef
+	TokenPos    Position
+	Raw         string
+	RawParts    []string
+	StringParts []string
+	Args        []Expr
+}
+
+func (x *FStringExpr) Span() (start, end Position) {
+	return x.TokenPos, x.TokenPos.add(x.Raw)
+}
 
 // An Ident represents an identifier.
 type Ident struct {

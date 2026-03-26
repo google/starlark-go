@@ -650,7 +650,16 @@ func (r *resolver) expr(e syntax.Expr) {
 	switch e := e.(type) {
 	case *syntax.Ident:
 		r.use(e)
-
+	case *syntax.FStringExpr:
+		for _, arg := range e.Args {
+			r.expr(arg)
+		}
+		// Fail gracefully if compiler-imposed limit is exceeded.
+		p := len(e.Args)
+		if p >= 256 {
+			pos, _ := e.Span()
+			r.errorf(pos, "%v arguments in fstring, limit is 255", p)
+		}
 	case *syntax.Literal:
 
 	case *syntax.ListExpr:

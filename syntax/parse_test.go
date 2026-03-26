@@ -132,6 +132,27 @@ func TestExprParseTrees(t *testing.T) {
 	}
 }
 
+func TestStmtParseFstring(t *testing.T) {
+	for _, test := range []struct {
+		input, same string
+	}{
+		{`f"hehe"`, `(ExprStmt X="hehe")`},
+		{`f"hehe{0}"`, `(ExprStmt X=(FStringExpr Raw= RawParts=(f"hehe{ }") StringParts=(hehe ) Args=(0)))`},
+		{`f"hehe{1+1}"`, `(ExprStmt X=(FStringExpr Raw= RawParts=(f"hehe{ }") StringParts=(hehe ) Args=((BinaryExpr X=1 Op=+ Y=1))))`},
+		{`f"hehe{f"haha{7}"}hehe"`, `(ExprStmt X=(FStringExpr Raw= RawParts=(f"hehe{ }hehe") StringParts=(hehe hehe) Args=((FStringExpr Raw= RawParts=(f"haha{ }") StringParts=(haha ) Args=(7)))))`},
+	} {
+		expr, err := syntax.Parse("foo.star", test.input, 0)
+		if err != nil {
+			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
+			continue
+		}
+		got := treeString(expr.Stmts[0])
+		if got != test.same {
+			t.Errorf("parse `%s` = %s, want %s", test.input, got, test.same)
+		}
+	}
+}
+
 func TestStmtParseTrees(t *testing.T) {
 	for _, test := range []struct {
 		input, want string
@@ -362,6 +383,8 @@ func writeTree(out *bytes.Buffer, x reflect.Value) {
 		switch v := x.Interface().(type) {
 		case syntax.Literal:
 			switch v.Token {
+			case syntax.FSTRING_FULL:
+				fmt.Fprintf(out, "%q", v.Value)
 			case syntax.STRING:
 				fmt.Fprintf(out, "%q", v.Value)
 			case syntax.BYTES:
