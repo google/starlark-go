@@ -11,7 +11,10 @@ package syntax
 // package.  Verify that error positions are correct using the
 // chunkedfile mechanism.
 
-import "log"
+import (
+	"log"
+	"slices"
+)
 
 // Enable this flag to print the token stream and log.Fatal on the first error.
 const debug = false
@@ -1043,9 +1046,7 @@ func (p *parser) assignComments(n Node) {
 
 	// Assign suffix comments to syntax immediately before.
 	suffix := p.in.suffixComments
-	for i := len(post) - 1; i >= 0; i-- {
-		x := post[i]
-
+	for _, x := range slices.Backward(post) {
 		// Do not assign suffix comments to file
 		switch x.(type) {
 		case *File:

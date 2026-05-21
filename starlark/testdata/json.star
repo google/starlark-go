@@ -23,7 +23,10 @@ assert.eq(json.encode(range(3)), "[0,1,2]") # a built-in iterable
 assert.eq(json.encode(dict(x = 1, y = "two")), '{"x":1,"y":"two"}')
 assert.eq(json.encode(dict(y = "two", x = 1)), '{"x":1,"y":"two"}') # key, not insertion, order
 assert.eq(json.encode(struct(x = 1, y = "two")), '{"x":1,"y":"two"}')  # a user-defined HasAttrs
-assert.eq(json.encode("😹"[:1]), '"\\ufffd"') # invalid UTF-8 -> replacement char
+assert.contains([
+	'"\\ufffd"', # pre-go1.27 json.Marshal
+	'"�"',      # post-go1.27
+], json.encode("😹"[:1])) # invalid UTF-8 -> replacement char
 
 def encode_error(expr, error):
     assert.fails(lambda: json.encode(expr), error)
@@ -94,7 +97,7 @@ decode_error('truefalse',
              "json.decode: at offset 4, unexpected character 'f' after value")
 
 decode_error('"abc', "unclosed string literal")
-decode_error('"ab\\gc"', "invalid character 'g' in string escape code")
+decode_error('"ab\\gc"', "invalid.*escape") # json.Unmarshal error changed in go1.27 ("invalid character 'g' in string escape code" -> "invalid escape sequence `\g` in string")
 decode_error("'abc'", "unexpected character '\\\\''")
 
 decode_error("1.2.3", "invalid number: 1.2.3")
