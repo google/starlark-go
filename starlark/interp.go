@@ -5,6 +5,7 @@ package starlark
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sync/atomic"
 	"unsafe"
 
@@ -327,7 +328,7 @@ loop:
 				}
 				items := dict.Items()
 				for _, item := range items {
-					if _, ok := item[0].(String); !ok {
+					if !is[String](item[0]) {
 						err = fmt.Errorf("keywords must be strings, not %s", item[0].Type())
 						break loop
 					}
@@ -348,8 +349,8 @@ loop:
 				// Copy positional arguments into a new array,
 				// unless the callee is another Starlark function,
 				// in which case it can be trusted not to mutate them.
-				if _, ok := stack[sp-1].(*Function); !ok || args != nil {
-					positional = append(Tuple(nil), positional...)
+				if !is[*Function](stack[sp-1]) || args != nil {
+					positional = slices.Clone(positional)
 				}
 			}
 			if args != nil {

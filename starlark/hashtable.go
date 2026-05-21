@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"math/big"
+	"os"
 )
 
 // hashtable is used to represent Starlark dict and set values.
@@ -168,7 +169,7 @@ func (ht *hashtable) grow() {
 	ht.tailLink = &ht.head
 	ht.len = 0
 	for e := oldhead; e != nil; e = e.next {
-		ht.insert(e.key, e.value)
+		ht.insert(e.key, e.value) // can't fail
 	}
 	ht.bucket0[0] = bucket{} // clear out unused initial bucket
 }
@@ -364,26 +365,26 @@ func (ht *hashtable) addAll(other *hashtable) error {
 
 // dump is provided as an aid to debugging.
 func (ht *hashtable) dump() {
-	fmt.Printf("hashtable %p len=%d head=%p tailLink=%p",
+	fmt.Fprintf(os.Stderr, "hashtable %p len=%d head=%p tailLink=%p",
 		ht, ht.len, ht.head, ht.tailLink)
 	if ht.tailLink != nil {
-		fmt.Printf(" *tailLink=%p", *ht.tailLink)
+		fmt.Fprintf(os.Stderr, " *tailLink=%p", *ht.tailLink)
 	}
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 	for j := range ht.table {
-		fmt.Printf("bucket chain %d\n", j)
+		fmt.Fprintf(os.Stderr, "bucket chain %d\n", j)
 		for p := &ht.table[j]; p != nil; p = p.next {
-			fmt.Printf("bucket %p\n", p)
+			fmt.Fprintf(os.Stderr, "bucket %p\n", p)
 			for i := range p.entries {
 				e := &p.entries[i]
-				fmt.Printf("\tentry %d @ %p hash=%d key=%v value=%v\n",
+				fmt.Fprintf(os.Stderr, "\tentry %d @ %p hash=%d key=%v value=%v\n",
 					i, e, e.hash, e.key, e.value)
-				fmt.Printf("\t\tnext=%p &next=%p prev=%p",
+				fmt.Fprintf(os.Stderr, "\t\tnext=%p &next=%p prev=%p",
 					e.next, &e.next, e.prevLink)
 				if e.prevLink != nil {
-					fmt.Printf(" *prev=%p", *e.prevLink)
+					fmt.Fprintf(os.Stderr, " *prev=%p", *e.prevLink)
 				}
-				fmt.Println()
+				fmt.Fprintln(os.Stderr)
 			}
 		}
 	}

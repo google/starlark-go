@@ -86,6 +86,7 @@ import (
 	"math"
 	"math/big"
 	debugpkg "runtime/debug"
+	"slices"
 	"unsafe"
 
 	"go.starlark.net/syntax"
@@ -230,7 +231,7 @@ func DecodeProgram(data []byte) (_ *Program, err error) {
 	offset := binary.LittleEndian.Uint32(data[4:8])
 	d := decoder{
 		p: data[8:offset],
-		s: append([]byte(nil), data[offset:]...), // allocate a copy, which will persist
+		s: slices.Clone(data[offset:]), // allocate a copy, which will persist
 	}
 
 	if v := d.int(); v != Version {
