@@ -83,7 +83,7 @@ import (
 //
 // StartProfile must not be called concurrently with Starlark execution.
 func StartProfile(w io.Writer) error {
-	if !atomic.CompareAndSwapUint32(&profiler.on, 0, 1) {
+	if !profiler.on.CompareAndSwap(false, true) {
 		return fmt.Errorf("profiler already running")
 	}
 
@@ -113,14 +113,14 @@ func StopProfile() error {
 
 	profiler.done = nil
 	profiler.events = nil
-	atomic.StoreUint32(&profiler.on, 0)
+	profiler.on.Store(false)
 
 	return err
 }
 
 // globals
 var profiler struct {
-	on     uint32          // nonzero => profiler running
+	on     atomic.Bool     // true => profiler running
 	events chan *profEvent // profile events from interpreter threads
 	done   chan error      // indicates profiler goroutine is ready
 }

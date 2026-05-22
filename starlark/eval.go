@@ -16,7 +16,6 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-	"unsafe"
 
 	"go.starlark.net/internal/compile"
 	"go.starlark.net/internal/spell"
@@ -60,7 +59,7 @@ type Thread struct {
 	Steps, maxSteps uint64
 
 	// cancelReason records the reason from the first call to Cancel.
-	cancelReason *string
+	cancelReason atomic.Pointer[string]
 
 	// locals holds arbitrary "thread-local" Go values belonging to the client.
 	// They are accessible to the client but not to any Starlark program.
@@ -89,7 +88,7 @@ func (thread *Thread) SetMaxExecutionSteps(max uint64) {
 // Unlike most methods of Thread, it is safe to call Uncancel from any
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Uncancel() {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil)
+	thread.cancelReason.Store(nil)
 }
 
 // Cancel causes execution of Starlark code in the specified thread to
@@ -103,7 +102,7 @@ func (thread *Thread) Uncancel() {
 // goroutine, even if the thread is actively executing.
 func (thread *Thread) Cancel(reason string) {
 	// Atomically set cancelReason, preserving earlier reason if any.
-	atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason)), nil, unsafe.Pointer(&reason))
+	thread.cancelReason.CompareAndSwap(nil, &reason)
 }
 
 // SetLocal sets the thread-local value associated with the specified key.

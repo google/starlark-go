@@ -318,19 +318,11 @@ func (d *decoder) uint64() uint64 {
 	return x
 }
 
-func (d *decoder) string() (s string) {
-	if slice := d.bytes(); len(slice) > 0 {
-		// Avoid a memory allocation for each string
-		// by unsafely aliasing slice.
-		type string struct {
-			data *byte
-			len  int
-		}
-		ptr := (*string)(unsafe.Pointer(&s))
-		ptr.data = &slice[0]
-		ptr.len = len(slice)
-	}
-	return s
+func (d *decoder) string() string {
+	// Avoid a memory allocation for each string
+	// by unsafely aliasing slice.
+	slice := d.bytes()
+	return unsafe.String(unsafe.SliceData(slice), len(slice))
 }
 
 func (d *decoder) bytes() []byte {
