@@ -298,7 +298,7 @@ func profile(w io.Writer) {
 		// TODO(adonovan): fix: try making this cleaner by treating
 		// each bytecode segment as a Profile.Mapping.
 		pcAddr := fnAddr
-		if _, ok := fr.fn.(*Function); ok {
+		if is[*Function](fr.fn) {
 			pcAddr = (pcAddr << 16) ^ uintptr(fr.pc)
 		}
 
