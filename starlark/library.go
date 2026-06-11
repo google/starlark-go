@@ -1950,21 +1950,31 @@ func string_rindex(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, er
 // https://github.com/google/starlark-go/starlark/blob/master/doc/spec.md#string·startswith
 // https://github.com/google/starlark-go/starlark/blob/master/doc/spec.md#string·endswith
 func string_startswith(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	var start, end Value = None, None
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x, &start, &end); err != nil {
-		return nil, err
-	}
-
-	// compute effective substring.
 	s := string(b.Receiver().(String))
-	if start, end, err := indices(start, end, len(s)); err != nil {
-		return nil, nameErr(b, err)
+
+	var x Value
+	if len(args) == 1 && len(kwargs) == 0 {
+		// Fast path for the common case, s.startswith(x):
+		// the variadic call to UnpackPositionalArgs would
+		// force x, start, and end to escape to the heap.
+		x = args[0]
 	} else {
-		if end < start {
-			end = start // => empty result
+		var xv Value
+		var start, end Value = None, None
+		if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &xv, &start, &end); err != nil {
+			return nil, err
 		}
-		s = s[start:end]
+		x = xv
+
+		// compute effective substring.
+		if start, end, err := indices(start, end, len(s)); err != nil {
+			return nil, nameErr(b, err)
+		} else {
+			if end < start {
+				end = start // => empty result
+			}
+			s = s[start:end]
+		}
 	}
 
 	f := strings.HasPrefix

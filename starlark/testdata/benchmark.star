@@ -34,6 +34,12 @@ def bench_builtin_method(b):
         for _ in range1000:
             emptydict.get(None)
 
+def bench_startswith(b):
+    s = "some/path/to/a/file.txt"
+    for _ in range(b.n):
+        for _ in range1000:
+            s.startswith("some/")
+
 def bench_int(b):
     for _ in range(b.n):
         a = 0
