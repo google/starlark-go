@@ -297,7 +297,7 @@ var stackEffect = [...]int8{
 }
 
 func (op Opcode) String() string {
-	if op < OpcodeMax {
+	if op <= OpcodeMax {
 		if name := opcodeNames[op]; name != "" {
 			return name
 		}
