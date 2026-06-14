@@ -230,11 +230,16 @@ func any_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#bool
 func bool_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value = False
-	if err := UnpackPositionalArgs("bool", args, kwargs, 0, &x); err != nil {
-		return nil, err
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("bool: unexpected keyword arguments")
 	}
-	return x.Truth(), nil
+	if len(args) > 1 {
+		return nil, fmt.Errorf("bool: got %d arguments, want at most 1", len(args))
+	}
+	if len(args) == 0 {
+		return False, nil
+	}
+	return args[0].Truth(), nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#bytes
@@ -1463,9 +1468,18 @@ func list_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	recv := b.Receiver()
 	list := recv.(*List)
 	n := list.Len()
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
+	}
+	if len(args) > 1 {
+		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	}
 	i := n - 1
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &i); err != nil {
-		return nil, err
+	if len(args) == 1 {
+		var err error
+		if i, err = AsInt32(args[0]); err != nil {
+			return nil, fmt.Errorf("%s: for parameter 1: %s", b.Name(), err)
+		}
 	}
 	origI := i
 	if i < 0 {
@@ -2013,9 +2027,18 @@ func string_startswith(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·lstrip
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·rstrip
 func string_strip(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
+	}
+	if len(args) > 1 {
+		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	}
 	var chars string
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &chars); err != nil {
-		return nil, err
+	if len(args) == 1 {
+		var ok bool
+		if chars, ok = AsString(args[0]); !ok {
+			return nil, fmt.Errorf("%s: for parameter 1: got %s, want string", b.Name(), args[0].Type())
+		}
 	}
 	recv := string(b.Receiver().(String))
 	var s string
@@ -2182,9 +2205,19 @@ func splitspace(s string, max int) []string {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·splitlines
 func string_splitlines(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
+	}
+	if len(args) > 1 {
+		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	}
 	var keepends bool
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &keepends); err != nil {
-		return nil, err
+	if len(args) == 1 {
+		b, ok := args[0].(Bool)
+		if !ok {
+			return nil, fmt.Errorf("splitlines: for parameter 1: got %s, want bool", args[0].Type())
+		}
+		keepends = bool(b)
 	}
 	var lines []string
 	if s := string(b.Receiver().(String)); s != "" {
