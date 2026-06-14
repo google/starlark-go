@@ -216,6 +216,17 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 	return nil
 }
 
+// Assert zero args, no keyword args.
+func NoArgs(fnname string, args Tuple, kwargs []Tuple) error {
+	if len(args) > 0 {
+		return fmt.Errorf("%s: got %d arguments, want 0", fnname, len(args))
+	}
+	if len(kwargs) > 0 {
+		return fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	}
+	return nil
+}
+
 // Unpack one positional arg, no keyword args.
 func UnpackPositional1(fnname string, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {

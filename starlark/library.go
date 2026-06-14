@@ -1227,7 +1227,7 @@ func dict_get(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·clear
 func dict_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	return None, b.Receiver().(*Dict).Clear()
@@ -1235,7 +1235,7 @@ func dict_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·items
 func dict_items(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	items := b.Receiver().(*Dict).Items()
@@ -1248,7 +1248,7 @@ func dict_items(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·keys
 func dict_keys(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	return NewList(b.Receiver().(*Dict).Keys()), nil
@@ -1272,7 +1272,7 @@ func dict_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·popitem
 func dict_popitem(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Dict)
@@ -1318,7 +1318,7 @@ func dict_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·update
 func dict_values(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	items := b.Receiver().(*Dict).Items()
@@ -1345,7 +1345,7 @@ func list_append(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·clear
 func list_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	if err := b.Receiver().(*List).Clear(); err != nil {
@@ -1468,7 +1468,7 @@ func list_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·capitalize
 func string_capitalize(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	s := string(b.Receiver().(String))
@@ -1491,7 +1491,7 @@ func string_capitalize(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 // - elem_ords: numeric values of successive bytes
 // - codepoint_ords: numeric values of successive Unicode code points
 func string_iterable(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	s := b.Receiver().(String)
@@ -1507,7 +1507,7 @@ func string_iterable(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, 
 // bytes_elems returns an unspecified iterable value whose
 // iterator yields the int values of successive elements.
 func bytes_elems(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	return bytesIterable{b.Receiver().(Bytes)}, nil
@@ -1562,7 +1562,7 @@ func string_count(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isalnum
 func string_isalnum(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1576,7 +1576,7 @@ func string_isalnum(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isalpha
 func string_isalpha(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1590,7 +1590,7 @@ func string_isalpha(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isdigit
 func string_isdigit(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1604,7 +1604,7 @@ func string_isdigit(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·islower
 func string_islower(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1629,7 +1629,7 @@ func isCasedRune(r rune) bool {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isspace
 func string_isspace(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1643,7 +1643,7 @@ func string_isspace(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·istitle
 func string_istitle(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1676,7 +1676,7 @@ func string_istitle(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isupper
 func string_isupper(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1875,7 +1875,7 @@ func string_join(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·lower
 func string_lower(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	return String(strings.ToLower(string(b.Receiver().(String)))), nil
@@ -2025,7 +2025,7 @@ func string_strip(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·title
 func string_title(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 
@@ -2051,7 +2051,7 @@ func string_title(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·upper
 func string_upper(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	return String(strings.ToUpper(string(b.Receiver().(String)))), nil
@@ -2211,7 +2211,7 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·clear.
 func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	if b.Receiver().(*Set).Len() > 0 {
@@ -2309,7 +2309,7 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·pop.
 func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+	if err := NoArgs(b.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Set)
