@@ -163,9 +163,8 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 }
 
 func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-
-	if err := starlark.UnpackPositionalArgs("ceil", args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackPositional1("ceil", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -180,9 +179,8 @@ func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 }
 
 func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-
-	if err := starlark.UnpackPositionalArgs("floor", args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackPositional1("floor", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 

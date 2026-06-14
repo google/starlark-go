@@ -958,8 +958,8 @@ func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
 }
 
 func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var object starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &object); err != nil {
+	object, err := starlark.UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	rf := b.Receiver().(*RepeatedField)
@@ -1432,8 +1432,8 @@ func (e EnumDescriptor) Name() string { return string(e.Desc.Name()) } // for Ca
 // The Call method implements the starlark.Callable interface.
 // A call to an enum descriptor converts its argument to a value of that enum type.
 func (e EnumDescriptor) CallInternal(_ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-	if err := starlark.UnpackPositionalArgs(string(e.Desc.Name()), args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackPositional1(string(e.Desc.Name()), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	v, err := enumValueOf(e.Desc, x)

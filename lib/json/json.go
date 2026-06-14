@@ -90,8 +90,8 @@ var Module = &starlarkstruct.Module{
 }
 
 func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 

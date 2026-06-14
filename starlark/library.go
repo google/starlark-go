@@ -2326,8 +2326,8 @@ func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·remove.
 func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var k Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
+	k, err := UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	if found, err := b.Receiver().(*Set).Delete(k); err != nil {
