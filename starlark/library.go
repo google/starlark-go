@@ -454,10 +454,20 @@ var (
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#getattr
 func getattr(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var object, dflt Value
-	var name string
-	if err := UnpackPositionalArgs("getattr", args, kwargs, 2, &object, &name, &dflt); err != nil {
-		return nil, err
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("getattr: unexpected keyword arguments")
+	}
+	if len(args) < 2 || len(args) > 3 {
+		return nil, fmt.Errorf("getattr: got %d arguments, want 2 or 3", len(args))
+	}
+	object := args[0]
+	name, ok := AsString(args[1])
+	if !ok {
+		return nil, fmt.Errorf("getattr: for parameter 2: got %s, want string", args[1].Type())
+	}
+	var dflt Value
+	if len(args) == 3 {
+		dflt = args[2]
 	}
 	if object, ok := object.(HasAttrs); ok {
 		v, err := object.Attr(name)
@@ -482,10 +492,16 @@ func getattr(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hasattr
 func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var object Value
-	var name string
-	if err := UnpackPositionalArgs("hasattr", args, kwargs, 2, &object, &name); err != nil {
-		return nil, err
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("hasattr: unexpected keyword arguments")
+	}
+	if len(args) != 2 {
+		return nil, fmt.Errorf("hasattr: got %d arguments, want 2", len(args))
+	}
+	object := args[0]
+	name, ok := AsString(args[1])
+	if !ok {
+		return nil, fmt.Errorf("hasattr: for parameter 2: got %s, want string", args[1].Type())
 	}
 	if object, ok := object.(HasAttrs); ok {
 		v, err := object.Attr(name)
