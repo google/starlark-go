@@ -216,6 +216,22 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 	return nil
 }
 
+// Unpack 1-3 positional args, def1 and def2 being the default values for arguments 2 and 3.
+func UnpackPositional3(fnname string, args Tuple, kwargs []Tuple, def1, def2 Value) (Value, Value, Value, error) {
+	if len(kwargs) > 0 {
+		return nil, nil, nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	}
+	switch len(args) {
+	case 1:
+		return args[0], def1, def2, nil
+	case 2:
+		return args[0], args[1], def2, nil
+	case 3:
+		return args[0], args[1], args[2], nil
+	}
+	return nil, nil, nil, fmt.Errorf("%s: got %d arguments, want 1 to 3", fnname, len(args))
+}
+
 // UnpackArg unpacks a Value v into the variable pointed to by ptr.
 // See [UnpackArgs] for details, including which types of variable are supported.
 //
