@@ -177,8 +177,8 @@ func builtinAttrNames(methods map[string]*Builtin) []string {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#abs
 func abs(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	if err := UnpackPositionalArgs("abs", args, kwargs, 1, &x); err != nil {
+	x, err := UnpackPositional1("abs", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	switch x := x.(type) {
@@ -506,8 +506,8 @@ func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hash
 func hash(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	if err := UnpackPositionalArgs("hash", args, kwargs, 1, &x); err != nil {
+	x, err := UnpackPositional1("hash", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -664,8 +664,8 @@ func parseInt(s string, base int) Value {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#len
 func len_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	if err := UnpackPositionalArgs("len", args, kwargs, 1, &x); err != nil {
+	x, err := UnpackPositional1("len", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	len := Len(x)
@@ -965,8 +965,8 @@ func (*rangeIterator) Done() {}
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#repr
 func repr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var x Value
-	if err := UnpackPositionalArgs("repr", args, kwargs, 1, &x); err != nil {
+	x, err := UnpackPositional1("repr", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	return String(x.String()), nil
@@ -1211,8 +1211,8 @@ func zip(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·get
 func dict_get(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var key, dflt Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &key, &dflt); err != nil {
+	key, dflt, err := UnpackPositional2(b.Name(), args, kwargs, nil)
+	if err != nil {
 		return nil, err
 	}
 	if v, ok, err := b.Receiver().(*Dict).Get(key); err != nil {
@@ -1256,8 +1256,8 @@ func dict_keys(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·pop
 func dict_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var k, d Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k, &d); err != nil {
+	k, d, err := UnpackPositional2(b.Name(), args, kwargs, nil)
+	if err != nil {
 		return nil, err
 	}
 	if v, found, err := b.Receiver().(*Dict).Delete(k); err != nil {
@@ -1289,8 +1289,8 @@ func dict_popitem(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·setdefault
 func dict_setdefault(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var key, dflt Value = nil, None
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &key, &dflt); err != nil {
+	key, dflt, err := UnpackPositional2(b.Name(), args, kwargs, None)
+	if err != nil {
 		return nil, err
 	}
 	dict := b.Receiver().(*Dict)
@@ -1331,8 +1331,8 @@ func dict_values(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·append
 func list_append(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var object Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &object); err != nil {
+	object, err := UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*List)
@@ -1370,8 +1370,8 @@ func list_extend(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·index
 func list_index(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var value, start_, end_ Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &value, &start_, &end_); err != nil {
+	value, start_, end_, err := UnpackPositional3(b.Name(), args, kwargs, nil, nil)
+	if err != nil {
 		return nil, err
 	}
 
@@ -1424,8 +1424,8 @@ func list_insert(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·remove
 func list_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := b.Receiver().(*List)
-	var value Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &value); err != nil {
+	value, err := UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	if err := recv.checkMutable("remove from"); err != nil {
@@ -2188,8 +2188,8 @@ func string_splitlines(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·add.
 func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var elem Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &elem); err != nil {
+	elem, err := UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Set)
@@ -2203,8 +2203,7 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	} else if found {
 		return None, nil
 	}
-	err := recv.Insert(elem)
-	if err != nil {
+	if err = recv.Insert(elem); err != nil {
 		return nil, nameErr(b, err)
 	}
 	return None, nil
@@ -2287,8 +2286,8 @@ func set_issuperset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·discard.
 func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var k Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &k); err != nil {
+	k, err := UnpackPositional1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Set)
