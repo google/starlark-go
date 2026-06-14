@@ -216,13 +216,21 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 	return nil
 }
 
-// Assert zero args, no keyword args.
-func NoArgs(fnname string, args Tuple, kwargs []Tuple) error {
-	if len(args) > 0 {
-		return fmt.Errorf("%s: got %d arguments, want 0", fnname, len(args))
-	}
+// checkPositionalArgs validates that kwargs is empty and that the number of
+// positional arguments is between min and max inclusive. It produces the same
+// error messages as [UnpackPositionalArgs].
+func checkPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min, max int) error {
 	if len(kwargs) > 0 {
 		return fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	}
+	if len(args) < min || len(args) > max {
+		if min == max {
+			return fmt.Errorf("%s: got %d arguments, want %d", fnname, len(args), min)
+		}
+		if len(args) < min {
+			return fmt.Errorf("%s: got %d arguments, want at least %d", fnname, len(args), min)
+		}
+		return fmt.Errorf("%s: got %d arguments, want at most %d", fnname, len(args), max)
 	}
 	return nil
 }
@@ -230,16 +238,14 @@ func NoArgs(fnname string, args Tuple, kwargs []Tuple) error {
 // Unpack one Iterable argument, no keyword args.
 // If required is true the argument must be present; otherwise it is optional.
 func UnpackIterable(fnname string, args Tuple, kwargs []Tuple, required bool) (Iterable, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	min := 0
+	if required {
+		min = 1
 	}
-	if len(args) > 1 {
-		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", fnname, len(args))
+	if err := checkPositionalArgs(fnname, args, kwargs, min, 1); err != nil {
+		return nil, err
 	}
 	if len(args) == 0 {
-		if required {
-			return nil, fmt.Errorf("%s: got 0 arguments, want 1", fnname)
-		}
 		return nil, nil
 	}
 	iter, ok := args[0].(Iterable)
@@ -251,11 +257,8 @@ func UnpackIterable(fnname string, args Tuple, kwargs []Tuple, required bool) (I
 
 // Unpack one positional string argument, no keyword args.
 func UnpackString1(fnname string, args Tuple, kwargs []Tuple) (string, error) {
-	if len(kwargs) > 0 {
-		return "", fmt.Errorf("%s: unexpected keyword arguments", fnname)
-	}
-	if len(args) != 1 {
-		return "", fmt.Errorf("%s: got %d arguments, want 1", fnname, len(args))
+	if err := checkPositionalArgs(fnname, args, kwargs, 1, 1); err != nil {
+		return "", err
 	}
 	s, ok := AsString(args[0])
 	if !ok {
@@ -266,11 +269,8 @@ func UnpackString1(fnname string, args Tuple, kwargs []Tuple) (string, error) {
 
 // Unpack one positional arg, no keyword args.
 func UnpackPositional1(fnname string, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("%s: got %d arguments, want 1", fnname, len(args))
+	if err := checkPositionalArgs(fnname, args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 	return args[0], nil
 }
@@ -278,33 +278,29 @@ func UnpackPositional1(fnname string, args Tuple, kwargs []Tuple) (Value, error)
 // Unpack two positional args, no keyword args. If the second argument is
 // absent, def is returned instead.
 func UnpackPositional2(fnname string, args Tuple, kwargs []Tuple, def Value) (Value, Value, error) {
-	if len(kwargs) > 0 {
-		return nil, nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	if err := checkPositionalArgs(fnname, args, kwargs, 1, 2); err != nil {
+		return nil, nil, err
 	}
-	switch len(args) {
-	case 1:
+	if len(args) == 1 {
 		return args[0], def, nil
-	case 2:
-		return args[0], args[1], nil
 	}
-	return nil, nil, fmt.Errorf("%s: got %d arguments, want 1 or 2", fnname, len(args))
+	return args[0], args[1], nil
 }
 
 // Unpack three positional args, no keyword args. If the second or third argument is
 // absent, def1 or def2 is returned instead.
 func UnpackPositional3(fnname string, args Tuple, kwargs []Tuple, def1, def2 Value) (Value, Value, Value, error) {
-	if len(kwargs) > 0 {
-		return nil, nil, nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	if err := checkPositionalArgs(fnname, args, kwargs, 1, 3); err != nil {
+		return nil, nil, nil, err
 	}
 	switch len(args) {
 	case 1:
 		return args[0], def1, def2, nil
 	case 2:
 		return args[0], args[1], def2, nil
-	case 3:
+	default:
 		return args[0], args[1], args[2], nil
 	}
-	return nil, nil, nil, fmt.Errorf("%s: got %d arguments, want 1 to 3", fnname, len(args))
 }
 
 // UnpackArg unpacks a Value v into the variable pointed to by ptr.

@@ -230,11 +230,8 @@ func any_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#bool
 func bool_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("bool: unexpected keyword arguments")
-	}
-	if len(args) > 1 {
-		return nil, fmt.Errorf("bool: got %d arguments, want at most 1", len(args))
+	if err := checkPositionalArgs("bool", args, kwargs, 0, 1); err != nil {
+		return nil, err
 	}
 	if len(args) == 0 {
 		return False, nil
@@ -283,11 +280,8 @@ func bytes_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#chr
 func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("chr does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("chr: got %d arguments, want 1", len(args))
+	if err := checkPositionalArgs("chr", args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 	i, err := AsInt32(args[0])
 	if err != nil {
@@ -316,11 +310,8 @@ func dict(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dir
 func dir(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("dir does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("dir: got %d arguments, want 1", len(args))
+	if err := checkPositionalArgs("dir", args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 
 	var names []string
@@ -459,11 +450,8 @@ var (
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#getattr
 func getattr(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("getattr: unexpected keyword arguments")
-	}
-	if len(args) < 2 || len(args) > 3 {
-		return nil, fmt.Errorf("getattr: got %d arguments, want 2 or 3", len(args))
+	if err := checkPositionalArgs("getattr", args, kwargs, 2, 3); err != nil {
+		return nil, err
 	}
 	object := args[0]
 	name, ok := AsString(args[1])
@@ -497,11 +485,8 @@ func getattr(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#hasattr
 func hasattr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("hasattr: unexpected keyword arguments")
-	}
-	if len(args) != 2 {
-		return nil, fmt.Errorf("hasattr: got %d arguments, want 2", len(args))
+	if err := checkPositionalArgs("hasattr", args, kwargs, 2, 2); err != nil {
+		return nil, err
 	}
 	object := args[0]
 	name, ok := AsString(args[1])
@@ -787,11 +772,8 @@ func minmax(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#ord
 func ord(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("ord does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("ord: got %d arguments, want 1", len(args))
+	if err := checkPositionalArgs("ord", args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 	switch x := args[0].(type) {
 	case String:
@@ -1110,11 +1092,8 @@ func (s *sortSlice) Swap(i, j int) {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#str
 func str(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("str does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("str: got %d arguments, want exactly 1", len(args))
+	if err := checkPositionalArgs("str", args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 	switch x := args[0].(type) {
 	case String:
@@ -1165,11 +1144,8 @@ func tuple(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#type
 func type_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("type does not accept keyword arguments")
-	}
-	if len(args) != 1 {
-		return nil, fmt.Errorf("type: got %d arguments, want exactly 1", len(args))
+	if err := checkPositionalArgs("type", args, kwargs, 1, 1); err != nil {
+		return nil, err
 	}
 	return String(args[0].Type()), nil
 }
@@ -1248,7 +1224,7 @@ func dict_get(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·clear
 func dict_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	return None, b.Receiver().(*Dict).Clear()
@@ -1256,7 +1232,7 @@ func dict_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·items
 func dict_items(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	items := b.Receiver().(*Dict).Items()
@@ -1269,7 +1245,7 @@ func dict_items(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·keys
 func dict_keys(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	return NewList(b.Receiver().(*Dict).Keys()), nil
@@ -1293,7 +1269,7 @@ func dict_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·popitem
 func dict_popitem(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Dict)
@@ -1339,7 +1315,7 @@ func dict_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict·update
 func dict_values(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	items := b.Receiver().(*Dict).Items()
@@ -1366,7 +1342,7 @@ func list_append(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·clear
 func list_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	if err := b.Receiver().(*List).Clear(); err != nil {
@@ -1468,11 +1444,8 @@ func list_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	recv := b.Receiver()
 	list := recv.(*List)
 	n := list.Len()
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
-	}
-	if len(args) > 1 {
-		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 1); err != nil {
+		return nil, err
 	}
 	i := n - 1
 	if len(args) == 1 {
@@ -1498,7 +1471,7 @@ func list_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·capitalize
 func string_capitalize(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	s := string(b.Receiver().(String))
@@ -1521,7 +1494,7 @@ func string_capitalize(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 // - elem_ords: numeric values of successive bytes
 // - codepoint_ords: numeric values of successive Unicode code points
 func string_iterable(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	s := b.Receiver().(String)
@@ -1537,7 +1510,7 @@ func string_iterable(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, 
 // bytes_elems returns an unspecified iterable value whose
 // iterator yields the int values of successive elements.
 func bytes_elems(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	return bytesIterable{b.Receiver().(Bytes)}, nil
@@ -1595,7 +1568,7 @@ func string_count(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isalnum
 func string_isalnum(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1609,7 +1582,7 @@ func string_isalnum(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isalpha
 func string_isalpha(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1623,7 +1596,7 @@ func string_isalpha(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isdigit
 func string_isdigit(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1637,7 +1610,7 @@ func string_isdigit(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·islower
 func string_islower(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1662,7 +1635,7 @@ func isCasedRune(r rune) bool {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isspace
 func string_isspace(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1676,7 +1649,7 @@ func string_isspace(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·istitle
 func string_istitle(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1709,7 +1682,7 @@ func string_istitle(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·isupper
 func string_isupper(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := string(b.Receiver().(String))
@@ -1908,7 +1881,7 @@ func string_join(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·lower
 func string_lower(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	return String(strings.ToLower(string(b.Receiver().(String)))), nil
@@ -2027,11 +2000,8 @@ func string_startswith(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·lstrip
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·rstrip
 func string_strip(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
-	}
-	if len(args) > 1 {
-		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 1); err != nil {
+		return nil, err
 	}
 	var chars string
 	if len(args) == 1 {
@@ -2067,7 +2037,7 @@ func string_strip(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·title
 func string_title(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 
@@ -2093,7 +2063,7 @@ func string_title(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·upper
 func string_upper(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	return String(strings.ToUpper(string(b.Receiver().(String)))), nil
@@ -2205,11 +2175,8 @@ func splitspace(s string, max int) []string {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·splitlines
 func string_splitlines(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected keyword arguments", b.Name())
-	}
-	if len(args) > 1 {
-		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", b.Name(), len(args))
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 1); err != nil {
+		return nil, err
 	}
 	var keepends bool
 	if len(args) == 1 {
@@ -2263,7 +2230,7 @@ func set_add(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·clear.
 func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	if b.Receiver().(*Set).Len() > 0 {
@@ -2361,7 +2328,7 @@ func set_discard(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·pop.
 func set_pop(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	if err := NoArgs(b.Name(), args, kwargs); err != nil {
+	if err := checkPositionalArgs(b.Name(), args, kwargs, 0, 0); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*Set)
