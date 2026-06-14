@@ -99,11 +99,11 @@ func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.T
 }
 
 func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var s string
-	if err := starlark.UnpackPositionalArgs("is_valid_timezone", args, kwargs, 1, &s); err != nil {
+	s, err := starlark.UnpackString1("is_valid_timezone", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
-	_, err := time.LoadLocation(s)
+	_, err = time.LoadLocation(s)
 	return starlark.Bool(err == nil), nil
 }
 
@@ -471,8 +471,8 @@ var timeMethods = map[string]builtinMethod{
 }
 
 func timeFormat(fnname string, recV starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x string
-	if err := starlark.UnpackPositionalArgs("format", args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackString1("format", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -481,8 +481,8 @@ func timeFormat(fnname string, recV starlark.Value, args starlark.Tuple, kwargs 
 }
 
 func timeIn(fnname string, recV starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var x string
-	if err := starlark.UnpackPositionalArgs("in_location", args, kwargs, 1, &x); err != nil {
+	x, err := starlark.UnpackString1("in_location", args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	loc, err := time.LoadLocation(x)

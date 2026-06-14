@@ -196,8 +196,8 @@ func abs(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#all
 func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("all", args, kwargs, 1, &iterable); err != nil {
+	iterable, err := UnpackIterable("all", args, kwargs, true)
+	if err != nil {
 		return nil, err
 	}
 	iter := iterable.Iterate()
@@ -213,8 +213,8 @@ func all(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#any
 func any_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("any", args, kwargs, 1, &iterable); err != nil {
+	iterable, err := UnpackIterable("any", args, kwargs, true)
+	if err != nil {
 		return nil, err
 	}
 	iter := iterable.Iterate()
@@ -677,8 +677,8 @@ func len_(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list
 func list(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("list", args, kwargs, 0, &iterable); err != nil {
+	iterable, err := UnpackIterable("list", args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	var elems []Value
@@ -974,8 +974,8 @@ func repr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#reversed
 func reversed(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("reversed", args, kwargs, 1, &iterable); err != nil {
+	iterable, err := UnpackIterable("reversed", args, kwargs, true)
+	if err != nil {
 		return nil, err
 	}
 	iter := iterable.Iterate()
@@ -997,8 +997,8 @@ func reversed(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, er
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set
 func set(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("set", args, kwargs, 0, &iterable); err != nil {
+	iterable, err := UnpackIterable("set", args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	set := new(Set)
@@ -1122,8 +1122,8 @@ func utf8Transcode(s string) string {
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#tuple
 func tuple(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var iterable Iterable
-	if err := UnpackPositionalArgs("tuple", args, kwargs, 0, &iterable); err != nil {
+	iterable, err := UnpackIterable("tuple", args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	if len(args) == 0 {
@@ -1357,8 +1357,8 @@ func list_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#list·extend
 func list_extend(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := b.Receiver().(*List)
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &iterable); err != nil {
+	iterable, err := UnpackIterable(b.Name(), args, kwargs, true)
+	if err != nil {
 		return nil, err
 	}
 	if err := recv.checkMutable("extend"); err != nil {
@@ -1541,10 +1541,13 @@ func (*bytesIterator) Done() {}
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·count
 func string_count(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var sub string
-	var start_, end_ Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &sub, &start_, &end_); err != nil {
+	x, start_, end_, err := UnpackPositional3(b.Name(), args, kwargs, None, None)
+	if err != nil {
 		return nil, err
+	}
+	sub, ok := AsString(x)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 1: got %s, want string", b.Name(), x.Type())
 	}
 
 	recv := string(b.Receiver().(String))
@@ -1852,8 +1855,8 @@ func string_index(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·join
 func string_join(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := string(b.Receiver().(String))
-	var iterable Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &iterable); err != nil {
+	iterable, err := UnpackIterable(b.Name(), args, kwargs, true)
+	if err != nil {
 		return nil, err
 	}
 	iter := iterable.Iterate()
@@ -1884,8 +1887,8 @@ func string_lower(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·partition
 func string_partition(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := string(b.Receiver().(String))
-	var sep string
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &sep); err != nil {
+	sep, err := UnpackString1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	if sep == "" {
@@ -1914,8 +1917,8 @@ func string_partition(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value,
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#string·removesuffix
 func string_removefix(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	recv := string(b.Receiver().(String))
-	var fix string
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &fix); err != nil {
+	fix, err := UnpackString1(b.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 	if b.name[len("remove")] == 'p' {
@@ -2225,8 +2228,8 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·difference.
 func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	// TODO: support multiple others: s.difference(*others)
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	other, err := UnpackIterable(b.Name(), args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2241,8 +2244,8 @@ func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_intersection.
 func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	// TODO: support multiple others: s.difference(*others)
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	other, err := UnpackIterable(b.Name(), args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2256,8 +2259,8 @@ func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value,
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issubset.
 func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	other, err := UnpackIterable(b.Name(), args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2271,8 +2274,8 @@ func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issuperset.
 func set_issuperset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	other, err := UnpackIterable(b.Name(), args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2340,8 +2343,8 @@ func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·symmetric_difference.
 func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
-	var other Iterable
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 0, &other); err != nil {
+	other, err := UnpackIterable(b.Name(), args, kwargs, false)
+	if err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2372,10 +2375,13 @@ func set_update(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 
 // Common implementation of string_{r}{find,index}.
 func string_find_impl(b *Builtin, args Tuple, kwargs []Tuple, allowError, last bool) (Value, error) {
-	var sub string
-	var start_, end_ Value
-	if err := UnpackPositionalArgs(b.Name(), args, kwargs, 1, &sub, &start_, &end_); err != nil {
+	x, start_, end_, err := UnpackPositional3(b.Name(), args, kwargs, None, None)
+	if err != nil {
 		return nil, err
+	}
+	sub, ok := AsString(x)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 1: got %s, want string", b.Name(), x.Type())
 	}
 
 	s := string(b.Receiver().(String))

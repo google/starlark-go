@@ -173,8 +173,8 @@ var Module = &starlarkstruct.Module{
 // (Technically a pool may also have many FileDescriptors with the same
 // file name, but this can't happen with a single consistent snapshot.)
 func file(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var filename string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &filename); err != nil {
+	filename, err := starlark.UnpackString1(fn.Name(), args, kwargs)
+	if err != nil {
 		return nil, err
 	}
 

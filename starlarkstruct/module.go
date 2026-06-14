@@ -30,8 +30,8 @@ func (m *Module) Type() string                             { return "module" }
 // function, module(name, **kwargs). It returns a new module with the
 // specified name and members.
 func MakeModule(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var name string
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &name); err != nil {
+	name, err := starlark.UnpackString1(b.Name(), args, nil)
+	if err != nil {
 		return nil, err
 	}
 	members := make(starlark.StringDict, len(kwargs))

@@ -301,8 +301,8 @@ func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	); err != nil {
 		return nil, err
 	}
-	var str string // positional-only
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &str); err != nil {
+	str, err := starlark.UnpackString1(b.Name(), args, nil)
+	if err != nil {
 		return nil, err
 	}
 

@@ -227,6 +227,43 @@ func NoArgs(fnname string, args Tuple, kwargs []Tuple) error {
 	return nil
 }
 
+// Unpack one Iterable argument, no keyword args.
+// If required is true the argument must be present; otherwise it is optional.
+func UnpackIterable(fnname string, args Tuple, kwargs []Tuple, required bool) (Iterable, error) {
+	if len(kwargs) > 0 {
+		return nil, fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	}
+	if len(args) > 1 {
+		return nil, fmt.Errorf("%s: got %d arguments, want at most 1", fnname, len(args))
+	}
+	if len(args) == 0 {
+		if required {
+			return nil, fmt.Errorf("%s: got 0 arguments, want 1", fnname)
+		}
+		return nil, nil
+	}
+	iter, ok := args[0].(Iterable)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 1: got %s, want iterable", fnname, args[0].Type())
+	}
+	return iter, nil
+}
+
+// Unpack one positional string argument, no keyword args.
+func UnpackString1(fnname string, args Tuple, kwargs []Tuple) (string, error) {
+	if len(kwargs) > 0 {
+		return "", fmt.Errorf("%s: unexpected keyword arguments", fnname)
+	}
+	if len(args) != 1 {
+		return "", fmt.Errorf("%s: got %d arguments, want 1", fnname, len(args))
+	}
+	s, ok := AsString(args[0])
+	if !ok {
+		return "", fmt.Errorf("%s: for parameter 1: got %s, want string", fnname, args[0].Type())
+	}
+	return s, nil
+}
+
 // Unpack one positional arg, no keyword args.
 func UnpackPositional1(fnname string, args Tuple, kwargs []Tuple) (Value, error) {
 	if len(kwargs) > 0 {
