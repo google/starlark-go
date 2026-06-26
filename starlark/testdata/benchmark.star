@@ -165,3 +165,8 @@ def bench_issubset_duplicate_same(b):
     l = list(range(200)) * 5
     for _ in range(b.n):
         s.issubset(l)
+
+def bench_string_startswith(b):
+    "Benchmark string.startswith"
+    for _ in range(b.n):
+        "hello".startswith("hell")

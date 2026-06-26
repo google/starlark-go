@@ -377,7 +377,8 @@ func AsInt(x Value, ptr any) error {
 		return fmt.Errorf("got %s, want int", x.Type())
 	}
 
-	bits := reflect.TypeOf(ptr).Elem().Size() * 8
+	ptrt := reflect.TypeOf(ptr)
+	bits := ptrt.Elem().Size() * 8
 	switch ptr.(type) {
 	case *int, *int8, *int16, *int32, *int64:
 		i, ok := xint.Int64()
@@ -417,7 +418,8 @@ func AsInt(x Value, ptr any) error {
 			*ptr = uintptr(i)
 		}
 	default:
-		panic(fmt.Sprintf("invalid argument type: %T", ptr))
+		// Avoid %T, as it would cause *ptr to escape.
+		panic(fmt.Sprintf("invalid argument type: %s", ptrt))
 	}
 	return nil
 }
