@@ -8,6 +8,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"unsafe"
 
 	"go.starlark.net/internal/spell"
 )
@@ -190,10 +191,35 @@ kwloop:
 //
 // See UnpackArgs for general comments.
 func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, vars ...any) error {
+	if err := checkPositionalArgs(fnname, args, kwargs, min, len(vars)); err != nil {
+		return err
+	}
+	for i, arg := range args {
+		if err := UnpackArg(arg, vars[i]); err != nil {
+			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
+		}
+	}
+	return nil
+}
+
+// unpackPositionalArgsNoEscape is an optimized version of [UnpackPositionalArgs].
+// However, it panics if any vars[i] pointer value implements Unpacker.
+func unpackPositionalArgsNoEscape(fnname string, args Tuple, kwargs []Tuple, min int, vars ...any) error {
+	if err := checkPositionalArgs(fnname, args, kwargs, min, len(vars)); err != nil {
+		return err
+	}
+	for i, arg := range args {
+		if err := unpackArgNoEscape(arg, vars[i]); err != nil {
+			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
+		}
+	}
+	return nil
+}
+
+func checkPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min, max int) error {
 	if len(kwargs) > 0 {
 		return fmt.Errorf("%s: unexpected keyword arguments", fnname)
 	}
-	max := len(vars)
 	if len(args) < min {
 		var atleast string
 		if min < max {
@@ -208,11 +234,6 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 		}
 		return fmt.Errorf("%s: got %d arguments, want %s%d", fnname, len(args), atmost, max)
 	}
-	for i, arg := range args {
-		if err := UnpackArg(arg, vars[i]); err != nil {
-			return fmt.Errorf("%s: for parameter %d: %s", fnname, i+1, err)
-		}
-	}
 	return nil
 }
 
@@ -224,10 +245,21 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 // [UnpackPositionalArgs] to unpack a sequence of positional and/or
 // keyword arguments.
 func UnpackArg(v Value, ptr any) error {
+	if ptr, ok := ptr.(Unpacker); ok {
+		return ptr.Unpack(v) // (causes *ptr to escape)
+	}
+	return unpackArgNoEscape(v, ptr)
+}
+
+// unpackArgNoEscape is an optimized version of [UnpackArg].
+// However, it panics if ptr implements Unpacker.
+func unpackArgNoEscape(v Value, ptr any) error {
+	// Caution: do not let *ptr escape,
+	// e.g. via reflection or dynamic calls.
+	// There is a test of this invariant.
+
 	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
-	case Unpacker:
-		return ptr.Unpack(v)
 	case *Value:
 		*ptr = v
 	case *string:
@@ -277,19 +309,22 @@ func UnpackArg(v Value, ptr any) error {
 		*ptr = it
 	default:
 		// v must have type *V, where V is some subtype of starlark.Value.
-		ptrv := reflect.ValueOf(ptr)
-		if ptrv.Kind() != reflect.Pointer {
-			log.Panicf("internal error: not a pointer: %T", ptr)
+		ptrt := reflect.TypeOf(ptr)
+		if _, ok := ptr.(Unpacker); ok {
+			log.Panicf("unpackArgNoEscape does not support %s (Unpacker); use UnpackArg instead", ptrt)
 		}
-		paramVar := ptrv.Elem()
-		if !reflect.TypeOf(v).AssignableTo(paramVar.Type()) {
+		if ptrt.Kind() != reflect.Pointer {
+			log.Panicf("internal error: not a pointer: %s", ptrt)
+		}
+		paramVarType := ptrt.Elem()
+		if !reflect.TypeOf(v).AssignableTo(paramVarType) {
 			// The value is not assignable to the variable.
 
 			// Detect a possible bug in the Go program that called Unpack:
 			// If the variable *ptr is not a subtype of Value,
 			// no value of v can possibly work.
-			if !paramVar.Type().AssignableTo(reflect.TypeFor[Value]()) {
-				log.Panicf("pointer element type does not implement Value: %T", ptr)
+			if !paramVarType.AssignableTo(reflect.TypeFor[Value]()) {
+				log.Panicf("pointer element type does not implement Value: %s", ptrt)
 			}
 
 			// Report Starlark dynamic type error.
@@ -304,18 +339,22 @@ func UnpackArg(v Value, ptr any) error {
 			// recover.
 
 			// Default to Go reflect.Type name
-			paramType := paramVar.Type().String()
+			paramType := paramVarType.String()
 
-			// Attempt to call Value.Type method.
+			// Attempt to call Value.Type method on the zero
+			// value of the variable.
 			func() {
 				defer func() { recover() }()
-				if typer, _ := paramVar.Interface().(interface{ Type() string }); typer != nil {
-					paramType = typer.Type()
+
+				if v, _ := reflect.Zero(paramVarType).Interface().(Value); v != nil {
+					paramType = v.Type()
 				}
 			}()
 			return fmt.Errorf("got %s, want %s", v.Type(), paramType)
 		}
-		paramVar.Set(reflect.ValueOf(v))
+
+		// assign *ptr = v
+		reflectSetElem(ptr, reflect.ValueOf(v))
 	}
 	return nil
 }
@@ -361,4 +400,35 @@ func (is *intset) len() int {
 		return len
 	}
 	return len(is.large)
+}
+
+// reflectSetElem is equivalent to reflect.ValueOf(ptr).Elem().Set(v)
+// but does not let *ptr escape.
+//
+// ptr must be a non-nil pointer to a variable to which v may be assigned.
+func reflectSetElem(ptr any, v reflect.Value) {
+	typ := reflect.TypeOf(ptr)
+	if typ.Kind() != reflect.Pointer {
+		panic("reflect: call of SetElem on non-pointer")
+	}
+	type eface struct{ typ, data unsafe.Pointer }
+	p := noescape((*eface)(unsafe.Pointer(&ptr)).data)
+	reflect.NewAt(typ.Elem(), p).Elem().Set(v)
+}
+
+// -- copied verbatim from abi.NoEscape --
+
+// noescape hides the pointer p from escape analysis, preventing it
+// from escaping to the heap. It compiles down to nothing.
+//
+// WARNING: This is very subtle to use correctly. The caller must
+// ensure that it's truly safe for p to not escape to the heap by
+// maintaining runtime pointer invariants (for example, that globals
+// and the heap may not generally point into a stack).
+//
+//go:nosplit
+//go:nocheckptr
+func noescape(p unsafe.Pointer) unsafe.Pointer {
+	x := uintptr(p)
+	return unsafe.Pointer(x ^ 0)
 }

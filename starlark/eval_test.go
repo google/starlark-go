@@ -946,17 +946,29 @@ func (b *badType) Freeze()               {}
 
 var _ starlark.Value = new(badType)
 
+type badType2 string
+
+func (b badType2) String() string        { return "badType2" }
+func (b badType2) Type() string          { return "badType2" }
+func (b badType2) Truth() starlark.Bool  { return true }
+func (b badType2) Hash() (uint32, error) { return 0, nil }
+func (b badType2) Freeze()               {}
+
+var _ starlark.Value = new(badType)
+
 // TestUnpackErrorBadType verifies that the Unpack functions fail
 // gracefully when a parameter's default value's Type method panics.
 func TestUnpackErrorBadType(t *testing.T) {
+	var v1 *badType
+	var v2 badType2
 	for _, test := range []struct {
-		x    *badType
+		ptr  any
 		want string
 	}{
-		{new(badType), "got NoneType, want badType"},       // Starlark type name
-		{nil, "got NoneType, want *starlark_test.badType"}, // Go type name
+		{&v1, "got NoneType, want *starlark_test.badType"}, // Go type name: (*badType)(nil).Type() panics
+		{&v2, "got NoneType, want badType"},                // Starlark type name: badType2{}.Type() works
 	} {
-		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", &test.x)
+		err := starlark.UnpackArgs("f", starlark.Tuple{starlark.None}, nil, "x", test.ptr)
 		if err == nil {
 			t.Errorf("UnpackArgs succeeded unexpectedly")
 			continue
@@ -1213,5 +1225,25 @@ func TestUnpackArgsOptionalInference(t *testing.T) {
 	want = "x=1 y=2 z=0"
 	if got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestUnpackArgNoEscape(t *testing.T) {
+	var s starlark.String
+
+	// The internal Unpack*NoEscape variants
+	// must not allocate in the common case (success).
+	n := testing.AllocsPerRun(100, func() {
+		var x string // must not escape
+
+		if err := starlark.UnpackArgNoEscape(s, &s); err != nil {
+			t.Fatal(err)
+		}
+		if err := starlark.UnpackPositionalArgsNoEscape("fn", starlark.Tuple{s}, nil, 1, &x); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n > 0 {
+		t.Errorf("AllocsPerRun = %v, want none", n)
 	}
 }
