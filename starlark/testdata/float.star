@@ -219,6 +219,32 @@ assert.fails(lambda: 1.0 % 0, "floating-point modulo by zero")
 assert.fails(lambda: 1.0 % 0.0, "floating-point modulo by zero")
 assert.fails(lambda: 1 % 0.0, "floating-point modulo by zero")
 
+# exponentiation
+assert.eq(2.0 ** 3.0, 8.0)
+assert.eq(4.0 ** 0.5, 2.0)
+assert.eq(9.0 ** 0.5, 3.0)
+assert.eq(2.0 ** -1.0, 0.5)
+assert.eq(0.0 ** 0, 1.0)
+assert.eq(0.0 ** 0.0, 1.0)
+assert.eq(type(2.0 ** 3), "float")
+assert.eq(type(2 ** 3.0), "float")
+assert.eq(type(2.0 ** 3.0), "float")
+# mixed int/float
+assert.eq(2 ** 0.5, 2.0 ** 0.5)
+assert.eq(2.0 ** 3, 8.0)
+assert.eq(4 ** 0.5, 2.0)
+# negative base with integer exponent
+assert.eq((-2.0) ** 3, -8.0)
+assert.eq((-2.0) ** 2, 4.0)
+# errors
+assert.fails(lambda: 0.0 ** -1, "zero raised to negative power")
+assert.fails(lambda: 0.0 ** -1.0, "zero raised to negative power")
+assert.fails(lambda: 0 ** -1.0, "zero raised to negative power")
+assert.fails(lambda: (-1.0) ** 0.5, "negative number raised to non-integer power")
+assert.fails(lambda: (-2) ** 0.5, "negative number raised to non-integer power")
+assert.fails(lambda: 1e308 ** 2, "floating-point result too large")
+assert.fails(lambda: 1e308 ** 2.0, "floating-point result too large")
+
 # floats cannot be used as indices, even if integral
 assert.fails(lambda: "abc"[1.0], "want int")
 assert.fails(lambda: ["A", "B", "C"].insert(1.0, "D"), "want int")

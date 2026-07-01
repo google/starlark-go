@@ -98,6 +98,28 @@ func TestExprParseTrees(t *testing.T) {
 			`(BinaryExpr X=(UnaryExpr Op=- X=1) Op=* Y=2)`},
 		{`-x[i]`, // prec(unary -) < prec(x[i])
 			`(UnaryExpr Op=- X=(IndexExpr X=x Y=i))`},
+		{`2 ** 3`, // power
+			`(BinaryExpr X=2 Op=** Y=3)`},
+		{`2 ** 3 ** 4`, // power is right-associative
+			`(BinaryExpr X=2 Op=** Y=(BinaryExpr X=3 Op=** Y=4))`},
+		{`-2 ** 2`, // ** binds tighter than unary - on its left
+			`(UnaryExpr Op=- X=(BinaryExpr X=2 Op=** Y=2))`},
+		{`2 ** -2`, // unary - allowed on right of **
+			`(BinaryExpr X=2 Op=** Y=(UnaryExpr Op=- X=2))`},
+		{`~2 ** 2`, // ** binds tighter than unary ~ on its left
+			`(UnaryExpr Op=~ X=(BinaryExpr X=2 Op=** Y=2))`},
+		{`x ** y ** z`, // right-associative with identifiers
+			`(BinaryExpr X=x Op=** Y=(BinaryExpr X=y Op=** Y=z))`},
+		{`a * b ** c`, // ** binds tighter than *
+			`(BinaryExpr X=a Op=* Y=(BinaryExpr X=b Op=** Y=c))`},
+		{`a ** b * c`, // ** binds tighter than *
+			`(BinaryExpr X=(BinaryExpr X=a Op=** Y=b) Op=* Y=c)`},
+		{`x[i] ** 2`, // primary suffix on left of **
+			`(BinaryExpr X=(IndexExpr X=x Y=i) Op=** Y=2)`},
+		{`x.f ** 2`, // dot suffix on left of **
+			`(BinaryExpr X=(DotExpr X=x Name=f) Op=** Y=2)`},
+		{`f() ** 2`, // call suffix on left of **
+			`(BinaryExpr X=(CallExpr Fn=f) Op=** Y=2)`},
 		{`a | b & c | d`, // prec(|) < prec(&)
 			`(BinaryExpr X=(BinaryExpr X=a Op=| Y=(BinaryExpr X=b Op=& Y=c)) Op=| Y=d)`},
 		{`a or b and c or d`,
@@ -179,6 +201,8 @@ else:
 			`(DefStmt Name=f Params=((UnaryExpr Op=** X=kwargs) (UnaryExpr Op=* X=args)) Body=((BranchStmt Token=pass)))`},
 		{`def f(a, b, c=d): pass`,
 			`(DefStmt Name=f Params=(a b (BinaryExpr X=c Op== Y=d)) Body=((BranchStmt Token=pass)))`},
+		{`x **= 2`,
+			`(AssignStmt Op=**= LHS=x RHS=2)`},
 		{`def f(a, b=c, d): pass`,
 			`(DefStmt Name=f Params=(a (BinaryExpr X=b Op== Y=c) d) Body=((BranchStmt Token=pass)))`}, // TODO(adonovan): fix this
 		{`def f():

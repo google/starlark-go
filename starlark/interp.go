@@ -184,6 +184,7 @@ loop:
 			compile.CIRCUMFLEX,
 			compile.LTLT,
 			compile.GTGT,
+			compile.STARSTAR,
 			compile.IN:
 			binop := syntax.Token(op-compile.PLUS) + syntax.PLUS
 			if op == compile.IN {

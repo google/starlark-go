@@ -332,7 +332,7 @@ func (p *parser) parseSmallStmt() Stmt {
 	// Assignment
 	x := p.parseExpr(false)
 	switch p.tok {
-	case EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, SLASHSLASH_EQ, PERCENT_EQ, AMP_EQ, PIPE_EQ, CIRCUMFLEX_EQ, LTLT_EQ, GTGT_EQ:
+	case EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, SLASHSLASH_EQ, PERCENT_EQ, AMP_EQ, PIPE_EQ, CIRCUMFLEX_EQ, LTLT_EQ, GTGT_EQ, STARSTAR_EQ:
 		op := p.tok
 		pos := p.nextToken() // consume op
 		rhs := p.parseExpr(false)
@@ -597,7 +597,7 @@ func (p *parser) parseLambda(allowCond bool) Expr {
 
 func (p *parser) parseTestPrec(prec int) Expr {
 	if prec >= len(preclevels) {
-		return p.parsePrimaryWithSuffix()
+		return p.parseFactor()
 	}
 
 	// expr = NOT expr
@@ -653,7 +653,8 @@ var precedence [maxToken]int8
 
 // preclevels groups operators of equal precedence.
 // Comparisons are nonassociative; other binary operators associate to the left.
-// Unary MINUS, unary PLUS, and TILDE have higher precedence so are handled in parsePrimary.
+// Unary MINUS, PLUS, and TILDE are handled in parseFactor.
+// Exponentiation (**) is right-associative and handled in parsePower.
 // See https://github.com/google/starlark-go/blob/master/doc/spec.md#binary-operators
 var preclevels = [...][]Token{
 	{OR},                                   // or
@@ -678,6 +679,36 @@ func init() {
 			precedence[tok] = int8(level)
 		}
 	}
+}
+
+// parseFactor parses a unary expression or power expression.
+//
+//	factor = ('-'|'+'|'~') factor | power
+func (p *parser) parseFactor() Expr {
+	if p.tok == MINUS || p.tok == PLUS || p.tok == TILDE {
+		tok := p.tok
+		pos := p.nextToken()
+		x := p.parseFactor()
+		return &UnaryExpr{
+			OpPos: pos,
+			Op:    tok,
+			X:     x,
+		}
+	}
+	return p.parsePower()
+}
+
+// parsePower parses a power expression (right-associative **).
+//
+//	power = primary_with_suffix ('**' factor)?
+func (p *parser) parsePower() Expr {
+	x := p.parsePrimaryWithSuffix()
+	if p.tok == STARSTAR {
+		pos := p.nextToken()
+		y := p.parseFactor()
+		return &BinaryExpr{OpPos: pos, Op: STARSTAR, X: x, Y: y}
+	}
+	return x
 }
 
 // primary_with_suffix = primary
@@ -807,7 +838,6 @@ func (p *parser) parseArgs() []Expr {
 //	| '[' ...                    // list literal or comprehension
 //	| '{' ...                    // dict literal or comprehension
 //	| '(' ...                    // tuple or parenthesized expression
-//	| ('-'|'+'|'~') primary_with_suffix
 func (p *parser) parsePrimary() Expr {
 	switch p.tok {
 	case IDENT:
@@ -853,15 +883,6 @@ func (p *parser) parsePrimary() Expr {
 			Rparen: rparen,
 		}
 
-	case MINUS, PLUS, TILDE: // unary
-		tok := p.tok
-		pos := p.nextToken()
-		x := p.parsePrimaryWithSuffix()
-		return &UnaryExpr{
-			OpPos: pos,
-			Op:    tok,
-			X:     x,
-		}
 	}
 
 	// Report start pos of final token as it may be a NEWLINE (#532).

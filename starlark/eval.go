@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/big"
 	"math/bits"
 	"sort"
@@ -1023,6 +1024,53 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			return interpolate(string(x), y)
 		}
 
+	case syntax.STARSTAR:
+		switch x := x.(type) {
+		case Int:
+			switch y := y.(type) {
+			case Int:
+				if y.Sign() < 0 {
+					if x.Sign() == 0 {
+						return nil, fmt.Errorf("zero raised to negative power")
+					}
+					xf, err := x.finiteFloat()
+					if err != nil {
+						return nil, err
+					}
+					yf, err := y.finiteFloat()
+					if err != nil {
+						return nil, err
+					}
+					return floatPow(xf, yf)
+				}
+				// y >= 0: integer exponentiation.
+				if x.bigInt().BitLen() > 1 {
+					yInt, err := AsInt32(y)
+					if err != nil || int64(x.bigInt().BitLen())*int64(yInt) > 4096 {
+						return nil, fmt.Errorf("exponent too large")
+					}
+				}
+				return MakeBigInt(new(big.Int).Exp(x.bigInt(), y.bigInt(), nil)), nil
+			case Float:
+				xf, err := x.finiteFloat()
+				if err != nil {
+					return nil, err
+				}
+				return floatPow(xf, y)
+			}
+		case Float:
+			switch y := y.(type) {
+			case Float:
+				return floatPow(x, y)
+			case Int:
+				yf, err := y.finiteFloat()
+				if err != nil {
+					return nil, err
+				}
+				return floatPow(x, yf)
+			}
+		}
+
 	case syntax.NOT_IN:
 		z, err := Binary(syntax.IN, x, y)
 		if err != nil {
@@ -1132,6 +1180,21 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 	// unsupported operand types
 unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
+}
+
+// floatPow computes x ** y for float operands.
+func floatPow(x, y Float) (Value, error) {
+	if x == 0 && y < 0 {
+		return nil, fmt.Errorf("zero raised to negative power")
+	}
+	if x < 0 && y != Float(math.Trunc(float64(y))) {
+		return nil, fmt.Errorf("negative number raised to non-integer power")
+	}
+	rf := math.Pow(float64(x), float64(y))
+	if math.IsInf(rf, 0) {
+		return nil, fmt.Errorf("floating-point result too large")
+	}
+	return Float(rf), nil
 }
 
 // It's always possible to overeat in small bites but we'll
