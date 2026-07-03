@@ -136,4 +136,21 @@ assert.fails(lambda: [] + [] + 1 + [], "unknown binary op: list \\+ int")
 
 
 ---
+# Method calls: the fused CALL_ATTR path must agree with the ATTR path
+# (retained method value) and with the *args/**kwargs fallback path.
+load("assert.star", "assert")
+
+s = "hello"
+assert.eq(s.startswith("he"), True)         # fused CALL_ATTR
+assert.eq(s.startswith("he", 1), False)     # fused, multiple positional
+bound = s.startswith                        # retained method value (ATTR path)
+assert.eq(bound("he"), True)
+assert.eq(s.startswith(*["he"]), True)      # *args: not fused
+assert.eq(s.startswith(*["he"], **{}), True)  # *args + **kwargs: not fused
+assert.eq({"k": 1}.get("k"), 1)             # dict method, fused
+assert.eq([1, 2, 3].index(2), 1)            # list method, fused
+assert.eq("HELLO".lower().startswith("he"), True)  # chained: pool reuse
+assert.fails(lambda: s.nonexistent(), "no .nonexistent field or method")
+
+---
 load('assert.star', 'froze') ### `name froze not found .*did you mean freeze`

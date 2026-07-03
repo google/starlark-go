@@ -72,6 +72,65 @@ func TestPlusFolding(t *testing.T) {
 	}
 }
 
+// TestCallAttrFusion ensures the compiler fuses x.method(pos...) into a
+// single CALL_ATTR, but falls back to ATTR+CALL for named, *args, or
+// **kwargs arguments, which CALL_ATTR does not support.
+func TestCallAttrFusion(t *testing.T) {
+	isPredeclared := func(name string) bool { return name == "x" || name == "a" || name == "b" }
+	isUniversal := func(name string) bool { return false }
+	for i, test := range []struct {
+		src  string // source expression
+		want string // disassembled code
+	}{
+		{
+			// no args: fused
+			`x.f()`,
+			`predeclared x; call_attr f/0; return`,
+		},
+		{
+			// positional args: fused
+			`x.f(a, b)`,
+			`predeclared x; predeclared a; predeclared b; call_attr f/2; return`,
+		},
+		{
+			// plain function call (not a method): not fused
+			`x(a)`,
+			`predeclared x; predeclared a; call<256>; return`,
+		},
+		{
+			// named argument: not fused (named pairs ride in CALL's operand)
+			`x.f(a, k=b)`,
+			`predeclared x; attr f; predeclared a; constant "k"; predeclared b; call<257>; return`,
+		},
+		{
+			// *args: not fused
+			`x.f(*a)`,
+			`predeclared x; attr f; predeclared a; call_var<0>; return`,
+		},
+		{
+			// **kwargs: not fused
+			`x.f(**a)`,
+			`predeclared x; attr f; predeclared a; call_kw <0>; return`,
+		},
+	} {
+		expr, err := syntax.ParseExpr("in.star", test.src, 0)
+		if err != nil {
+			t.Errorf("#%d: %v", i, err)
+			continue
+		}
+		locals, err := resolve.Expr(expr, isPredeclared, isUniversal)
+		if err != nil {
+			t.Errorf("#%d: %v", i, err)
+			continue
+		}
+		got := disassemble(Expr(syntax.LegacyFileOptions(), expr, "<expr>", locals).Toplevel)
+		if test.want != got {
+			t.Errorf("expression <<%s>> generated <<%s>>, want <<%s>>",
+				test.src, got, test.want)
+		}
+	}
+}
+
 // disassemble is a trivial disassembler tailored to the accumulator test.
 func disassemble(f *Funcode) string {
 	out := new(bytes.Buffer)
@@ -109,6 +168,10 @@ func disassemble(f *Funcode) string {
 				fmt.Fprintf(out, " %s", f.Locals[arg].Name)
 			case PREDECLARED:
 				fmt.Fprintf(out, " %s", f.Prog.Names[arg])
+			case ATTR:
+				fmt.Fprintf(out, " %s", f.Prog.Names[arg])
+			case CALL_ATTR:
+				fmt.Fprintf(out, " %s/%d", f.Prog.Names[arg>>8], arg&0xff)
 			default:
 				fmt.Fprintf(out, "<%d>", arg)
 			}
