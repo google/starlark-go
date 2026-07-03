@@ -384,6 +384,45 @@ loop:
 			}
 			stack[sp-1] = z
 
+		case compile.CALL_ATTR:
+			// fused x.method(pos...): receiver then npos args on top of stack
+			name := f.Prog.Names[arg>>8]
+			npos := int(arg & 0xff)
+			recv := stack[sp-npos-1]
+
+			// Copy args: the callee (a built-in) can't be trusted not to mutate them.
+			var positional Tuple
+			if npos > 0 {
+				positional = slices.Clone(stack[sp-npos : sp])
+			}
+
+			var z Value
+			var err2 error
+			if method := builtinMethod(recv, name); method != nil {
+				// Bind recv in a pooled *Builtin to avoid a BindReceiver alloc.
+				b := thread.acquireBoundBuiltin(method, recv)
+				thread.endProfSpan()
+				z, err2 = Call(thread, b, positional, nil)
+				thread.beginProfSpan()
+				thread.releaseBoundBuiltin(b)
+			} else {
+				// Not a built-in method: general attribute access then call.
+				var y Value
+				y, err2 = getAttr(recv, name)
+				if err2 == nil {
+					thread.endProfSpan()
+					z, err2 = Call(thread, y, positional, nil)
+					thread.beginProfSpan()
+				}
+			}
+
+			sp -= npos
+			if err2 != nil {
+				err = err2
+				break loop
+			}
+			stack[sp-1] = z
+
 		case compile.ITERPUSH:
 			x := stack[sp-1]
 			sp--

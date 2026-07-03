@@ -46,7 +46,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 14
+const Version = 15
 
 type Opcode uint8
 
@@ -146,8 +146,11 @@ const (
 	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result
 	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result
 
+	// n>>8 is the method-name index and n&0xff is #positional args.
+	CALL_ATTR // recv positional CALL_ATTR<n> result   (fused x.method(pos...))
+
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_VAR_KW
+	OpcodeMax    = CALL_ATTR
 )
 
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
@@ -157,6 +160,7 @@ var opcodeNames = [...]string{
 	APPEND:       "append",
 	ATTR:         "attr",
 	CALL:         "call",
+	CALL_ATTR:    "call_attr",
 	CALL_KW:      "call_kw ",
 	CALL_VAR:     "call_var",
 	CALL_VAR_KW:  "call_var_kw",
@@ -232,6 +236,7 @@ var stackEffect = [...]int8{
 	APPEND:       -2,
 	ATTR:         0,
 	CALL:         variableStackEffect,
+	CALL_ATTR:    variableStackEffect,
 	CALL_KW:      variableStackEffect,
 	CALL_VAR:     variableStackEffect,
 	CALL_VAR_KW:  variableStackEffect,
@@ -714,6 +719,8 @@ func (insn *insn) stackeffect() int {
 			if insn.op == CALL_VAR_KW {
 				se--
 			}
+		case CALL_ATTR:
+			se = -int(insn.arg & 0xff) // pop receiver + npos args, push result
 		case ITERJMP:
 			// Stack effect differs by successor:
 			// +1 for jmp/false/ok
@@ -890,6 +897,8 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 		comment = fn.FreeVars[arg].Name
 	case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
 		comment = fmt.Sprintf("%d pos, %d named", arg>>8, arg&0xff)
+	case CALL_ATTR:
+		comment = fmt.Sprintf("%s, %d pos", fn.Prog.Names[arg>>8], arg&0xff)
 	default:
 		// JMP, CJMP, ITERJMP, MAKETUPLE, MAKELIST, LOAD, UNPACK:
 		// arg is just a number
@@ -1648,20 +1657,41 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 }
 
 func (fcomp *fcomp) call(call *syntax.CallExpr) {
-	// TODO(adonovan): opt: Use optimized path for calling methods
-	// of built-ins: x.f(...) to avoid materializing a closure.
-	// if dot, ok := call.Fcomp.(*syntax.DotExpr); ok {
-	// 	fcomp.expr(dot.X)
-	// 	fcomp.args(call)
-	// 	fcomp.emit1(CALL_ATTR, fcomp.name(dot.Name.Name))
-	// 	return
-	// }
+	// opt: fuse x.method(pos...) to avoid materializing a closure.
+	if dot, ok := call.Fn.(*syntax.DotExpr); ok {
+		// plain positional args only for CALL_ATTR
+		if npos, ok := plainPositional(call); ok && npos < 0x100 {
+			if name := fcomp.pcomp.nameIndex(dot.Name.Name); name < 1<<24 {
+				fcomp.expr(dot.X) // receiver
+				for _, arg := range call.Args {
+					fcomp.expr(arg)
+				}
+				fcomp.setPos(call.Lparen)
+				fcomp.emit1(CALL_ATTR, name<<8|uint32(npos))
+				return
+			}
+		}
+	}
 
 	// usual case
 	fcomp.expr(call.Fn)
 	op, arg := fcomp.args(call)
 	fcomp.setPos(call.Lparen)
 	fcomp.emit1(op, arg)
+}
+
+// plainPositional reports whether all of call's args are plain positional (no name=value, *args, **kwargs), and their count.
+func plainPositional(call *syntax.CallExpr) (int, bool) {
+	for _, arg := range call.Args {
+		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
+			return 0, false // named argument
+		}
+		if unary, ok := arg.(*syntax.UnaryExpr); ok &&
+			(unary.Op == syntax.STAR || unary.Op == syntax.STARSTAR) {
+			return 0, false // *args or **kwargs
+		}
+	}
+	return len(call.Args), true
 }
 
 // args emits code to push a tuple of positional arguments
