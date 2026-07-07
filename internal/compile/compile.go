@@ -1660,7 +1660,7 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 	// opt: fuse x.method(pos...) to avoid materializing a closure.
 	if dot, ok := call.Fn.(*syntax.DotExpr); ok {
 		// plain positional args only for CALL_ATTR
-		if npos, ok := plainPositional(call); ok && npos < 0x100 {
+		if npos := len(call.Args); npos < 0x100 && plainPositional(call) {
 			if name := fcomp.pcomp.nameIndex(dot.Name.Name); name < 1<<24 {
 				fcomp.expr(dot.X) // receiver
 				for _, arg := range call.Args {
@@ -1680,18 +1680,18 @@ func (fcomp *fcomp) call(call *syntax.CallExpr) {
 	fcomp.emit1(op, arg)
 }
 
-// plainPositional reports whether all of call's args are plain positional (no name=value, *args, **kwargs), and their count.
-func plainPositional(call *syntax.CallExpr) (int, bool) {
+// plainPositional reports whether all of call's args are plain positional (no name=value, *args, **kwargs).
+func plainPositional(call *syntax.CallExpr) bool {
 	for _, arg := range call.Args {
 		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
-			return 0, false // named argument
+			return false // named argument
 		}
 		if unary, ok := arg.(*syntax.UnaryExpr); ok &&
 			(unary.Op == syntax.STAR || unary.Op == syntax.STARSTAR) {
-			return 0, false // *args or **kwargs
+			return false // *args or **kwargs
 		}
 	}
-	return len(call.Args), true
+	return true
 }
 
 // args emits code to push a tuple of positional arguments
