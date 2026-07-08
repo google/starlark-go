@@ -8,10 +8,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"go/ast"
 	"go/build"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -463,6 +467,29 @@ func TestFilePortion(t *testing.T) {
 	}
 }
 
+func TestDepthLimit(t *testing.T) {
+	// Rather than exceed the stack during parsing, deeply nested
+	// expressions and statements are rejected by the recursion
+	// counters in the scanner and/or parser.
+	for _, src := range []string{
+		strings.Repeat("(", 1e7), // (rejected in scanner)
+		strings.Repeat("not ", 1e7) + "0",
+		strings.Repeat("-", 1e7) + "0",
+		strings.Repeat("0 if a else ", 1e7) + "0",
+		strings.Repeat("lambda: ", 1e7) + "0",
+	} {
+		t.Run("", func(t *testing.T) {
+			t.Logf("%.65s...", src)
+			_, err := syntax.Parse("limit.star", src, 0)
+			if err == nil {
+				t.Errorf("Parse succeeded unexpectedly")
+			} else if !strings.Contains(err.Error(), "excessive nesting") {
+				t.Errorf("got error %q, want excessive nesting error", err)
+			}
+		})
+	}
+}
+
 // dataFile is the same as starlarktest.DataFile.
 // We make a copy to avoid a dependency cycle.
 var dataFile = func(pkgdir, filename string) string {
@@ -484,4 +511,122 @@ func BenchmarkParse(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+}
+
+// TestParserCallGraphCycles extracts a static call graph from every
+// function in parse.go then reports any cyclic path starting from
+// ParseFile that does not pass through a function that uses the
+// enter/leave mechanism to break cycles.
+func TestParserCallGraphCycles(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "parse.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// function is a node in static call graph.
+	type function struct {
+		name          string
+		callees       map[*function]bool
+		cyclebreaking bool
+	}
+	functions := make(map[string]*function)
+	node := func(name string) *function {
+		fn, ok := functions[name]
+		if !ok {
+			fn = &function{
+				name:    name,
+				callees: make(map[*function]bool),
+			}
+			t.Logf("node %q", name)
+			functions[name] = fn
+		}
+		return fn
+	}
+	addEdge := func(caller, callee *function) {
+		pre := len(caller.callees)
+		caller.callees[callee] = true
+		if len(caller.callees) > pre {
+			t.Logf("edge %q -> %q", caller.name, callee.name)
+		}
+	}
+
+	// Extract the functions and the static calls between them.
+	var current *function // (nil if uninteresting)
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			// decl of function or parser method
+			current = nil
+			name := n.Name.Name
+			if n.Recv != nil && len(n.Recv.List) > 0 {
+				if star, ok := n.Recv.List[0].Type.(*ast.StarExpr); ok {
+					if id, ok := star.X.(*ast.Ident); ok && id.Name == "parser" {
+						current = node("parser." + name)
+					}
+				}
+			} else {
+				current = node(name)
+			}
+
+		case *ast.CallExpr:
+			if current != nil {
+				// call within function of interest
+				switch fun := n.Fun.(type) {
+				case *ast.SelectorExpr:
+					// method call
+					// Assume p.method() is a method of parser.
+					// Ignore all other methods.
+					if id, ok := fun.X.(*ast.Ident); ok && id.Name == "p" {
+						callee := node("parser." + fun.Sel.Name)
+
+						// A call to p.enter indicates a cycle-breaking function.
+						if callee.name == "parser.enter" {
+							current.cyclebreaking = true
+						}
+
+						addEdge(current, callee)
+					}
+
+				case *ast.Ident:
+					// function call
+					// (incl. junk like: int, len, append, panic)
+					addEdge(current, node(fun.Name))
+				}
+			}
+		}
+		return true
+	})
+
+	// Check that no node belongs to an unbroken cycle.
+	// by doing a DFS rooted at each node in turn.
+	// (We cannot check once for the whole graph as a
+	// cycle may be reached through a cycle-breaking
+	// node, but that is not sufficient.)
+	for _, f := range functions {
+		color := make(map[*function]int) // 0=new, 1=on stack, 2=done
+		var stack []*function
+		var visit func(*function)
+		visit = func(f *function) {
+			switch color[f] {
+			case 0:
+				color[f] = 1
+				if !f.cyclebreaking {
+					stack = append(stack, f) // push
+					for callee := range f.callees {
+						visit(callee)
+					}
+					stack = stack[:len(stack)-1] // pop
+				}
+				color[f] = 2
+			case 1:
+				t.Errorf("cycle: %v", f.name)
+				for _, caller := range slices.Backward(stack) {
+					t.Logf("- %v", caller.name)
+				}
+			}
+		}
+		visit(f)
+	}
+
 }

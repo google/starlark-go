@@ -712,6 +712,9 @@ start:
 	switch c {
 	case '[', '(', '{':
 		sc.depth++
+		if sc.depth > 1000 {
+			sc.errorf(sc.pos, "excessive nesting")
+		}
 		sc.readRune()
 		sc.endToken(val)
 		switch c {
