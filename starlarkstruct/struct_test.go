@@ -20,8 +20,8 @@ func Test(t *testing.T) {
 	starlarktest.SetReporter(thread, t)
 	filename := filepath.Join(testdata, "testdata/struct.star")
 	predeclared := starlark.StringDict{
-		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-		"gensym": starlark.NewBuiltin("gensym", gensym),
+		"struct": starlark.NewBuiltinMethod("struct", starlarkstruct.Make),
+		"gensym": starlark.NewBuiltinMethod("gensym", gensym),
 	}
 	if _, err := starlark.ExecFile(thread, filename, nil, predeclared); err != nil {
 		if err, ok := err.(*starlark.EvalError); ok {
@@ -40,7 +40,7 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 }
 
 // gensym is a built-in function that generates a unique symbol.
-func gensym(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func gensym(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	if err := starlark.UnpackArgs("gensym", args, kwargs, "name", &name); err != nil {
 		return nil, err

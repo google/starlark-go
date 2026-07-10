@@ -36,9 +36,9 @@ import (
 // An application can add 'struct' to the Starlark environment like so:
 //
 //	globals := starlark.StringDict{
-//		"struct":  starlark.NewBuiltin("struct", starlarkstruct.Make),
+//		"struct":  starlark.NewBuiltinMethod("struct", starlarkstruct.Make),
 //	}
-func Make(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func Make(_ *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(args) > 0 {
 		return nil, fmt.Errorf("struct: unexpected positional arguments")
 	}

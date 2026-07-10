@@ -30,10 +30,10 @@ squares = [x*x for x in range(10)]
 
 	// repeat(str, n=1) is a Go function called from Starlark.
 	// It behaves like the 'string * int' operation.
-	repeat := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	repeat := func(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var s string
 		var n int = 1
-		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "s", &s, "n?", &n); err != nil {
+		if err := starlark.UnpackArgs(name, args, kwargs, "s", &s, "n?", &n); err != nil {
 			return nil, err
 		}
 		return starlark.String(strings.Repeat(s, n)), nil
@@ -48,7 +48,7 @@ squares = [x*x for x in range(10)]
 	// This dictionary defines the pre-declared environment.
 	predeclared := starlark.StringDict{
 		"greeting": starlark.String("hello"),
-		"repeat":   starlark.NewBuiltin("repeat", repeat),
+		"repeat":   starlark.NewBuiltinMethod("repeat", repeat),
 	}
 
 	// Execute a program.

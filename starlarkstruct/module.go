@@ -29,9 +29,9 @@ func (m *Module) Type() string                             { return "module" }
 // MakeModule may be used as the implementation of a Starlark built-in
 // function, module(name, **kwargs). It returns a new module with the
 // specified name and members.
-func MakeModule(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func MakeModule(thread *starlark.Thread, fnname string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &name); err != nil {
+	if err := starlark.UnpackPositionalArgs(fnname, args, nil, 1, &name); err != nil {
 		return nil, err
 	}
 	members := make(starlark.StringDict, len(kwargs))

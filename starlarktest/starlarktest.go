@@ -64,12 +64,12 @@ var (
 func LoadAssertModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		predeclared := starlark.StringDict{
-			"error":    starlark.NewBuiltin("error", error_),
-			"catch":    starlark.NewBuiltin("catch", catch),
-			"matches":  starlark.NewBuiltin("matches", matches),
-			"module":   starlark.NewBuiltin("module", starlarkstruct.MakeModule),
-			"_freeze":  starlark.NewBuiltin("freeze", freeze),
-			"_floateq": starlark.NewBuiltin("floateq", floateq),
+			"error":    starlark.NewBuiltinMethod("error", error_),
+			"catch":    starlark.NewBuiltinMethod("catch", catch),
+			"matches":  starlark.NewBuiltinMethod("matches", matches),
+			"module":   starlark.NewBuiltinMethod("module", starlarkstruct.MakeModule),
+			"_freeze":  starlark.NewBuiltinMethod("freeze", freeze),
+			"_floateq": starlark.NewBuiltinMethod("floateq", floateq),
 		}
 		thread := new(starlark.Thread)
 		assert, assertErr = starlark.ExecFile(thread, "assert.star", assertFileSrc, predeclared)
@@ -79,7 +79,7 @@ func LoadAssertModule() (starlark.StringDict, error) {
 
 // catch(f) evaluates f() and returns its evaluation error message
 // if it failed or None if it succeeded.
-func catch(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func catch(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var fn starlark.Callable
 	if err := starlark.UnpackArgs("catch", args, kwargs, "fn", &fn); err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func catch(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kw
 }
 
 // matches(pattern, str) reports whether string str matches the regular expression pattern.
-func matches(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func matches(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var pattern, str string
 	if err := starlark.UnpackArgs("matches", args, kwargs, "pattern", &pattern, "str", &str); err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func matches(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 }
 
 // error(x) reports an error to the Go test framework.
-func error_(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func error_(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("error: got %d arguments, want 1", len(args))
 	}
@@ -122,7 +122,7 @@ func error_(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 }
 
 // freeze(x) freezes its operand.
-func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func freeze(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(kwargs) > 0 {
 		return nil, fmt.Errorf("freeze does not accept keyword arguments")
 	}
@@ -134,9 +134,9 @@ func freeze(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 }
 
 // floateq(x, y) reports whether two floats are within 1 ULP of each other.
-func floateq(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func floateq(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var xf, yf starlark.Float
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &xf, &yf); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &xf, &yf); err != nil {
 		return nil, err
 	}
 
