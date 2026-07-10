@@ -73,7 +73,7 @@ type Thread struct {
 }
 
 // acquireBoundBuiltin returns a *Builtin (pooled if possible) bound to fn and recv.
-// Pair with releaseBoundBuiltin; the *Builtin must not escape the call (as in CALL_ATTR).
+// Pair with releaseBoundBuiltin; the *Builtin must not escape the call (as in CALL_METHOD).
 func (thread *Thread) acquireBoundBuiltin(fn *Builtin, recv Value) *Builtin {
 	var b *Builtin
 	if n := len(thread.builtinPool); n > 0 {
@@ -83,11 +83,13 @@ func (thread *Thread) acquireBoundBuiltin(fn *Builtin, recv Value) *Builtin {
 		b = new(Builtin)
 	}
 	b.bind(fn, recv)
+	b.pooled = true
 	return b
 }
 
 func (thread *Thread) releaseBoundBuiltin(b *Builtin) {
 	b.unbind() // don't pin the receiver
+	b.pooled = false
 	thread.builtinPool = append(thread.builtinPool, b)
 }
 

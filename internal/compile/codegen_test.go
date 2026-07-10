@@ -72,9 +72,10 @@ func TestPlusFolding(t *testing.T) {
 	}
 }
 
-// TestCallAttrFusion ensures the compiler fuses x.method(pos...) into a
-// single CALL_ATTR, but falls back to ATTR+CALL for named, *args, or
-// **kwargs arguments, which CALL_ATTR does not support.
+// TestCallAttrFusion ensures the compiler compiles x.method(pos...) to
+// ATTR_METHOD+CALL_METHOD (resolving the method before the arguments, to
+// preserve evaluation order), but falls back to ATTR+CALL for named, *args,
+// or **kwargs arguments, which CALL_METHOD does not support.
 func TestCallAttrFusion(t *testing.T) {
 	isPredeclared := func(name string) bool { return name == "x" || name == "a" || name == "b" }
 	isUniversal := func(name string) bool { return false }
@@ -85,12 +86,12 @@ func TestCallAttrFusion(t *testing.T) {
 		{
 			// no args: fused
 			`x.f()`,
-			`predeclared x; call_attr f/0; return`,
+			`predeclared x; attr_method f; call_method<0>; return`,
 		},
 		{
-			// positional args: fused
+			// positional args: fused; method resolved before args
 			`x.f(a, b)`,
-			`predeclared x; predeclared a; predeclared b; call_attr f/2; return`,
+			`predeclared x; attr_method f; predeclared a; predeclared b; call_method<2>; return`,
 		},
 		{
 			// plain function call (not a method): not fused
@@ -168,10 +169,8 @@ func disassemble(f *Funcode) string {
 				fmt.Fprintf(out, " %s", f.Locals[arg].Name)
 			case PREDECLARED:
 				fmt.Fprintf(out, " %s", f.Prog.Names[arg])
-			case ATTR:
+			case ATTR, ATTR_METHOD:
 				fmt.Fprintf(out, " %s", f.Prog.Names[arg])
-			case CALL_ATTR:
-				fmt.Fprintf(out, " %s/%d", f.Prog.Names[arg>>8], arg&0xff)
 			default:
 				fmt.Fprintf(out, "<%d>", arg)
 			}

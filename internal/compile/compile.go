@@ -46,7 +46,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 15
+const Version = 16
 
 type Opcode uint8
 
@@ -146,11 +146,14 @@ const (
 	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result
 	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result
 
-	// n>>8 is the method-name index and n&0xff is #positional args.
-	CALL_ATTR // recv positional CALL_ATTR<n> result   (fused x.method(pos...))
+	// ATTR_METHOD+CALL_METHOD implement x.method(pos...) without materializing
+	// a bound-method closure. ATTR_METHOD resolves the method at the receiver
+	// (preserving evaluation order); CALL_METHOD calls it once args are pushed.
+	ATTR_METHOD //           recv ATTR_METHOD<name> method     (method bound to recv)
+	CALL_METHOD // method positional CALL_METHOD<npos> result
 
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_ATTR
+	OpcodeMax    = CALL_METHOD
 )
 
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
@@ -159,8 +162,9 @@ var opcodeNames = [...]string{
 	AMP:          "amp",
 	APPEND:       "append",
 	ATTR:         "attr",
+	ATTR_METHOD:  "attr_method",
 	CALL:         "call",
-	CALL_ATTR:    "call_attr",
+	CALL_METHOD:  "call_method",
 	CALL_KW:      "call_kw ",
 	CALL_VAR:     "call_var",
 	CALL_VAR_KW:  "call_var_kw",
@@ -235,8 +239,9 @@ var stackEffect = [...]int8{
 	AMP:          -1,
 	APPEND:       -2,
 	ATTR:         0,
+	ATTR_METHOD:  0,
 	CALL:         variableStackEffect,
-	CALL_ATTR:    variableStackEffect,
+	CALL_METHOD:  variableStackEffect,
 	CALL_KW:      variableStackEffect,
 	CALL_VAR:     variableStackEffect,
 	CALL_VAR_KW:  variableStackEffect,
@@ -719,8 +724,8 @@ func (insn *insn) stackeffect() int {
 			if insn.op == CALL_VAR_KW {
 				se--
 			}
-		case CALL_ATTR:
-			se = -int(insn.arg & 0xff) // pop receiver + npos args, push result
+		case CALL_METHOD:
+			se = -int(insn.arg) // pop method + npos args, push result
 		case ITERJMP:
 			// Stack effect differs by successor:
 			// +1 for jmp/false/ok
@@ -891,14 +896,14 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 		comment = fn.Locals[arg].Name
 	case SETGLOBAL, GLOBAL:
 		comment = fn.Prog.Globals[arg].Name
-	case ATTR, SETFIELD, PREDECLARED, UNIVERSAL:
+	case ATTR, ATTR_METHOD, SETFIELD, PREDECLARED, UNIVERSAL:
 		comment = fn.Prog.Names[arg]
 	case FREE:
 		comment = fn.FreeVars[arg].Name
 	case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
 		comment = fmt.Sprintf("%d pos, %d named", arg>>8, arg&0xff)
-	case CALL_ATTR:
-		comment = fmt.Sprintf("%s, %d pos", fn.Prog.Names[arg>>8], arg&0xff)
+	case CALL_METHOD:
+		comment = fmt.Sprintf("%d pos", arg)
 	default:
 		// JMP, CJMP, ITERJMP, MAKETUPLE, MAKELIST, LOAD, UNPACK:
 		// arg is just a number
@@ -1657,20 +1662,19 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 }
 
 func (fcomp *fcomp) call(call *syntax.CallExpr) {
-	// opt: fuse x.method(pos...) to avoid materializing a closure.
-	if dot, ok := call.Fn.(*syntax.DotExpr); ok {
-		// plain positional args only for CALL_ATTR
-		if npos := len(call.Args); npos < 0x100 && plainPositional(call) {
-			if name := fcomp.pcomp.nameIndex(dot.Name.Name); name < 1<<24 {
-				fcomp.expr(dot.X) // receiver
-				for _, arg := range call.Args {
-					fcomp.expr(arg)
-				}
-				fcomp.setPos(call.Lparen)
-				fcomp.emit1(CALL_ATTR, name<<8|uint32(npos))
-				return
-			}
+	// opt: compile x.method(pos...) to ATTR_METHOD+CALL_METHOD, avoiding a
+	// bound-method closure. ATTR_METHOD resolves the method at the receiver,
+	// so evaluation order (receiver, method, args) is preserved.
+	if dot, ok := call.Fn.(*syntax.DotExpr); ok && plainPositional(call) {
+		fcomp.expr(dot.X) // receiver
+		fcomp.setPos(dot.Dot)
+		fcomp.emit1(ATTR_METHOD, fcomp.pcomp.nameIndex(dot.Name.Name))
+		for _, arg := range call.Args {
+			fcomp.expr(arg)
 		}
+		fcomp.setPos(call.Lparen)
+		fcomp.emit1(CALL_METHOD, uint32(len(call.Args)))
+		return
 	}
 
 	// usual case
