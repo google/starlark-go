@@ -178,6 +178,8 @@ var (
 // A Callable value f may be the operand of a function call, f(x).
 //
 // Clients should use the Call function, never the CallInternal method.
+// The sole exception is a Thread.CallDecorator, which is invoked in
+// place of CallInternal and typically delegates to it.
 type Callable interface {
 	Value
 	Name() string
