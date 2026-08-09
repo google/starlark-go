@@ -168,3 +168,50 @@ func BenchmarkProgram(b *testing.B) {
 		}
 	})
 }
+
+// BenchmarkCallDecorator measures the cost of the CallDecorator hook.
+// The "delegate" sub-benchmarks set a decorator that just forwards to fn.CallInternal;
+// comparing "delegate" to "nil" shows the extra cost per call of having a decorator installed.
+// The cost paid by callers that never set CallDecorator is not measured here.
+func BenchmarkCallDecorator(b *testing.B) {
+	builtin := starlark.NewBuiltin("nop", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return starlark.None, nil
+	})
+
+	globals, err := starlark.ExecFile(new(starlark.Thread), "calldecorator.star", "def nop(): pass", nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	function := globals["nop"].(*starlark.Function)
+
+	b.Run("builtin", func(b *testing.B) {
+		b.Run("nil", func(b *testing.B) {
+			callDecoratorBenchmark(b, new(starlark.Thread), builtin)
+		})
+		b.Run("delegate", func(b *testing.B) {
+			callDecoratorBenchmark(b, &starlark.Thread{CallDecorator: delegate}, builtin)
+		})
+	})
+
+	b.Run("function", func(b *testing.B) {
+		b.Run("nil", func(b *testing.B) {
+			callDecoratorBenchmark(b, new(starlark.Thread), function)
+		})
+		b.Run("delegate", func(b *testing.B) {
+			callDecoratorBenchmark(b, &starlark.Thread{CallDecorator: delegate}, function)
+		})
+	})
+}
+
+// callDecoratorBenchmark takes an already configured thread rather than
+// a decorator so that it never mentions Thread.CallDecorator. It therefore
+// compiles unchanged against a version of the package without the hook,
+// so the "nil" numbers can be compared to a hook-free baseline.
+func callDecoratorBenchmark(b *testing.B, thread *starlark.Thread, fn starlark.Callable) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if _, err := starlark.Call(thread, fn, nil, nil); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
