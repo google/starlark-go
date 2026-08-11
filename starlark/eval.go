@@ -774,6 +774,10 @@ func Binary(op syntax.Token, x, y Value) (Value, error) {
 			if y, ok := y.(String); ok {
 				return x + y, nil
 			}
+		case Bytes:
+			if y, ok := y.(Bytes); ok {
+				return x + y, nil
+			}
 		case Int:
 			switch y := y.(type) {
 			case Int:
