@@ -84,7 +84,6 @@
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
-// - Make RepeatedField comparable.
 // - Support oneof, any. But not messageset if we can avoid it.
 // - Support "well-known types".
 // - Defend against cycles in object graph.
@@ -963,8 +962,9 @@ func typeString(fdesc protoreflect.FieldDescriptor) string {
 // type using conversions similar to those done when calling a
 // MessageDescriptor to construct a message.
 //
-// TODO(adonovan): make RepeatedField implement starlark.Comparable.
-// Should the comparison include type, or be defined on the elements alone?
+// Two RepeatedFields compare equal if they have the same protobuf element
+// type and their elements compare equal. RepeatedFields of the same type
+// support lexicographic ordered comparison, like Starlark lists.
 type RepeatedField struct {
 	typ       protoreflect.FieldDescriptor // only for type information, not field name
 	list      protoreflect.List
@@ -975,6 +975,7 @@ type RepeatedField struct {
 var (
 	_ starlark.Iterable    = (*RepeatedField)(nil)
 	_ starlark.Container   = (*RepeatedField)(nil)
+	_ starlark.Comparable  = (*RepeatedField)(nil)
 	_ starlark.HasSetIndex = (*RepeatedField)(nil)
 	_ starlark.HasAttrs    = (*RepeatedField)(nil)
 )
@@ -1062,6 +1063,61 @@ func (rf *RepeatedField) Has(y starlark.Value) (bool, error) {
 	}
 	return false, nil
 }
+
+func (x *RepeatedField) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	y := y_.(*RepeatedField)
+	if x.Type() != y.Type() {
+		switch op {
+		case syntax.EQL:
+			return false, nil
+		case syntax.NEQ:
+			return true, nil
+		default:
+			return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
+		}
+	}
+
+	if x.Len() != y.Len() && (op == syntax.EQL || op == syntax.NEQ) {
+		return op == syntax.NEQ, nil
+	}
+
+	// Compare lexicographically, like list
+	for i := 0; i < x.Len() && i < y.Len(); i++ {
+		xelem, yelem := x.Index(i), y.Index(i)
+		equal, err := starlark.EqualDepth(xelem, yelem, depth-1)
+		if err != nil {
+			return false, err
+		}
+		if !equal {
+			switch op {
+			case syntax.EQL:
+				return false, nil
+			case syntax.NEQ:
+				return true, nil
+			default:
+				return starlark.CompareDepth(op, xelem, yelem, depth-1)
+			}
+		}
+	}
+
+	switch op {
+	case syntax.EQL:
+		return x.Len() == y.Len(), nil
+	case syntax.NEQ:
+		return x.Len() != y.Len(), nil
+	case syntax.LT:
+		return x.Len() < y.Len(), nil
+	case syntax.LE:
+		return x.Len() <= y.Len(), nil
+	case syntax.GT:
+		return x.Len() > y.Len(), nil
+	case syntax.GE:
+		return x.Len() >= y.Len(), nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
+	}
+}
+
 func (rf *RepeatedField) Iterate() starlark.Iterator {
 	if !*rf.frozen {
 		rf.itercount++
