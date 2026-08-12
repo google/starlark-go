@@ -84,8 +84,7 @@
 package proto
 
 // TODO(adonovan): Go and Starlark API improvements:
-// - Make Message and RepeatedField comparable.
-//   (NOTE: proto.Equal works only with generated message types.)
+// - Make RepeatedField comparable.
 // - Support oneof, any. But not messageset if we can avoid it.
 // - Support "well-known types".
 // - Defend against cycles in object graph.
@@ -94,9 +93,9 @@ package proto
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
-	"unsafe"
 	_ "unsafe" // for linkname hack
 
 	"google.golang.org/protobuf/encoding/prototext"
@@ -671,7 +670,8 @@ func toStarlark1(typ protoreflect.FieldDescriptor, x protoreflect.Value, frozen 
 
 // A Message is a Starlark value that wraps a protocol message.
 //
-// Two Messages are equivalent if and only if they are identical.
+// Two Messages are equivalent if and only if they wrap the same mutable
+// protobuf message object.
 //
 // When a Message value becomes frozen, a Starlark program may
 // not modify the underlying protocol message, nor any Message
@@ -686,7 +686,10 @@ func (m *Message) Message() protoreflect.ProtoMessage { return m.msg.Interface()
 
 func (m *Message) desc() protoreflect.MessageDescriptor { return m.msg.Descriptor() }
 
-var _ starlark.HasSetField = (*Message)(nil)
+var (
+	_ starlark.HasSetField = (*Message)(nil)
+	_ starlark.Comparable  = (*Message)(nil)
+)
 
 // Unmarshal parses the data as a binary protocol message of the specified type,
 // and returns it as a new Starlark message value.
@@ -762,10 +765,41 @@ func (m *Message) String() string {
 	return buf.String()
 }
 
-func (m *Message) Type() string                { return "proto.Message" }
-func (m *Message) Truth() starlark.Bool        { return true }
-func (m *Message) Freeze()                     { *m.frozen = true }
-func (m *Message) Hash() (h uint32, err error) { return uint32(uintptr(unsafe.Pointer(m))), nil } // identity hash
+func (m *Message) Type() string         { return "proto.Message" }
+func (m *Message) Truth() starlark.Bool { return true }
+func (m *Message) Freeze()              { *m.frozen = true }
+
+// messageIdentity identifies the mutable protobuf object wrapped by m.
+// Generated and dynamic protobuf messages are pointer-backed. For unusual
+// non-pointer implementations, fall back to the identity of the wrapper.
+func (m *Message) messageIdentity() (reflect.Type, uintptr) {
+	v := reflect.ValueOf(m.msg.Interface())
+	if v.IsValid() && v.Kind() == reflect.Pointer && !v.IsNil() {
+		return v.Type(), v.Pointer()
+	}
+	v = reflect.ValueOf(m)
+	return v.Type(), v.Pointer()
+}
+
+func (m *Message) Hash() (h uint32, err error) {
+	_, ptr := m.messageIdentity()
+	return uint32(ptr), nil
+}
+
+func (m *Message) CompareSameType(op syntax.Token, y_ starlark.Value, _ int) (bool, error) {
+	y := y_.(*Message)
+	xType, xPtr := m.messageIdentity()
+	yType, yPtr := y.messageIdentity()
+	equal := xType == yType && xPtr == yPtr
+	switch op {
+	case syntax.EQL:
+		return equal, nil
+	case syntax.NEQ:
+		return !equal, nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", m.Type(), op, y.Type())
+	}
+}
 
 // Attr returns the value of this message's field of the specified name.
 // Extension fields are not accessible this way as their names are not unique.
@@ -940,6 +974,7 @@ type RepeatedField struct {
 
 var (
 	_ starlark.Iterable    = (*RepeatedField)(nil)
+	_ starlark.Container   = (*RepeatedField)(nil)
 	_ starlark.HasSetIndex = (*RepeatedField)(nil)
 	_ starlark.HasAttrs    = (*RepeatedField)(nil)
 )
@@ -1012,6 +1047,20 @@ func (rf *RepeatedField) Freeze()               { *rf.frozen = true }
 func (rf *RepeatedField) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: %s", rf.Type()) }
 func (rf *RepeatedField) Index(i int) starlark.Value {
 	return toStarlark1(rf.typ, rf.list.Get(i), rf.frozen)
+}
+
+// Has reports whether y is equal to an element of the repeated field.
+func (rf *RepeatedField) Has(y starlark.Value) (bool, error) {
+	for i := 0; i < rf.Len(); i++ {
+		equal, err := starlark.Equal(rf.Index(i), y)
+		if err != nil {
+			return false, err
+		}
+		if equal {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 func (rf *RepeatedField) Iterate() starlark.Iterator {
 	if !*rf.frozen {
