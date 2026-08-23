@@ -50,6 +50,14 @@ type Thread struct {
 	// The default behavior is to call thread.Cancel("too many steps").
 	OnMaxSteps func(thread *Thread)
 
+	// Profile records the exact wall time of Starlark calls on this thread.
+	// A nil Profile disables this profiling. See [ExecProfile].
+	//
+	// Like Print and Load, set or clear Profile only from the goroutine that
+	// runs this thread. Read it only after execution returns to the calling
+	// Go code.
+	Profile *ExecProfile
+
 	// Steps a count of abstract computation steps executed
 	// by this thread. It is incremented by the interpreter. It may be used
 	// as a measure of the approximate cost of Starlark execution, by
@@ -67,6 +75,8 @@ type Thread struct {
 
 	// proftime holds the accumulated execution time since the last profile event.
 	proftime time.Duration
+
+	execProfileSpan profileSpan
 }
 
 // ExecutionSteps returns the current value of Steps.
@@ -186,10 +196,13 @@ func (d StringDict) Has(key string) bool { _, ok := d[key]; return ok }
 // A frame records a call to a Starlark function (including module toplevel)
 // or a built-in function or method.
 type frame struct {
-	callable  Callable // current function (or toplevel) or built-in
-	pc        uint32   // program counter (Starlark frames only)
-	locals    []Value  // local variables (Starlark frames only)
-	spanStart int64    // start time of current profiler span
+	callable                 Callable       // current function (or toplevel) or built-in
+	pc                       uint32         // program counter (Starlark frames only)
+	callerProfileSpanWasOpen bool           // whether the caller's ExecProfile span was open
+	locals                   []Value        // local variables (Starlark frames only)
+	spanStart                int64          // start time of current profiler span
+	execProfileRecord        *profileRecord // ExecProfile record for this call, or nil
+	execProfileCallStart     int64          // time when this ExecProfile call started
 }
 
 // Position returns the source position of the current point of execution in this frame.
@@ -1224,16 +1237,27 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	// Use defer to ensure that panics from built-ins
 	// pass through the interpreter without leaving
 	// it in a bad state.
+	//
+	// Set up this cleanup before recordCallPush. That function calls the
+	// callable's Name and Position methods. A custom Callable can panic in
+	// those methods, so the cleanup must already be in place.
 	defer func() {
 		thread.endProfSpan()
+		thread.recordCallPop(fr)
 
 		// clear out any references
 		// TODO(adonovan): opt: zero fr.Locals and
 		// reuse it if it is large enough.
+		//
+		// Frames are reused. Always clear execProfileRecord. recordCallPop
+		// uses it to tell whether a call was recorded. An old value could
+		// count a later call twice.
 		*fr = frame{}
 
 		thread.stack = thread.stack[:len(thread.stack)-1] // pop
 	}()
+
+	thread.recordCallPush(fr)
 
 	result, err := c.CallInternal(thread, args, kwargs)
 

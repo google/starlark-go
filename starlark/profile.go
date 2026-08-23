@@ -82,6 +82,11 @@ import (
 // StartProfile returns an error if profiling was already enabled.
 //
 // StartProfile must not be called concurrently with Starlark execution.
+//
+// See also [Thread.Profile]. It records every call on one thread. It does not
+// sample calls or write an output file. The two profilers can run at the same
+// time. Their results differ when a built-in calls Starlark. This profiler
+// includes the called Starlark function's time in the built-in's own time.
 func StartProfile(w io.Writer) error {
 	if !profiler.on.CompareAndSwap(false, true) {
 		return fmt.Errorf("profiler already running")
