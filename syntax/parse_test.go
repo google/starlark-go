@@ -7,6 +7,7 @@ package syntax_test
 import (
 	"bufio"
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/ast"
 	"go/build"
@@ -513,13 +514,16 @@ func BenchmarkParse(b *testing.B) {
 	}
 }
 
+//go:embed parse.go
+var parseSource []byte
+
 // TestParserCallGraphCycles extracts a static call graph from every
 // function in parse.go then reports any cyclic path starting from
 // ParseFile that does not pass through a function that uses the
 // enter/leave mechanism to break cycles.
 func TestParserCallGraphCycles(t *testing.T) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "parse.go", nil, 0)
+	file, err := parser.ParseFile(fset, "parse.go", parseSource, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
