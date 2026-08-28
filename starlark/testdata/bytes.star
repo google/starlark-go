@@ -111,6 +111,34 @@ assert.eq(ord(b"a"), 97)
 assert.fails(lambda: ord(b"ab"), "ord: bytes has length 2, want 1")
 assert.fails(lambda: ord(b""), "ord: bytes has length 0, want 1")
 
+# concatenation (bytes + bytes)
+# The compiler folds sums of adjacent bytes literals, so each case below keeps at
+# least one operand dynamic to exercise the interpreter instead.
+def concat(x, y):
+    return x + y
+
+assert.eq(concat(b"abc", b"def"), b"abc" + b"def")  # both paths must agree
+assert.eq(goodbye + b"!", b"goodbye!")
+assert.eq(b"good" + goodbye[4:], goodbye)
+assert.eq(b"[" + goodbye + b"]", b"[goodbye]")
+assert.eq(goodbye + empty, goodbye)
+assert.eq(empty + goodbye, goodbye)
+
+# Concatenation joins bytes, not text: no UTF-8 validation or U+FFFD replacement.
+assert.eq(concat(b"\xed\xb0", b"\x80"), b"\xed\xb0\x80")
+assert.eq(concat(hello[:-1], hello[-1:]), hello)  # split mid-code-point
+
+def inplace():
+    x = goodbye
+    x += b"!"
+    return x
+
+assert.eq(inplace(), b"goodbye!")
+
+# Text and binary strings do not mix.
+assert.fails(lambda: goodbye + "!", "unknown binary op: bytes \\+ string")
+assert.fails(lambda: "!" + goodbye, "unknown binary op: string \\+ bytes")
+
 # repeat (bytes * int)
 assert.eq(goodbye * 3, b"goodbyegoodbyegoodbye")
 assert.eq(3 * goodbye, b"goodbyegoodbyegoodbye")
