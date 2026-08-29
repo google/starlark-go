@@ -146,14 +146,14 @@ type DescriptorPool interface {
 var Module = &starlarkstruct.Module{
 	Name: "proto",
 	Members: starlark.StringDict{
-		"file":           starlark.NewBuiltin("proto.file", file),
-		"has":            starlark.NewBuiltin("proto.has", has),
-		"marshal":        starlark.NewBuiltin("proto.marshal", marshal),
-		"marshal_text":   starlark.NewBuiltin("proto.marshal_text", marshal),
-		"set_field":      starlark.NewBuiltin("proto.set_field", setFieldStarlark),
-		"get_field":      starlark.NewBuiltin("proto.get_field", getFieldStarlark),
-		"unmarshal":      starlark.NewBuiltin("proto.unmarshal", unmarshal),
-		"unmarshal_text": starlark.NewBuiltin("proto.unmarshal_text", unmarshal_text),
+		"file":           starlark.NewBuiltinMethod("proto.file", file),
+		"has":            starlark.NewBuiltinMethod("proto.has", has),
+		"marshal":        starlark.NewBuiltinMethod("proto.marshal", marshal),
+		"marshal_text":   starlark.NewBuiltinMethod("proto.marshal_text", marshal),
+		"set_field":      starlark.NewBuiltinMethod("proto.set_field", setFieldStarlark),
+		"get_field":      starlark.NewBuiltinMethod("proto.get_field", getFieldStarlark),
+		"unmarshal":      starlark.NewBuiltinMethod("proto.unmarshal", unmarshal),
+		"unmarshal_text": starlark.NewBuiltinMethod("proto.unmarshal_text", unmarshal_text),
 
 		// TODO(adonovan):
 		// - merge(msg, msg) -> msg
@@ -172,9 +172,9 @@ var Module = &starlarkstruct.Module{
 // for the same package name, and there is no "package descriptor".
 // (Technically a pool may also have many FileDescriptors with the same
 // file name, but this can't happen with a single consistent snapshot.)
-func file(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func file(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var filename string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &filename); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &filename); err != nil {
 		return nil, err
 	}
 
@@ -194,14 +194,14 @@ func file(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 // has(msg, field) reports whether the specified field of the message is present.
 // A field may be specified by name (string) or FieldDescriptor.
 // has reports an error if the message type has no such field.
-func has(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func has(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x, field starlark.Value
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &x, &field); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &field); err != nil {
 		return nil, err
 	}
 	msg, ok := x.(*Message)
 	if !ok {
-		return nil, fmt.Errorf("%s: got %s, want proto.Message", fn.Name(), x.Type())
+		return nil, fmt.Errorf("%s: got %s, want proto.Message", name, x.Type())
 	}
 
 	var fdesc protoreflect.FieldDescriptor
@@ -215,7 +215,7 @@ func has(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 
 	case FieldDescriptor:
 		if field.Desc.ContainingMessage() != msg.desc() {
-			return nil, fmt.Errorf("%s: %v does not have field %v", fn.Name(), msg.desc().FullName(), field)
+			return nil, fmt.Errorf("%s: %v does not have field %v", name, msg.desc().FullName(), field)
 		}
 		fdesc = field.Desc
 		if fdesc.IsExtension() {
@@ -231,48 +231,48 @@ func has(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 		}
 
 	default:
-		return nil, fmt.Errorf("%s: for field argument, got %s, want string or proto.FieldDescriptor", fn.Name(), field.Type())
+		return nil, fmt.Errorf("%s: for field argument, got %s, want string or proto.FieldDescriptor", name, field.Type())
 	}
 
 	return starlark.Bool(msg.msg.Has(fdesc)), nil
 }
 
 // marshal{,_text}(msg) encodes a Message value to binary or text form.
-func marshal(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func marshal(_ *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var m *Message
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &m); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &m); err != nil {
 		return nil, err
 	}
-	if fn.Name() == "proto.marshal" {
+	if name == "proto.marshal" {
 		data, err := proto.Marshal(m.Message())
 		if err != nil {
-			return nil, fmt.Errorf("%s: %v", fn.Name(), err)
+			return nil, fmt.Errorf("%s: %v", name, err)
 		}
 		return starlark.Bytes(data), nil
 	} else {
 		text, err := prototext.MarshalOptions{Indent: "  "}.Marshal(m.Message())
 		if err != nil {
-			return nil, fmt.Errorf("%s: %v", fn.Name(), err)
+			return nil, fmt.Errorf("%s: %v", name, err)
 		}
 		return starlark.String(text), nil
 	}
 }
 
 // unmarshal(msg) decodes a binary protocol message to a Message.
-func unmarshal(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func unmarshal(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data starlark.Bytes
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &desc, &data); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &desc, &data); err != nil {
 		return nil, err
 	}
 	return unmarshalData(desc.Desc, []byte(data), true)
 }
 
 // unmarshal_text(msg) decodes a text protocol message to a Message.
-func unmarshal_text(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func unmarshal_text(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &desc, &data); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &desc, &data); err != nil {
 		return nil, err
 	}
 	return unmarshalData(desc.Desc, []byte(data), false)
@@ -280,21 +280,21 @@ func unmarshal_text(thread *starlark.Thread, fn *starlark.Builtin, args starlark
 
 // set_field(msg, field, value) updates the value of a field.
 // It is typically used for extensions, which cannot be updated using msg.field = v notation.
-func setFieldStarlark(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func setFieldStarlark(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// TODO(adonovan): allow field to be specified by name (for non-extension fields), like has?
 	var m *Message
 	var field FieldDescriptor
 	var v starlark.Value
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 3, &m, &field, &v); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 3, &m, &field, &v); err != nil {
 		return nil, err
 	}
 
 	if *m.frozen {
-		return nil, fmt.Errorf("%s: cannot set %v field of frozen %v message", fn.Name(), field, m.desc().FullName())
+		return nil, fmt.Errorf("%s: cannot set %v field of frozen %v message", name, field, m.desc().FullName())
 	}
 
 	if field.Desc.ContainingMessage() != m.desc() {
-		return nil, fmt.Errorf("%s: %v does not have field %v", fn.Name(), m.desc().FullName(), field)
+		return nil, fmt.Errorf("%s: %v does not have field %v", name, m.desc().FullName(), field)
 	}
 
 	return starlark.None, setField(m.msg, field.Desc, v)
@@ -302,16 +302,16 @@ func setFieldStarlark(thread *starlark.Thread, fn *starlark.Builtin, args starla
 
 // get_field(msg, field) retrieves the value of a field.
 // It is typically used for extension fields, which cannot be accessed using msg.field notation.
-func getFieldStarlark(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func getFieldStarlark(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// TODO(adonovan): allow field to be specified by name (for non-extension fields), like has?
 	var msg *Message
 	var field FieldDescriptor
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &msg, &field); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &msg, &field); err != nil {
 		return nil, err
 	}
 
 	if field.Desc.ContainingMessage() != msg.desc() {
-		return nil, fmt.Errorf("%s: %v does not have field %v", fn.Name(), msg.desc().FullName(), field)
+		return nil, fmt.Errorf("%s: %v does not have field %v", name, msg.desc().FullName(), field)
 	}
 
 	return msg.getField(field.Desc), nil
@@ -941,28 +941,36 @@ type RepeatedField struct {
 var (
 	_ starlark.Iterable    = (*RepeatedField)(nil)
 	_ starlark.HasSetIndex = (*RepeatedField)(nil)
-	_ starlark.HasAttrs    = (*RepeatedField)(nil)
+	_ starlark.HasAttrs          = (*RepeatedField)(nil)
+	_ starlark.HasBuiltinMethods = (*RepeatedField)(nil)
 )
+
+var repeatedFieldAppendMethod = starlark.NewBuiltinMethod("append", repeatedFieldAppend)
 
 func (rf *RepeatedField) AttrNames() []string {
 	return []string{"append"}
 }
 
-func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
-	switch name {
-	case "append":
-		return starlark.NewBuiltin("append", repeatedFieldAppend).BindReceiver(rf), nil
-	default:
-		return nil, nil
+func (rf *RepeatedField) BuiltinMethod(name string) *starlark.Builtin {
+	if name == "append" {
+		return repeatedFieldAppendMethod
 	}
+	return nil
 }
 
-func repeatedFieldAppend(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (rf *RepeatedField) Attr(name string) (starlark.Value, error) {
+	if b := rf.BuiltinMethod(name); b != nil {
+		return b.BindReceiver(rf), nil
+	}
+	return nil, nil
+}
+
+func repeatedFieldAppend(_ *starlark.Thread, name string, recv starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var object starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &object); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &object); err != nil {
 		return nil, err
 	}
-	rf := b.Receiver().(*RepeatedField)
+	rf := recv.(*RepeatedField)
 
 	if err := rf.checkMutable("append to"); err != nil {
 		return nil, err

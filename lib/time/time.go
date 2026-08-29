@@ -53,12 +53,12 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "time",
 	Members: starlark.StringDict{
-		"from_timestamp":    starlark.NewBuiltin("from_timestamp", fromTimestamp),
-		"is_valid_timezone": starlark.NewBuiltin("is_valid_timezone", isValidTimezone),
-		"now":               starlark.NewBuiltin("now", now),
-		"parse_duration":    starlark.NewBuiltin("parse_duration", parseDuration),
-		"parse_time":        starlark.NewBuiltin("parse_time", parseTime),
-		"time":              starlark.NewBuiltin("time", newTime),
+		"from_timestamp":    starlark.NewBuiltinMethod("from_timestamp", fromTimestamp),
+		"is_valid_timezone": starlark.NewBuiltinMethod("is_valid_timezone", isValidTimezone),
+		"now":               starlark.NewBuiltinMethod("now", now),
+		"parse_duration":    starlark.NewBuiltinMethod("parse_duration", parseDuration),
+		"parse_time":        starlark.NewBuiltinMethod("parse_time", parseTime),
+		"time":              starlark.NewBuiltinMethod("time", newTime),
 
 		"nanosecond":  Duration(time.Nanosecond),
 		"microsecond": Duration(time.Microsecond),
@@ -92,13 +92,13 @@ func Now(thread *starlark.Thread) func() (time.Time, error) {
 	return nowFunc
 }
 
-func parseDuration(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func parseDuration(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d Duration
 	err := starlark.UnpackPositionalArgs("parse_duration", args, kwargs, 1, &d)
 	return d, err
 }
 
-func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func isValidTimezone(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var s string
 	if err := starlark.UnpackPositionalArgs("is_valid_timezone", args, kwargs, 1, &s); err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func isValidTimezone(thread *starlark.Thread, _ *starlark.Builtin, args starlark
 	return starlark.Bool(err == nil), nil
 }
 
-func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func parseTime(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		x        string
 		location = "UTC"
@@ -136,7 +136,7 @@ func parseTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	return Time(t), nil
 }
 
-func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func fromTimestamp(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		sec  int64
 		nsec int64 = 0
@@ -147,7 +147,7 @@ func fromTimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.T
 	return Time(time.Unix(sec, nsec)), nil
 }
 
-func now(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func now(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	nowErrFunc := Now(thread)
 	if nowErrFunc != nil {
 		t, err := nowErrFunc()
@@ -333,7 +333,7 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 // Time is a Starlark representation of a moment in time.
 type Time time.Time
 
-func newTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func newTime(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		year, month, day, hour, min, sec, nsec int
 		loc                                    string
@@ -503,10 +503,10 @@ func builtinAttr(recv starlark.Value, name string, methods map[string]builtinMet
 	}
 
 	// Allocate a closure over 'method'.
-	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		return method(b.Name(), b.Receiver(), args, kwargs)
+	impl := func(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return method(name, recv, args, kwargs)
 	}
-	return starlark.NewBuiltin(name, impl).BindReceiver(recv), nil
+	return starlark.NewBuiltinMethod(name, impl).BindReceiver(recv), nil
 }
 
 func builtinAttrNames(methods map[string]builtinMethod) []string {

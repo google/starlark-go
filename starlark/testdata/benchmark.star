@@ -34,6 +34,15 @@ def bench_builtin_method(b):
         for _ in range1000:
             emptydict.get(None)
 
+def bench_method_mix(b):
+    "Benchmark of a simple mix of built-in method calls (string, list, dict)."
+    s = "hello.go"
+    for _ in range(b.n):
+        d = {}
+        for i in range1000:
+            if s.endswith(".go"):
+                d.setdefault("go", []).append(i)
+
 def bench_int(b):
     for _ in range(b.n):
         a = 0

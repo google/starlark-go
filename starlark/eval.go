@@ -634,6 +634,12 @@ func listExtend(x *List, y Iterable) {
 
 // getAttr implements x.dot.
 func getAttr(x Value, name string) (Value, error) {
+	if hm, ok := x.(HasBuiltinMethods); ok {
+		if b := hm.BuiltinMethod(name); b != nil {
+			return b.BindReceiver(x), nil
+		}
+	}
+
 	hasAttr, ok := x.(HasAttrs)
 	if !ok {
 		return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
@@ -1196,11 +1202,42 @@ func stringRepeat(s String, n Int) (String, error) {
 
 // Call calls the function fn with the specified positional and keyword arguments.
 func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
-	c, ok := fn.(Callable)
-	if !ok {
+	return call0(thread, fn, nil, args, kwargs)
+}
+
+// call0 calls the function fn with the specified positional and keyword arguments.
+//
+// If fn is an unbound method *Builtin (from ATTR_METHOD), recv is used as the receiver.
+// This avoids allocation via [Builtin.BindReceiver] when calling built-in methods.
+func call0(thread *Thread, fn Value, recv Value, args Tuple, kwargs []Tuple) (result Value, err error) {
+	if b, ok := fn.(*Builtin); ok && b.recv == nil {
+		fr := thread.pushFrame(b) // NOTE: lacks recv!
+		defer thread.popFrame(fr)
+		result, err = b.fn(thread, b.name, recv, args, kwargs)
+
+	} else if c, ok := fn.(Callable); ok {
+		fr := thread.pushFrame(c)
+		defer thread.popFrame(fr)
+		result, err = c.CallInternal(thread, args, kwargs)
+
+	} else {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
 	}
 
+	// Sanity check: nil is not a valid Starlark value.
+	if result == nil && err == nil {
+		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
+	}
+
+	// Always return an EvalError with an accurate frame.
+	if err != nil && !is[*EvalError](err) {
+		err = thread.evalError(err)
+	}
+
+	return result, err
+}
+
+func (thread *Thread) pushFrame(c Callable) *frame {
 	// Allocate and push a new frame.
 	var fr *frame
 	// Optimization: use slack portion of thread.stack
@@ -1220,38 +1257,18 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	}
 
 	thread.stack = append(thread.stack, fr) // push
-
 	fr.callable = c
-
 	thread.beginProfSpan()
+	return fr
+}
 
-	// Use defer to ensure that panics from built-ins
-	// pass through the interpreter without leaving
-	// it in a bad state.
-	defer func() {
-		thread.endProfSpan()
-
-		// clear out any references
-		// TODO(adonovan): opt: zero fr.Locals and
-		// reuse it if it is large enough.
-		*fr = frame{}
-
-		thread.stack = thread.stack[:len(thread.stack)-1] // pop
-	}()
-
-	result, err := c.CallInternal(thread, args, kwargs)
-
-	// Sanity check: nil is not a valid Starlark value.
-	if result == nil && err == nil {
-		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
-	}
-
-	// Always return an EvalError with an accurate frame.
-	if err != nil && !is[*EvalError](err) {
-		err = thread.evalError(err)
-	}
-
-	return result, err
+func (thread *Thread) popFrame(fr *frame) {
+	thread.endProfSpan()
+	// clear out any references
+	// TODO(adonovan): opt: zero fr.Locals and
+	// reuse it if it is large enough.
+	*fr = frame{}
+	thread.stack = thread.stack[:len(thread.stack)-1] // pop
 }
 
 func slice(x, lo, hi, step_ Value) (Value, error) {

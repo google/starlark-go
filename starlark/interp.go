@@ -340,7 +340,7 @@ loop:
 
 			// positional args
 			var positional Tuple
-			if npos := int(arg >> 8); npos > 0 {
+			if npos := int((arg &^ compile.HasRecv) >> 8); npos > 0 {
 				positional = stack[sp-npos : sp]
 				sp -= npos
 
@@ -366,6 +366,13 @@ loop:
 			}
 
 			function := stack[sp-1]
+			var recv Value
+			if arg&compile.HasRecv != 0 {
+				recv = stack[sp-2]
+				sp -= 2
+			} else {
+				sp--
+			}
 
 			if vmdebug {
 				fmt.Printf("VM call %s args=%s kwargs=%s @%s\n",
@@ -373,7 +380,7 @@ loop:
 			}
 
 			thread.endProfSpan()
-			z, err2 := Call(thread, function, positional, kvpairs)
+			z, err2 := call0(thread, function, recv, positional, kvpairs)
 			thread.beginProfSpan()
 			if err2 != nil {
 				err = err2
@@ -382,7 +389,34 @@ loop:
 			if vmdebug {
 				fmt.Printf("Resuming %s @ %s\n", f.Name, f.Position(0))
 			}
-			stack[sp-1] = z
+			stack[sp] = z
+			sp++
+
+		case compile.ATTR_METHOD:
+			// Resolve x.method at the receiver, before the arguments, so
+			// evaluation order matches the ordinary ATTR+CALL sequence.
+			recv := stack[sp-1]
+			name := f.Prog.Names[arg]
+
+			// Allocation-free fast path for types
+			// that can return unbound Builtins.
+			var method Value
+			if recv, ok := recv.(HasBuiltinMethods); ok {
+				if b := recv.BuiltinMethod(name); b != nil {
+					method = b
+				}
+			}
+			if method == nil {
+				// general case: recv.Attr(name) allocates in Builtin.BindReceiver.
+				var err2 error
+				method, err2 = getAttr(recv, name)
+				if err2 != nil {
+					err = err2
+					break loop
+				}
+			}
+			stack[sp] = method
+			sp++
 
 		case compile.ITERPUSH:
 			x := stack[sp-1]

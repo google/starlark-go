@@ -33,6 +33,7 @@
 //	Mapping         -- value maps from keys to values, like a dictionary
 //	HasBinary       -- value defines binary operations such as * and +
 //	HasAttrs        -- value has readable fields or methods x.f
+//	HasBuiltinMethods  value supports efficient calling of built-in methods
 //	HasSetField     -- value has settable fields x.f
 //	HasSetIndex     -- value supports element update using x[i]=y
 //	HasSetKey       -- value supports map update using x[k]=v
@@ -374,6 +375,36 @@ var (
 	_ HasAttrs = new(Set)
 )
 
+// A HasBuiltinMethods value is a HasAttrs that additionally provides
+// optimized calling of built-in methods.
+//
+// BuiltinMethod returns a unbound method (with a nil Receiver),
+// avoiding the usual [Builtin.BindReceiver] allocation implied by a
+// [HasAttrs.Attr] call when the method is immediately called, as in
+// recv.name().
+//
+// The Attr method of a HasBuiltinMethods type Foo typically has the form:
+//
+//	func (recv *Foo) Attr(name string) (Value, error) {
+//		if b := recv.BuiltinMethod(name); b != nil {
+//			return b.BindReceiver(recv), nil
+//		}
+//		// ... handle any other attributes ...
+//		return nil, nil // no such attribute
+//	}
+type HasBuiltinMethods interface {
+	HasAttrs
+	BuiltinMethod(name string) *Builtin
+}
+
+var (
+	_ HasBuiltinMethods = String("")
+	_ HasBuiltinMethods = new(List)
+	_ HasBuiltinMethods = new(Dict)
+	_ HasBuiltinMethods = new(Set)
+	_ HasBuiltinMethods = Bytes("")
+)
+
 // A HasSetField value has fields that may be written by a dot expression (x.f = y).
 //
 // An implementation of SetField may return a NoSuchAttrError,
@@ -391,6 +422,8 @@ type HasSetField interface {
 type NoSuchAttrError string
 
 func (e NoSuchAttrError) Error() string { return string(e) }
+
+var _ error = NoSuchAttrError("")
 
 // NoneType is the type of None.  Its only legal value is None.
 // (We represent it as a number, not struct{}, so that None may be constant.)
@@ -594,8 +627,9 @@ func (s String) Slice(start, end, step int) Value {
 	return String(str)
 }
 
-func (s String) Attr(name string) (Value, error) { return builtinAttr(s, name, stringMethods) }
-func (s String) AttrNames() []string             { return builtinAttrNames(stringMethods) }
+func (s String) Attr(name string) (Value, error)    { return builtinAttr(s, name) }
+func (s String) BuiltinMethod(name string) *Builtin { return stringMethods[name] }
+func (s String) AttrNames() []string                { return builtinAttrNames(stringMethods) }
 
 func (x String) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(String)
@@ -825,10 +859,29 @@ func (fn *Function) FreeVar(i int) (Binding, Value) {
 	return Binding(fn.funcode.FreeVars[i]), fn.freevars[i].(*cell).v
 }
 
-// A Builtin is a function implemented in Go.
+// A Builtin is a function or method implemented in Go.
+//
+// For methods, Builtins exist in two flavors: unbound and bound.
+// An unbound method (Receiver == nil) is a static method descriptor
+// shared across all instances of a type. It represents the method
+// itself without reference to a specific target object. When a method
+// call is fused in syntax (x.method(args...)), the compiler emits
+// ATTR_METHOD and a CALL instruction with the HasRecv bit set. The
+// interpreter resolves the unbound method descriptor directly from the type
+// ([HasBuiltinMethods]) and passes both the unbound descriptor and
+// the explicit receiver x on the operand stack. The underlying Go
+// function fn is invoked without allocating a method closure on the
+// heap.
+//
+// A bound method (recv != nil) represents a method closure (x.method)
+// that has been bound to a specific receiver value (x). Bound methods
+// are created by calling [Builtin.BindReceiver] when a Starlark dot
+// expression (g = x.method) is evaluated without an immediate call
+// (ATTR). When a bound method is subsequently invoked (g(args...)),
+// its stored recv value is passed to fn.
 type Builtin struct {
 	name string
-	fn   func(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)
+	fn   func(thread *Thread, name string, recv Value, args Tuple, kwargs []Tuple) (Value, error)
 	recv Value // for bound methods (e.g. "".startswith)
 }
 
@@ -845,17 +898,35 @@ func (b *Builtin) Hash() (uint32, error) {
 	}
 	return h, nil
 }
+
+// Deprecated: use [NewBuiltinMethod] instead of [NewBuiltin] so this method becomes irrelevant.
 func (b *Builtin) Receiver() Value { return b.recv }
 func (b *Builtin) String() string  { return toString(b) }
 func (b *Builtin) Type() string    { return "builtin_function_or_method" }
 func (b *Builtin) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	return b.fn(thread, b, args, kwargs)
+	return b.fn(thread, b.name, b.recv, args, kwargs)
 }
 func (b *Builtin) Truth() Bool { return true }
 
 // NewBuiltin returns a new 'builtin_function_or_method' value with the specified name
-// and implementation.  It compares unequal with all other values.
+// and legacy-style implementation.  It compares unequal with all other values.
+//
+// Deprecated: use [NewBuiltinMethod], which avoids allocating a Builtin for method calls.
 func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)) *Builtin {
+	var unbound *Builtin
+	unbound = NewBuiltinMethod(name, func(thread *Thread, _ string, recv Value, args Tuple, kwargs []Tuple) (Value, error) {
+		b := unbound
+		if recv != b.recv {
+			b = b.BindReceiver(recv)
+		}
+		return fn(thread, b, args, kwargs)
+	})
+	return unbound
+}
+
+// NewBuiltinMethod returns a new 'builtin_function_or_method' value with the specified name
+// and implementation. It compares unequal with all other values.
+func NewBuiltinMethod(name string, fn func(thread *Thread, name string, recv Value, args Tuple, kwargs []Tuple) (Value, error)) *Builtin {
 	return &Builtin{name: name, fn: fn}
 }
 
@@ -867,10 +938,9 @@ func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kw
 //
 //	f = "abc".index; f("a"); f("b")
 //
-// In the common case, the receiver is bound only during the call,
-// but this still results in the creation of a temporary method closure:
-//
-//	"abc".index("a")
+// For fused method calls ("abc".index("a")), the compiler and interpreter
+// bypass BindReceiver using [HasBuiltinMethods] to invoke the unbound method
+// without allocating a temporary method closure.
 func (b *Builtin) BindReceiver(recv Value) *Builtin {
 	return &Builtin{name: b.name, fn: b.fn, recv: recv}
 }
@@ -913,8 +983,9 @@ func (x *Dict) Union(y *Dict) *Dict {
 	return z
 }
 
-func (d *Dict) Attr(name string) (Value, error) { return builtinAttr(d, name, dictMethods) }
-func (d *Dict) AttrNames() []string             { return builtinAttrNames(dictMethods) }
+func (d *Dict) Attr(name string) (Value, error)    { return builtinAttr(d, name) }
+func (d *Dict) BuiltinMethod(name string) *Builtin { return dictMethods[name] }
+func (d *Dict) AttrNames() []string                { return builtinAttrNames(dictMethods) }
 
 func (x *Dict) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Dict)
@@ -1001,8 +1072,9 @@ func (l *List) Slice(start, end, step int) Value {
 	return NewList(list)
 }
 
-func (l *List) Attr(name string) (Value, error) { return builtinAttr(l, name, listMethods) }
-func (l *List) AttrNames() []string             { return builtinAttrNames(listMethods) }
+func (l *List) Attr(name string) (Value, error)    { return builtinAttr(l, name) }
+func (l *List) BuiltinMethod(name string) *Builtin { return listMethods[name] }
+func (l *List) AttrNames() []string                { return builtinAttrNames(listMethods) }
 
 func (l *List) Iterate() Iterator {
 	if !l.frozen {
@@ -1202,8 +1274,9 @@ func (s *Set) Freeze()                                { s.ht.freeze() }
 func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
 
-func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
-func (s *Set) AttrNames() []string             { return builtinAttrNames(setMethods) }
+func (s *Set) Attr(name string) (Value, error)    { return builtinAttr(s, name) }
+func (s *Set) BuiltinMethod(name string) *Builtin { return setMethods[name] }
+func (s *Set) AttrNames() []string                { return builtinAttrNames(setMethods) }
 
 func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Set)
@@ -1665,8 +1738,9 @@ func (b Bytes) Hash() (uint32, error) { return String(b).Hash() }
 func (b Bytes) Len() int              { return len(b) }
 func (b Bytes) Index(i int) Value     { return b[i : i+1] }
 
-func (b Bytes) Attr(name string) (Value, error) { return builtinAttr(b, name, bytesMethods) }
-func (b Bytes) AttrNames() []string             { return builtinAttrNames(bytesMethods) }
+func (b Bytes) Attr(name string) (Value, error)    { return builtinAttr(b, name) }
+func (b Bytes) BuiltinMethod(name string) *Builtin { return bytesMethods[name] }
+func (b Bytes) AttrNames() []string                { return builtinAttrNames(bytesMethods) }
 
 func (b Bytes) Slice(start, end, step int) Value {
 	if step == 1 {

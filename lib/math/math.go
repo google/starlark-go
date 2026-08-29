@@ -66,10 +66,10 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "math",
 	Members: starlark.StringDict{
-		"ceil":      starlark.NewBuiltin("ceil", ceil),
+		"ceil":      starlark.NewBuiltinMethod("ceil", ceil),
 		"copysign":  newBinaryBuiltin("copysign", math.Copysign),
 		"fabs":      newUnaryBuiltin("fabs", math.Abs),
-		"floor":     starlark.NewBuiltin("floor", floor),
+		"floor":     starlark.NewBuiltinMethod("floor", floor),
 		"mod":       newBinaryBuiltin("mod", math.Mod),
 		"pow":       newBinaryBuiltin("pow", math.Pow),
 		"remainder": newBinaryBuiltin("remainder", math.Remainder),
@@ -97,7 +97,7 @@ var Module = &starlarkstruct.Module{
 		"sinh":  newUnaryBuiltin("sinh", math.Sinh),
 		"tanh":  newUnaryBuiltin("tanh", math.Tanh),
 
-		"log": starlark.NewBuiltin("log", log),
+		"log": starlark.NewBuiltinMethod("log", log),
 
 		"gamma": newUnaryBuiltin("gamma", math.Gamma),
 
@@ -124,7 +124,7 @@ func (p *floatOrInt) Unpack(v starlark.Value) error {
 // newUnaryBuiltin wraps a unary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
 func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
-	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.NewBuiltinMethod(name, func(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var x floatOrInt
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &x); err != nil {
 			return nil, err
@@ -136,7 +136,7 @@ func newUnaryBuiltin(name string, fn func(float64) float64) *starlark.Builtin {
 // newBinaryBuiltin wraps a binary floating-point Go function
 // as a Starlark built-in that accepts int or float arguments.
 func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
-	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.NewBuiltinMethod(name, func(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var x, y floatOrInt
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
 			return nil, err
@@ -148,7 +148,7 @@ func newBinaryBuiltin(name string, fn func(float64, float64) float64) *starlark.
 //	log wraps the Log function
 //
 // as a Starlark built-in that accepts int or float arguments.
-func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func log(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		x    floatOrInt
 		base floatOrInt = math.E
@@ -162,7 +162,7 @@ func log(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 	return starlark.Float(math.Log(float64(x)) / math.Log(float64(base))), nil
 }
 
-func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func ceil(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
 
 	if err := starlark.UnpackPositionalArgs("ceil", args, kwargs, 1, &x); err != nil {
@@ -179,7 +179,7 @@ func ceil(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 	return nil, fmt.Errorf("got %s, want float or int", x.Type())
 }
 
-func floor(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func floor(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
 
 	if err := starlark.UnpackPositionalArgs("floor", args, kwargs, 1, &x); err != nil {

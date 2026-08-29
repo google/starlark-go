@@ -46,7 +46,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 14
+const Version = 15
 
 type Opcode uint8
 
@@ -141,14 +141,26 @@ const (
 	UNPACK       //          iterable UNPACK<n>           vn ... v1
 
 	// n>>8 is #positional args and n&0xff is #named args (pairs).
+	// If HasRecv is set in n, the function call is a method call
+	// resolved by ATTR_METHOD, and pops recv (stack[sp-2]) and fn (stack[sp-1])
+	// instead of just fn (stack[sp-1]).
 	CALL        // fn positional named                CALL<n>        result
 	CALL_VAR    // fn positional named *args          CALL_VAR<n>    result
 	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result
 	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result
 
+	// ATTR_METHOD resolves the method at the receiver without materializing
+	// a bound-method closure (preserving evaluation order); a CALL instruction
+	// with the HasRecv bit set calls it once args are pushed.
+	ATTR_METHOD //           recv ATTR_METHOD<name> recv method   (method bound to recv)
+
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_VAR_KW
+	OpcodeMax    = ATTR_METHOD
 )
+
+// HasRecv is set in CALL instruction operands when the callee is a method
+// resolved by ATTR_METHOD.
+const HasRecv = 1 << 31
 
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
 
@@ -156,6 +168,7 @@ var opcodeNames = [...]string{
 	AMP:          "amp",
 	APPEND:       "append",
 	ATTR:         "attr",
+	ATTR_METHOD:  "attr_method",
 	CALL:         "call",
 	CALL_KW:      "call_kw ",
 	CALL_VAR:     "call_var",
@@ -231,6 +244,7 @@ var stackEffect = [...]int8{
 	AMP:          -1,
 	APPEND:       -2,
 	ATTR:         0,
+	ATTR_METHOD:  +1,
 	CALL:         variableStackEffect,
 	CALL_KW:      variableStackEffect,
 	CALL_VAR:     variableStackEffect,
@@ -707,11 +721,14 @@ func (insn *insn) stackeffect() int {
 		arg := int(insn.arg)
 		switch insn.op {
 		case CALL, CALL_KW, CALL_VAR, CALL_VAR_KW:
-			se = -int(2*(insn.arg&0xff) + insn.arg>>8)
+			se = -int(2*(insn.arg&0xff) + (insn.arg&^HasRecv)>>8)
 			if insn.op != CALL {
 				se--
 			}
 			if insn.op == CALL_VAR_KW {
+				se--
+			}
+			if insn.arg&HasRecv != 0 {
 				se--
 			}
 		case ITERJMP:
@@ -884,12 +901,15 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 		comment = fn.Locals[arg].Name
 	case SETGLOBAL, GLOBAL:
 		comment = fn.Prog.Globals[arg].Name
-	case ATTR, SETFIELD, PREDECLARED, UNIVERSAL:
+	case ATTR, ATTR_METHOD, SETFIELD, PREDECLARED, UNIVERSAL:
 		comment = fn.Prog.Names[arg]
 	case FREE:
 		comment = fn.FreeVars[arg].Name
 	case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
-		comment = fmt.Sprintf("%d pos, %d named", arg>>8, arg&0xff)
+		comment = fmt.Sprintf("%d pos, %d named", (arg&^HasRecv)>>8, arg&0xff)
+		if arg&HasRecv != 0 {
+			comment = "method, " + comment
+		}
 	default:
 		// JMP, CJMP, ITERJMP, MAKETUPLE, MAKELIST, LOAD, UNPACK:
 		// arg is just a number
@@ -1648,14 +1668,18 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 }
 
 func (fcomp *fcomp) call(call *syntax.CallExpr) {
-	// TODO(adonovan): opt: Use optimized path for calling methods
-	// of built-ins: x.f(...) to avoid materializing a closure.
-	// if dot, ok := call.Fcomp.(*syntax.DotExpr); ok {
-	// 	fcomp.expr(dot.X)
-	// 	fcomp.args(call)
-	// 	fcomp.emit1(CALL_ATTR, fcomp.name(dot.Name.Name))
-	// 	return
-	// }
+	// opt: compile x.method(...) to ATTR_METHOD+CALL, avoiding a
+	// bound-method closure. ATTR_METHOD resolves the method at the receiver,
+	// so evaluation order (receiver, method, args) is preserved.
+	if dot, ok := call.Fn.(*syntax.DotExpr); ok {
+		fcomp.expr(dot.X) // receiver
+		fcomp.setPos(dot.Dot)
+		fcomp.emit1(ATTR_METHOD, fcomp.pcomp.nameIndex(dot.Name.Name))
+		op, arg := fcomp.args(call)
+		fcomp.setPos(call.Lparen)
+		fcomp.emit1(op, arg|HasRecv)
+		return
+	}
 
 	// usual case
 	fcomp.expr(call.Fn)

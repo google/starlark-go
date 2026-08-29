@@ -82,38 +82,48 @@ func (benchmark) Type() string          { return "benchmark" }
 func (benchmark) String() string        { return "<benchmark>" }
 func (benchmark) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: benchmark") }
 func (benchmark) AttrNames() []string   { return []string{"n", "restart", "start", "stop"} }
-func (b benchmark) Attr(name string) (starlark.Value, error) {
+var _ starlark.HasBuiltinMethods = benchmark{}
+
+func (b benchmark) BuiltinMethod(name string) *starlark.Builtin {
 	switch name {
-	case "n":
-		return starlark.MakeInt(b.b.N), nil
 	case "restart":
-		return benchmarkRestart.BindReceiver(b), nil
+		return benchmarkRestart
 	case "start":
-		return benchmarkStart.BindReceiver(b), nil
+		return benchmarkStart
 	case "stop":
-		return benchmarkStop.BindReceiver(b), nil
+		return benchmarkStop
+	}
+	return nil
+}
+
+func (b benchmark) Attr(name string) (starlark.Value, error) {
+	if name == "n" {
+		return starlark.MakeInt(b.b.N), nil
+	}
+	if method := b.BuiltinMethod(name); method != nil {
+		return method.BindReceiver(b), nil
 	}
 	return nil, nil
 }
 
 var (
-	benchmarkRestart = starlark.NewBuiltin("restart", benchmarkRestartImpl)
-	benchmarkStart   = starlark.NewBuiltin("start", benchmarkStartImpl)
-	benchmarkStop    = starlark.NewBuiltin("stop", benchmarkStopImpl)
+	benchmarkRestart = starlark.NewBuiltinMethod("restart", benchmarkRestartImpl)
+	benchmarkStart   = starlark.NewBuiltinMethod("start", benchmarkStartImpl)
+	benchmarkStop    = starlark.NewBuiltinMethod("stop", benchmarkStopImpl)
 )
 
-func benchmarkRestartImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	b.Receiver().(benchmark).b.ResetTimer()
+func benchmarkRestartImpl(thread *starlark.Thread, name string, recv starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	recv.(benchmark).b.ResetTimer()
 	return starlark.None, nil
 }
 
-func benchmarkStartImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	b.Receiver().(benchmark).b.StartTimer()
+func benchmarkStartImpl(thread *starlark.Thread, name string, recv starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	recv.(benchmark).b.StartTimer()
 	return starlark.None, nil
 }
 
-func benchmarkStopImpl(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	b.Receiver().(benchmark).b.StopTimer()
+func benchmarkStopImpl(thread *starlark.Thread, name string, recv starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	recv.(benchmark).b.StopTimer()
 	return starlark.None, nil
 }
 

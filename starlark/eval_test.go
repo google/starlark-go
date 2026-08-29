@@ -160,9 +160,9 @@ func TestExecFile(t *testing.T) {
 		filename := filepath.Join(testdata, file)
 		for _, chunk := range chunkedfile.Read(filename, t) {
 			predeclared := starlark.StringDict{
-				"hasfields": starlark.NewBuiltin("hasfields", newHasFields),
+				"hasfields": starlark.NewBuiltinMethod("hasfields", newHasFields),
 				"fibonacci": fib{},
-				"struct":    starlark.NewBuiltin("struct", starlarkstruct.Make),
+				"struct":    starlark.NewBuiltinMethod("struct", starlarkstruct.Make),
 			}
 
 			opts := getOptions(chunk.Source)
@@ -233,9 +233,9 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	return starlark.ExecFile(thread, filename, nil, nil)
 }
 
-func newHasFields(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func newHasFields(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if len(args)+len(kwargs) > 0 {
-		return nil, fmt.Errorf("%s: unexpected arguments", b.Name())
+		return nil, fmt.Errorf("%s: unexpected arguments", name)
 	}
 	return &hasfields{attrs: make(map[string]starlark.Value)}, nil
 }
@@ -909,12 +909,12 @@ func TestFrameLocals(t *testing.T) {
 	}
 
 	var got string
-	builtin := func(thread *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+	builtin := func(thread *starlark.Thread, _ string, _ starlark.Value, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
 		got = trace(thread)
 		return starlark.None, nil
 	}
 	predeclared := starlark.StringDict{
-		"builtin": starlark.NewBuiltin("builtin", builtin),
+		"builtin": starlark.NewBuiltinMethod("builtin", builtin),
 	}
 	_, err := starlark.ExecFile(&starlark.Thread{}, "foo.star", `
 def f(x, y): builtin()
@@ -1024,7 +1024,7 @@ func TestCancel(t *testing.T) {
 	{
 		thread := new(starlark.Thread)
 		predeclared := starlark.StringDict{
-			"stopit": starlark.NewBuiltin("stopit", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			"stopit": starlark.NewBuiltinMethod("stopit", func(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 				thread.Cancel(fmt.Sprint(args[0]))
 				return starlark.None, nil
 			}),
@@ -1098,7 +1098,7 @@ func TestDeps(t *testing.T) {
 // built-in may traverse the interpreter safely; see issue #411.
 func TestPanicSafety(t *testing.T) {
 	predeclared := starlark.StringDict{
-		"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		"panic": starlark.NewBuiltinMethod("panic", func(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			panic(args[0])
 		}),
 		"list": starlark.NewList([]starlark.Value{starlark.MakeInt(0)}),
@@ -1145,7 +1145,7 @@ main()
 
 func TestDebugFrame(t *testing.T) {
 	predeclared := starlark.StringDict{
-		"env": starlark.NewBuiltin("env", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		"env": starlark.NewBuiltinMethod("env", func(thread *starlark.Thread, _ string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			if thread.CallStackDepth() < 2 {
 				return nil, fmt.Errorf("env must not be called directly")
 			}
@@ -1245,5 +1245,84 @@ func TestUnpackArgNoEscape(t *testing.T) {
 	})
 	if n > 0 {
 		t.Errorf("AllocsPerRun = %v, want none", n)
+	}
+}
+
+// legacy uses the old form of built-in methods.
+type legacy struct {
+	name string
+}
+
+var _ starlark.HasAttrs = (*legacy)(nil)
+
+func (r *legacy) String() string        { return r.name }
+func (r *legacy) Type() string          { return "legacy" }
+func (r *legacy) Truth() starlark.Bool  { return true }
+func (r *legacy) Hash() (uint32, error) { return 0, nil }
+func (r *legacy) Freeze()               {}
+func (r *legacy) AttrNames() []string   { return []string{"greet"} }
+func (r *legacy) Attr(name string) (starlark.Value, error) {
+	if b := legacyMethods[name]; b != nil {
+		return b.BindReceiver(r), nil
+	}
+	return nil, nil
+}
+
+var legacyMethods = map[string]*starlark.Builtin{
+	"greet": starlark.NewBuiltin("greet", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var arg string
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "arg", &arg); err != nil {
+			return nil, err
+		}
+		recv, ok := b.Receiver().(*legacy)
+		if !ok || recv == nil {
+			return nil, fmt.Errorf("expected legacyMethodReceiver receiver, got %v", b.Receiver())
+		}
+		return starlark.String(fmt.Sprintf("%s: hello %s", recv.name, arg)), nil
+	}),
+}
+
+func TestLegacyBuiltinMethod(t *testing.T) {
+	thread := new(starlark.Thread)
+
+	predeclared := starlark.StringDict{
+		"r": &legacy{name: "Alice"},
+		"standalone": starlark.NewBuiltin("standalone", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			return starlark.String(b.Name()), nil
+		}),
+	}
+
+	{
+		// fused mode: r.greet("world")
+		got, err := starlark.Eval(thread, "fused.star", `r.greet("world")`, predeclared)
+		if err != nil {
+			t.Fatalf("fused call failed: %v", err)
+		}
+		if want := starlark.String("Alice: hello world"); got != want {
+			t.Errorf("fused call: got %s, want %s", got, want)
+		}
+	}
+
+	// bound mode: bound = r.greet; bound("world")
+	{
+		_, err := starlark.ExecFile(thread, "bound.star", `
+def check():
+	bound = r.greet
+	res = bound("world")
+	if res != "Alice: hello world":
+		fail("bound call: got %s, want Alice: hello world" % res)
+check()
+`, predeclared)
+		if err != nil {
+			t.Fatalf("bound call failed: %v", err)
+		}
+	}
+
+	// legacy standalone function
+	{
+		_, err := starlark.Eval(thread, "test.star", `fail('oops') if standalone() != 'standalone' else None`, predeclared)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }

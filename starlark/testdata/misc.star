@@ -136,4 +136,29 @@ assert.fails(lambda: [] + [] + 1 + [], "unknown binary op: list \\+ int")
 
 
 ---
+# Method calls: the ATTR_METHOD+CALL path must agree with the ATTR
+# path (retained method value) and with the *args/**kwargs path.
+load("assert.star", "assert")
+
+s = "hello"
+assert.eq(s.startswith("he"), True)         # method call
+assert.eq(s.startswith("he", 1), False)     # multiple positional
+bound = s.startswith                        # retained method value (ATTR path)
+assert.eq(bound("he"), True)
+assert.eq(s.startswith(*["he"]), True)      # *args: fused
+assert.eq(s.startswith(*["he"], **{}), True)  # *args + **kwargs: fused
+assert.eq({"k": 1}.get("k"), 1)             # dict method
+assert.eq([1, 2, 3].index(2), 1)            # list method
+assert.eq("HELLO".lower().startswith("he"), True)  # chained: pool reuse
+assert.fails(lambda: s.nonexistent(), "no .nonexistent field or method")
+
+# Evaluation order: x.method is resolved *before* the arguments, matching the
+# ordinary ATTR+CALL sequence. A missing method must therefore be reported
+# even when evaluating an argument would itself fail or have side effects.
+# (A fused resolve-after-args opcode would instead report the argument error.)
+assert.fails(lambda: [].nonesuch(1 // 0), "no .nonesuch field or method")
+assert.fails(lambda: [].nonesuch(fail("arg evaluated")), "no .nonesuch field or method")
+assert.fails(lambda: "".nonesuch([][0]), "no .nonesuch field or method")
+
+---
 load('assert.star', 'froze') ### `name froze not found .*did you mean freeze`

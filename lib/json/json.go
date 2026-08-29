@@ -82,16 +82,16 @@ import (
 var Module = &starlarkstruct.Module{
 	Name: "json",
 	Members: starlark.StringDict{
-		"encode":        starlark.NewBuiltin("json.encode", encode),
-		"encode_indent": starlark.NewBuiltin("json.encode_indent", encodeIndent),
-		"decode":        starlark.NewBuiltin("json.decode", decode),
-		"indent":        starlark.NewBuiltin("json.indent", indent),
+		"encode":        starlark.NewBuiltinMethod("json.encode", encode),
+		"encode_indent": starlark.NewBuiltinMethod("json.encode_indent", encodeIndent),
+		"decode":        starlark.NewBuiltinMethod("json.decode", decode),
+		"indent":        starlark.NewBuiltinMethod("json.indent", indent),
 	},
 }
 
-func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func encode(thread *starlark.Thread, fnname string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
+	if err := starlark.UnpackPositionalArgs(fnname, args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
 
@@ -235,14 +235,14 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 
 	if err := emit(x); err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+		return nil, fmt.Errorf("%s: %v", fnname, err)
 	}
 	return starlark.String(buf.String()), nil
 }
 
-func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func encodeIndent(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	prefix, indent := "", "\t" // keyword-only
-	if err := starlark.UnpackArgs(b.Name(), nil, kwargs,
+	if err := starlark.UnpackArgs(name, nil, kwargs,
 		"prefix?", &prefix,
 		"indent?", &indent,
 	); err != nil {
@@ -250,13 +250,13 @@ func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	}
 	// Rely on encode() to parse the positional parameter (since the signature matches); use our b so
 	// error messages are attributed to json.encode_indent.
-	str, err := encode(thread, b, args, nil)
+	str, err := encode(thread, name, nil, args, nil)
 	if err != nil {
 		return nil, err
 	}
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, []byte(str.(starlark.String)), prefix, indent); err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+		return nil, fmt.Errorf("%s: %v", name, err)
 	}
 	return starlark.String(buf.String()), nil
 }
@@ -293,36 +293,36 @@ func isFinite(f float64) bool {
 	return math.Abs(f) <= math.MaxFloat64
 }
 
-func indent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func indent(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	prefix, indent := "", "\t" // keyword-only
-	if err := starlark.UnpackArgs(b.Name(), nil, kwargs,
+	if err := starlark.UnpackArgs(name, nil, kwargs,
 		"prefix?", &prefix,
 		"indent?", &indent,
 	); err != nil {
 		return nil, err
 	}
 	var str string // positional-only
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &str); err != nil {
+	if err := starlark.UnpackPositionalArgs(name, args, nil, 1, &str); err != nil {
 		return nil, err
 	}
 
 	buf := new(bytes.Buffer)
 	if err := json.Indent(buf, []byte(str), prefix, indent); err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+		return nil, fmt.Errorf("%s: %v", name, err)
 	}
 	return starlark.String(buf.String()), nil
 }
 
-func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (v starlark.Value, err error) {
+func decode(thread *starlark.Thread, name string, _ starlark.Value, args starlark.Tuple, kwargs []starlark.Tuple) (v starlark.Value, err error) {
 	var s string
 	var d starlark.Value
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s, "default?", &d); err != nil {
+	if err := starlark.UnpackArgs(name, args, kwargs, "x", &s, "default?", &d); err != nil {
 		return nil, err
 	}
 	if len(args) < 1 {
 		// "x" parameter is positional only; UnpackArgs does not allow us to
 		// directly express "def decode(x, *, default)"
-		return nil, fmt.Errorf("%s: unexpected keyword argument x", b.Name())
+		return nil, fmt.Errorf("%s: unexpected keyword argument x", name)
 	}
 
 	// The decoder necessarily makes certain representation choices
