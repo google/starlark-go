@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package time provides time-related constants and functions.
-package time // import "go.starlark.net/lib/time"
+package time
 
 import (
 	"errors"
