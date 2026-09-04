@@ -1694,8 +1694,8 @@ func Elements(iterable Iterable) iter.Seq[Value] {
 		return iterable.Elements()
 	}
 
-	iter := iterable.Iterate()
 	return func(yield func(Value) bool) {
+		iter := iterable.Iterate()
 		defer iter.Done()
 		var x Value
 		for iter.Next(&x) && yield(x) {
@@ -1723,8 +1723,8 @@ func Entries(mapping IterableMapping) iter.Seq2[Value, Value] {
 		return mapping.Entries()
 	}
 
-	iter := mapping.Iterate()
 	return func(yield func(k, v Value) bool) {
+		iter := mapping.Iterate()
 		defer iter.Done()
 		var k Value
 		for iter.Next(&k) {
