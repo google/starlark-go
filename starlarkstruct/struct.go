@@ -195,7 +195,7 @@ func (x *Struct) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (
 				x.constructor, y.constructor)
 		}
 
-		z := make(starlark.StringDict, x.len()+y.len())
+		z := make(starlark.StringDict, x.Len()+y.Len())
 		for _, e := range x.entries {
 			z[e.name] = e.value
 		}
@@ -235,7 +235,7 @@ func (s *Struct) Attr(name string) (starlark.Value, error) {
 		fmt.Sprintf("%sstruct has no .%s attribute", ctor, name))
 }
 
-func (s *Struct) len() int { return len(s.entries) }
+func (s *Struct) Len() int { return len(s.entries) }
 
 // AttrNames returns a new sorted list of the struct fields.
 func (s *Struct) AttrNames() []string {
@@ -260,7 +260,7 @@ func (x *Struct) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) 
 }
 
 func structsEqual(x, y *Struct, depth int) (bool, error) {
-	if x.len() != y.len() {
+	if x.Len() != y.Len() {
 		return false, nil
 	}
 
@@ -271,7 +271,7 @@ func structsEqual(x, y *Struct, depth int) (bool, error) {
 		return false, nil
 	}
 
-	for i, n := 0, x.len(); i < n; i++ {
+	for i := range x.Len() {
 		if x.entries[i].name != y.entries[i].name {
 			return false, nil
 		} else if eq, err := starlark.EqualDepth(x.entries[i].value, y.entries[i].value, depth-1); err != nil {
