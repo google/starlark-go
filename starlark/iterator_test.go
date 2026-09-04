@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build go1.23
-
 package starlark_test
 
 // This file defines tests of the starlark.Value Go API's go1.23 iterators:
