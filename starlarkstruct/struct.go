@@ -246,6 +246,19 @@ func (s *Struct) AttrNames() []string {
 	return names
 }
 
+// AttrAt returns the value of the field at the specified index.
+func (s *Struct) AttrAt(i int) (starlark.Value, error) {
+	if !(0 <= i && i < len(s.entries)) {
+		var ctor string
+		if s.constructor != Default {
+			ctor = s.constructor.String() + " "
+		}
+		return nil, starlark.NoSuchAttrError(
+			fmt.Sprintf("%sstruct has no attribute at index %d", ctor, i))
+	}
+	return s.entries[i].value, nil
+}
+
 func (x *Struct) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
 	y := y_.(*Struct)
 	switch op {
