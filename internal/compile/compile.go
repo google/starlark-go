@@ -23,7 +23,7 @@
 //
 // Operands, logically uint32s, are encoded using little-endian 7-bit
 // varints, the top bit indicating that more bytes follow.
-package compile // import "go.starlark.net/internal/compile"
+package compile
 
 import (
 	"bytes"
