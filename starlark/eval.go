@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/big"
 	"math/bits"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -49,6 +50,8 @@ type Thread struct {
 	// OnMaxSteps is called when the thread reaches the limit set by SetMaxExecutionSteps.
 	// The default behavior is to call thread.Cancel("too many steps").
 	OnMaxSteps func(thread *Thread)
+
+	callTracers []*callTracerRegistration
 
 	// Steps a count of abstract computation steps executed
 	// by this thread. It is incremented by the interpreter. It may be used
@@ -119,8 +122,32 @@ func (thread *Thread) Local(key string) any {
 	return thread.locals[key]
 }
 
+// A CallTracer observes calls on a Thread.
+type CallTracer interface {
+	// TraceCall runs before fn.
+	TraceCall(thread *Thread, fn Callable, args Tuple, kwargs []Tuple)
+
+	// TraceReturn runs after fn.
+	TraceReturn(thread *Thread, fn Callable, result Value, err error)
+}
+
+type callTracerRegistration struct{ tracer CallTracer }
+
+// AddCallTracer adds tracer to the Thread until the returned function removes it.
+func (thread *Thread) AddCallTracer(tracer CallTracer) (remove func()) {
+	// A running call keeps this slice, so update a copy.
+	registration := &callTracerRegistration{tracer}
+	thread.callTracers = append(slices.Clone(thread.callTracers), registration)
+
+	return func() {
+		if i := slices.Index(thread.callTracers, registration); i >= 0 {
+			thread.callTracers = slices.Delete(slices.Clone(thread.callTracers), i, i+1)
+		}
+	}
+}
+
 // CallFrame returns a copy of the specified frame of the callstack.
-// It should only be used in built-ins called from Starlark code.
+// Use it only in a built-in called from Starlark code or in a CallTracer.
 // Depth 0 means the frame of the built-in itself, 1 is its caller, and so on.
 //
 // It is equivalent to CallStack().At(depth), but more efficient.
@@ -1195,6 +1222,7 @@ func stringRepeat(s String, n Int) (String, error) {
 }
 
 // Call calls the function fn with the specified positional and keyword arguments.
+// Tracers added to thread observe the call. See [Thread.AddCallTracer].
 func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	c, ok := fn.(Callable)
 	if !ok {
@@ -1239,7 +1267,22 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		thread.stack = thread.stack[:len(thread.stack)-1] // pop
 	}()
 
-	result, err := c.CallInternal(thread, args, kwargs)
+	var result Value
+	var err error
+	if len(thread.callTracers) > 0 {
+		tracersForCall := thread.callTracers
+		for _, registration := range tracersForCall {
+			registration.tracer.TraceCall(thread, c, args, kwargs)
+		}
+		// Keep fn's frame on the call stack until TraceReturn finishes.
+		defer func() {
+			for i := len(tracersForCall) - 1; i >= 0; i-- {
+				tracersForCall[i].tracer.TraceReturn(thread, c, result, err)
+			}
+		}()
+	}
+
+	result, err = c.CallInternal(thread, args, kwargs)
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {

@@ -168,3 +168,35 @@ func BenchmarkProgram(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkCallTracer(b *testing.B) {
+	globals, err := starlark.ExecFile(new(starlark.Thread), "call_tracer.star", "def nop(): pass", nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for _, test := range []struct {
+		name string
+		fn   starlark.Callable
+	}{
+		{"builtin", nopBuiltin("nop")},
+		{"function", globals["nop"].(*starlark.Function)},
+	} {
+		b.Run(test.name, func(b *testing.B) {
+			for _, tracerCount := range []int{0, 1, 3} {
+				b.Run(fmt.Sprintf("tracers=%d", tracerCount), func(b *testing.B) {
+					thread := new(starlark.Thread)
+					for range tracerCount {
+						thread.AddCallTracer(callTracerFuncs{})
+					}
+					b.ReportAllocs()
+					for i := 0; i < b.N; i++ {
+						if _, err := starlark.Call(thread, test.fn, nil, nil); err != nil {
+							b.Fatal(err)
+						}
+					}
+				})
+			}
+		})
+	}
+}
