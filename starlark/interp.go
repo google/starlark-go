@@ -373,8 +373,10 @@ loop:
 			}
 
 			thread.endProfSpan()
+			thread.recordPause()
 			z, err2 := Call(thread, function, positional, kvpairs)
 			thread.beginProfSpan()
+			thread.recordResume()
 			if err2 != nil {
 				err = err2
 				break loop
@@ -571,8 +573,10 @@ loop:
 			}
 
 			thread.endProfSpan()
+			thread.recordPause()
 			dict, err2 := thread.Load(thread, module)
 			thread.beginProfSpan()
+			thread.recordResume()
 			if err2 != nil {
 				err = wrappedError{
 					msg:   fmt.Sprintf("cannot load %s: %v", module, err2),
