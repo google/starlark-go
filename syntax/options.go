@@ -27,6 +27,8 @@ type FileOptions struct {
 	TopLevelControl   bool // allow if/for/while statements at top-level
 	GlobalReassign    bool // allow reassignment to top-level names
 	LoadBindsGlobally bool // load creates global not file-local bindings (deprecated)
+	LoopLoads         bool // allow 'load' statements within loops
+	ConditionalLoads  bool // allow 'load' statements within conditions
 
 	// compiler
 	Recursion bool // disable recursion check for functions in this file
