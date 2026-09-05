@@ -345,6 +345,9 @@ func enumerate(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, e
 	var x Value
 
 	if n := Len(iterable); n >= 0 {
+		if uint(n) >= maxAlloc/2 {
+			return nil, fmt.Errorf("enumerate: argument too large (%d elements)", n)
+		}
 		// common case: known length
 		pairs = make([]Value, 0, n)
 		array := make(Tuple, 2*n) // allocate a single backing array
@@ -686,6 +689,9 @@ func list(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 		iter := iterable.Iterate()
 		defer iter.Done()
 		if n := Len(iterable); n > 0 {
+			if uint(n) >= maxAlloc {
+				return nil, fmt.Errorf("list: argument too large (%d elements)", n)
+			}
 			elems = make([]Value, 0, n) // preallocate if length known
 		}
 		var x Value
@@ -1033,6 +1039,9 @@ func sorted(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 	defer iter.Done()
 	var values []Value
 	if n := Len(iterable); n > 0 {
+		if uint(n) >= maxAlloc {
+			return nil, fmt.Errorf("sorted: argument too large (%d elements)", n)
+		}
 		values = make(Tuple, 0, n) // preallocate if length is known
 	}
 	var x Value
