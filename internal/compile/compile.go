@@ -46,7 +46,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 14
+const Version = 16
 
 type Opcode uint8
 
@@ -146,8 +146,14 @@ const (
 	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result
 	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result
 
+	// ATTR_METHOD+CALL_METHOD implement x.method(pos...) without materializing
+	// a bound-method closure. ATTR_METHOD resolves the method at the receiver
+	// (preserving evaluation order); CALL_METHOD calls it once args are pushed.
+	ATTR_METHOD //           recv ATTR_METHOD<name> method     (method bound to recv)
+	CALL_METHOD // method positional CALL_METHOD<npos> result
+
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_VAR_KW
+	OpcodeMax    = CALL_METHOD
 )
 
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
@@ -156,7 +162,9 @@ var opcodeNames = [...]string{
 	AMP:          "amp",
 	APPEND:       "append",
 	ATTR:         "attr",
+	ATTR_METHOD:  "attr_method",
 	CALL:         "call",
+	CALL_METHOD:  "call_method",
 	CALL_KW:      "call_kw ",
 	CALL_VAR:     "call_var",
 	CALL_VAR_KW:  "call_var_kw",
@@ -231,7 +239,9 @@ var stackEffect = [...]int8{
 	AMP:          -1,
 	APPEND:       -2,
 	ATTR:         0,
+	ATTR_METHOD:  0,
 	CALL:         variableStackEffect,
+	CALL_METHOD:  variableStackEffect,
 	CALL_KW:      variableStackEffect,
 	CALL_VAR:     variableStackEffect,
 	CALL_VAR_KW:  variableStackEffect,
@@ -714,6 +724,8 @@ func (insn *insn) stackeffect() int {
 			if insn.op == CALL_VAR_KW {
 				se--
 			}
+		case CALL_METHOD:
+			se = -int(insn.arg) // pop method + npos args, push result
 		case ITERJMP:
 			// Stack effect differs by successor:
 			// +1 for jmp/false/ok
@@ -884,12 +896,14 @@ func PrintOp(fn *Funcode, pc uint32, op Opcode, arg uint32) {
 		comment = fn.Locals[arg].Name
 	case SETGLOBAL, GLOBAL:
 		comment = fn.Prog.Globals[arg].Name
-	case ATTR, SETFIELD, PREDECLARED, UNIVERSAL:
+	case ATTR, ATTR_METHOD, SETFIELD, PREDECLARED, UNIVERSAL:
 		comment = fn.Prog.Names[arg]
 	case FREE:
 		comment = fn.FreeVars[arg].Name
 	case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
 		comment = fmt.Sprintf("%d pos, %d named", arg>>8, arg&0xff)
+	case CALL_METHOD:
+		comment = fmt.Sprintf("%d pos", arg)
 	default:
 		// JMP, CJMP, ITERJMP, MAKETUPLE, MAKELIST, LOAD, UNPACK:
 		// arg is just a number
@@ -1648,20 +1662,40 @@ func (fcomp *fcomp) binop(pos syntax.Position, op syntax.Token) {
 }
 
 func (fcomp *fcomp) call(call *syntax.CallExpr) {
-	// TODO(adonovan): opt: Use optimized path for calling methods
-	// of built-ins: x.f(...) to avoid materializing a closure.
-	// if dot, ok := call.Fcomp.(*syntax.DotExpr); ok {
-	// 	fcomp.expr(dot.X)
-	// 	fcomp.args(call)
-	// 	fcomp.emit1(CALL_ATTR, fcomp.name(dot.Name.Name))
-	// 	return
-	// }
+	// opt: compile x.method(pos...) to ATTR_METHOD+CALL_METHOD, avoiding a
+	// bound-method closure. ATTR_METHOD resolves the method at the receiver,
+	// so evaluation order (receiver, method, args) is preserved.
+	if dot, ok := call.Fn.(*syntax.DotExpr); ok && plainPositional(call) {
+		fcomp.expr(dot.X) // receiver
+		fcomp.setPos(dot.Dot)
+		fcomp.emit1(ATTR_METHOD, fcomp.pcomp.nameIndex(dot.Name.Name))
+		for _, arg := range call.Args {
+			fcomp.expr(arg)
+		}
+		fcomp.setPos(call.Lparen)
+		fcomp.emit1(CALL_METHOD, uint32(len(call.Args)))
+		return
+	}
 
 	// usual case
 	fcomp.expr(call.Fn)
 	op, arg := fcomp.args(call)
 	fcomp.setPos(call.Lparen)
 	fcomp.emit1(op, arg)
+}
+
+// plainPositional reports whether all of call's args are plain positional (no name=value, *args, **kwargs).
+func plainPositional(call *syntax.CallExpr) bool {
+	for _, arg := range call.Args {
+		if binary, ok := arg.(*syntax.BinaryExpr); ok && binary.Op == syntax.EQ {
+			return false // named argument
+		}
+		if unary, ok := arg.(*syntax.UnaryExpr); ok &&
+			(unary.Op == syntax.STAR || unary.Op == syntax.STARSTAR) {
+			return false // *args or **kwargs
+		}
+	}
+	return true
 }
 
 // args emits code to push a tuple of positional arguments

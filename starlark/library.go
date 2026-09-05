@@ -164,6 +164,27 @@ func builtinAttr(recv Value, name string, methods map[string]*Builtin) (Value, e
 	return b.BindReceiver(recv), nil
 }
 
+// builtinMethod returns recv's unbound method of the given name, or nil if none.
+// Unlike builtinAttr it does not allocate a bound-method closure.
+func builtinMethod(recv Value, name string) *Builtin {
+	var methods map[string]*Builtin
+	switch recv.(type) {
+	case String:
+		methods = stringMethods
+	case *Dict:
+		methods = dictMethods
+	case *List:
+		methods = listMethods
+	case *Set:
+		methods = setMethods
+	case Bytes:
+		methods = bytesMethods
+	default:
+		return nil
+	}
+	return methods[name]
+}
+
 func builtinAttrNames(methods map[string]*Builtin) []string {
 	names := make([]string, 0, len(methods))
 	for name := range methods {
