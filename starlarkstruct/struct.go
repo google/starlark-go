@@ -23,6 +23,7 @@ package starlarkstruct // import "go.starlark.net/starlarkstruct"
 
 import (
 	"fmt"
+	"iter"
 	"sort"
 	"strings"
 
@@ -250,6 +251,20 @@ func (s *Struct) AttrNames() []string {
 func (s *Struct) AttrAt(i int) (string, starlark.Value) {
 	e := s.entries[i]
 	return e.name, e.value
+}
+
+// Entries returns an iterator over the sequence of fields of a struct. For
+// example:
+//
+//	for name, val := range struct1.Entries() { ... }
+func (s *Struct) Entries() iter.Seq2[string, starlark.Value] {
+	return func(yield func(string, starlark.Value) bool) {
+		for _, e := range s.entries {
+			if !yield(e.name, e.value) {
+				return
+			}
+		}
+	}
 }
 
 func (x *Struct) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
