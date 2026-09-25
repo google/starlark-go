@@ -46,7 +46,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 14
+const Version = 15
 
 type Opcode uint8
 
@@ -838,15 +838,14 @@ func clip(x, min, max int32) (int32, bool) {
 // to encode the number of complete bytes that follow.
 func addUint32(code []byte, x uint32, min int) []byte {
 	end := len(code) + min
-	for x >= 0x80 {
+	// Pad the operand to at least min bytes using redundant
+	// continuation bytes (not trailing NOPs, which would be
+	// executed whenever a CJMP or ITERJMP falls through).
+	for x >= 0x80 || len(code)+1 < end {
 		code = append(code, byte(x)|0x80)
 		x >>= 7
 	}
 	code = append(code, byte(x))
-	// Pad the operand with NOPs to exactly min bytes.
-	for len(code) < end {
-		code = append(code, byte(NOP))
-	}
 	return code
 }
 
