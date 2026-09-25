@@ -69,6 +69,14 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 		return nil, thread.evalError(err)
 	}
 
+	// Check cancellation and increment steps on entry.
+	// (Needed for recursive CALLs.)
+	if thread.checkSteps() {
+		if err := thread.checkStepsSlow(); err != nil {
+			return nil, err
+		}
+	}
+
 	fr.locals = locals
 
 	if vmdebug {
@@ -86,6 +94,10 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	// TODO(adonovan): add static check that beneath this point
 	// - there is exactly one return statement
 	// - there is no redefinition of 'err'.
+	// (Replacing "break loop" with explicit returns duplicates the defer
+	// epilogue at ~30 sites, adding 3.5KB of code for +0.8% geomean time;
+	// avoiding non-breaking assignments to err removes the loop-header PHI
+	// spill of err, but had no measurable runtime effect.)
 
 	var iterstack []Iterator // stack of active iterators
 
@@ -106,19 +118,6 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	code := f.Code
 loop:
 	for {
-		thread.Steps++
-		if thread.Steps >= thread.maxSteps {
-			if thread.OnMaxSteps != nil {
-				thread.OnMaxSteps(thread)
-			} else {
-				thread.Cancel("too many steps")
-			}
-		}
-		if reason := thread.cancelReason.Load(); reason != nil {
-			err = fmt.Errorf("Starlark computation cancelled: %s", *reason)
-			break loop
-		}
-
 		fr.pc = pc
 
 		op := compile.Opcode(code[pc])
@@ -288,6 +287,12 @@ loop:
 			sp++
 
 		case compile.JMP:
+			// On back edge, check cancellation and step count.
+			if arg < pc && thread.checkSteps() {
+				if err = thread.checkStepsSlow(); err != nil {
+					break loop
+				}
+			}
 			pc = arg
 
 		case compile.CALL, compile.CALL_VAR, compile.CALL_KW, compile.CALL_VAR_KW:
@@ -383,6 +388,13 @@ loop:
 				fmt.Printf("Resuming %s @ %s\n", f.Name, f.Position(0))
 			}
 			stack[sp-1] = z
+
+			// Check whether callee cancelled the thread.
+			if thread.checkSteps() {
+				if err = thread.checkStepsSlow(); err != nil {
+					break loop
+				}
+			}
 
 		case compile.ITERPUSH:
 			x := stack[sp-1]
@@ -523,6 +535,12 @@ loop:
 
 		case compile.CJMP:
 			if stack[sp-1].Truth() {
+				// On back edge, check cancellation and increment step count.
+				if arg < pc && thread.checkSteps() {
+					if err = thread.checkStepsSlow(); err != nil {
+						break loop
+					}
+				}
 				pc = arg
 			}
 			sp--
@@ -592,6 +610,13 @@ loop:
 					break loop
 				}
 				stack[sp-1-i] = v
+			}
+
+			// Check whether Load callback cancelled the thread.
+			if thread.checkSteps() {
+				if err = thread.checkStepsSlow(); err != nil {
+					break loop
+				}
 			}
 
 		case compile.SETLOCAL:
@@ -667,6 +692,33 @@ loop:
 	}
 	// (deferred cleanup runs here)
 	return result, err
+}
+
+const stepCost = 10 // empirical average number of instructions per back-edge or call
+
+// checkSteps increments the thread's step counter and reports whether
+// the thread has exceeded its step limit or been cancelled.
+//
+// It is designed to be inlinable.
+func (thread *Thread) checkSteps() bool {
+	thread.Steps += stepCost
+	return thread.Steps >= thread.maxSteps ||
+		thread.cancelReason.Load() != nil
+}
+
+// (non-inlineable)
+func (thread *Thread) checkStepsSlow() error {
+	if thread.Steps >= thread.maxSteps {
+		if thread.OnMaxSteps != nil {
+			thread.OnMaxSteps(thread)
+		} else {
+			thread.Cancel("too many steps")
+		}
+	}
+	if reason := thread.cancelReason.Load(); reason != nil {
+		return fmt.Errorf("Starlark computation cancelled: %s", *reason)
+	}
+	return nil
 }
 
 type wrappedError struct {
