@@ -1204,6 +1204,9 @@ func stringRepeat(s String, n Int) (String, error) {
 }
 
 // Call calls the function fn with the specified positional and keyword arguments.
+//
+// The callee may retain args and kwargs (see [Callable]),
+// so the caller must not modify them afterwards, unless fn is a [*Function].
 func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	c, ok := fn.(Callable)
 	if !ok {

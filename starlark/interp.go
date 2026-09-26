@@ -18,10 +18,12 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - optimize position table.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
+// CallInternal implements the call fn(*args, **kwargs),
+// where fn is a Starlark function.
+//
+// CallInternal does not retain the args and kwargs arrays, allowing
+// the interpreter to avoid an allocation in Starlark-to-Starlark calls.
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	// Postcondition: args is not mutated. This is stricter than required by Callable,
-	// but allows CALL to avoid a copy.
-
 	f := fn.funcode
 	if f.Prog.Recursion {
 		// prevent stack overflow
@@ -340,7 +342,7 @@ loop:
 
 				// Copy positional arguments into a new array,
 				// unless the callee is another Starlark function,
-				// in which case it can be trusted not to mutate them.
+				// in which case it can be trusted not to retain them.
 				if !is[*Function](stack[sp-1]) || args != nil {
 					positional = slices.Clone(positional)
 				}
