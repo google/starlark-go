@@ -411,7 +411,10 @@ func FileProgram(f *syntax.File, isPredeclared func(string) bool) (*Program, err
 	}
 
 	module := f.Module.(*resolve.Module)
-	compiled := compile.File(f.Options, f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+	compiled, err := compile.File(f.Options, f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Program{compiled}, nil
 }
@@ -468,7 +471,10 @@ func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
 	}
 
 	module := f.Module.(*resolve.Module)
-	compiled := compile.File(f.Options, f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+	compiled, err := compile.File(f.Options, f.Stmts, pos, "<toplevel>", module.Locals, module.Globals)
+	if err != nil {
+		return err
+	}
 	prog := &Program{compiled}
 
 	// -- variant of Program.Init --
@@ -482,7 +488,7 @@ func ExecREPLChunk(f *syntax.File, thread *Thread, globals StringDict) error {
 		}
 	}
 
-	_, err := Call(thread, toplevel, nil, nil)
+	_, err = Call(thread, toplevel, nil, nil)
 
 	// Reflect changes to globals back to parameter, even after an error.
 	for i, id := range prog.compiled.Globals {
@@ -611,7 +617,10 @@ func makeExprFunc(opts *syntax.FileOptions, expr syntax.Expr, env StringDict) (*
 		return nil, err
 	}
 
-	prog := compile.Expr(opts, expr, "<expr>", locals)
+	prog, err := compile.Expr(opts, expr, "<expr>", locals)
+	if err != nil {
+		return nil, err
+	}
 	return makeToplevelFunction(&Program{prog}, env), nil
 }
 

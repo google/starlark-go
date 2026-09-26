@@ -21,8 +21,10 @@
 // Each function has a line number table that maps each program counter
 // offset to a source position, including the column number.
 //
-// Operands, logically uint32s, are encoded using little-endian 7-bit
-// varints, the top bit indicating that more bytes follow.
+// Each instruction is a single uint32 word: the opcode in the low 8
+// bits and the operand, if any, in the high 24 bits. Program counters
+// and jump targets are word indices. (The serialized form is more
+// compact; see [Funcode.encode].)
 package compile // import "go.starlark.net/internal/compile"
 
 import (
@@ -46,7 +48,7 @@ var Disassemble = false
 const debug = false // make code generation verbose, for debugging the compiler
 
 // Increment this to force recompilation of saved bytecode files.
-const Version = 15
+const Version = 16
 
 type Opcode uint8
 
@@ -149,6 +151,11 @@ const (
 	OpcodeArgMin = JMP
 	OpcodeMax    = CALL_VAR_KW
 )
+
+// maxArg is the largest operand that fits in an instruction word.
+// Larger operands are reported as compilation errors.
+// (It is a variable only for testing.)
+var maxArg uint32 = 1<<24 - 1
 
 // TODO(adonovan): add dynamic checks for missing opcodes in the tables below.
 
@@ -331,7 +338,6 @@ type Funcode struct {
 	Pos                   syntax.Position // position of def or lambda token
 	Name                  string          // name of this function
 	Doc                   string          // docstring of this function
-	Code                  []byte          // the byte code
 	pclinetab             []uint16        // mapping from pc to linenum
 	Locals                []Binding       // locals, parameters first
 	Cells                 []int           // indices of Locals that require cells
@@ -341,10 +347,17 @@ type Funcode struct {
 	NumKwonlyParams       int
 	HasVarargs, HasKwargs bool
 
+	// The instructions are held in code (if compiled) or
+	// encoded (if deserialized, until the first call to Code).
+	code    []uint32 // instruction words; see package doc
+	encoded []byte   // compact encoding of code; see [Funcode.encode]
+	ninsns  int      // number of instructions in encoded
+
 	// -- transient state --
 
-	lntOnce sync.Once
-	lnt     []pclinecol // decoded line number table
+	codeOnce sync.Once
+	lntOnce  sync.Once
+	lnt      []pclinecol // decoded line number table
 }
 
 type pclinecol struct {
@@ -365,6 +378,8 @@ type pcomp struct {
 	names     map[string]uint32
 	constants map[any]uint32
 	functions map[*Funcode]uint32
+
+	err error // first compilation error, if any
 }
 
 // An fcomp holds the compiler state for a Funcode.
@@ -401,6 +416,13 @@ type insn struct {
 	op        Opcode
 	arg       uint32
 	line, col int32
+}
+
+// Code returns the function's instruction words (see package doc).
+// For a deserialized function, they are decoded on first use.
+func (fn *Funcode) Code() []uint32 {
+	fn.codeOnce.Do(fn.decodeCode)
+	return fn.code
 }
 
 // Position returns the source position for program counter pc.
@@ -487,7 +509,7 @@ func bindings(bindings []*resolve.Binding) []Binding {
 
 // Expr compiles an expression to a program whose toplevel function evaluates it.
 // The options must be consistent with those used when parsing expr.
-func Expr(opts *syntax.FileOptions, expr syntax.Expr, name string, locals []*resolve.Binding) *Program {
+func Expr(opts *syntax.FileOptions, expr syntax.Expr, name string, locals []*resolve.Binding) (*Program, error) {
 	pos := syntax.Start(expr)
 	stmts := []syntax.Stmt{&syntax.ReturnStmt{Result: expr}}
 	return File(opts, stmts, pos, name, locals, nil)
@@ -495,7 +517,10 @@ func Expr(opts *syntax.FileOptions, expr syntax.Expr, name string, locals []*res
 
 // File compiles the statements of a file into a program.
 // The options must be consistent with those used when parsing stmts.
-func File(opts *syntax.FileOptions, stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*resolve.Binding) *Program {
+//
+// Compilation fails only if the program exceeds an implementation
+// limit, such as the number of instructions in a function.
+func File(opts *syntax.FileOptions, stmts []syntax.Stmt, pos syntax.Position, name string, locals, globals []*resolve.Binding) (*Program, error) {
 	pcomp := &pcomp{
 		prog: &Program{
 			Globals:   bindings(globals),
@@ -506,8 +531,10 @@ func File(opts *syntax.FileOptions, stmts []syntax.Stmt, pos syntax.Position, na
 		functions: make(map[*Funcode]uint32),
 	}
 	pcomp.prog.Toplevel = pcomp.function(name, pos, stmts, locals, nil)
-
-	return pcomp.prog
+	if pcomp.err != nil {
+		return nil, pcomp.err
+	}
+	return pcomp.prog, nil
 }
 
 func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.Stmt, locals, freevars []*resolve.Binding) *Funcode {
@@ -578,20 +605,14 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 		var cjmpAddr *uint32
 		var isiterjmp int
 		for i, insn := range b.insns {
-			pc++
+			pc++ // each instruction is one word
 
-			// Compute size of argument.
-			if insn.op >= OpcodeArgMin {
-				switch insn.op {
-				case ITERJMP:
-					isiterjmp = 1
-					fallthrough
-				case CJMP:
-					cjmpAddr = &b.insns[i].arg
-					pc += 4
-				default:
-					pc += uint32(argLen(insn.arg))
-				}
+			switch insn.op {
+			case ITERJMP:
+				isiterjmp = 1
+				fallthrough
+			case CJMP:
+				cjmpAddr = &b.insns[i].arg
 			}
 
 			// Compute effect on stack.
@@ -635,7 +656,7 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 			} else {
 				// Successor already visited;
 				// explicit backward jump required.
-				pc += 5
+				pc++
 			}
 		}
 
@@ -663,12 +684,12 @@ func (pcomp *pcomp) function(name string, pos syntax.Position, stmts []syntax.St
 
 	// Emit bytecode (and position table).
 	if Disassemble {
-		fmt.Fprintf(os.Stderr, "Function %s: (%d blocks, %d bytes)\n", name, len(blocks), pc)
+		fmt.Fprintf(os.Stderr, "Function %s: (%d blocks, %d words)\n", name, len(blocks), pc)
 	}
 	fcomp.generate(blocks, pc)
 
 	if debug {
-		fmt.Fprintf(os.Stderr, "code=%d maxstack=%d\n", fn.Code, fn.MaxStack)
+		fmt.Fprintf(os.Stderr, "code=%d maxstack=%d\n", fn.code, fn.MaxStack)
 	}
 
 	// Don't panic until we've completed printing of the function.
@@ -734,7 +755,7 @@ func (insn *insn) stackeffect() int {
 // generate emits the linear instruction stream from the CFG,
 // and builds the PC-to-line number table.
 func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
-	code := make([]byte, 0, codelen)
+	code := make([]uint32, 0, codelen)
 	var pclinetab []uint16
 	prev := pclinecol{
 		pc:   0,
@@ -791,16 +812,8 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 			if Disassemble {
 				PrintOp(fcomp.fn, pc, insn.op, insn.arg)
 			}
-			code = append(code, byte(insn.op))
+			code = append(code, fcomp.makeInsn(insn.op, insn.arg))
 			pc++
-			if insn.op >= OpcodeArgMin {
-				if insn.op == CJMP || insn.op == ITERJMP {
-					code = addUint32(code, insn.arg, 4) // pad arg to 4 bytes
-				} else {
-					code = addUint32(code, insn.arg, 0)
-				}
-				pc = uint32(len(code))
-			}
 		}
 
 		if b.jmp != nil && b.jmp.index != b.index+1 {
@@ -809,8 +822,7 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 				fmt.Fprintf(os.Stderr, "\t%d\tjmp\t\t%d\t; block %d\n",
 					pc, addr, b.jmp.index)
 			}
-			code = append(code, byte(JMP))
-			code = addUint32(code, addr, 4)
+			code = append(code, fcomp.makeInsn(JMP, addr))
 		}
 	}
 	if len(code) != int(codelen) {
@@ -818,7 +830,26 @@ func (fcomp *fcomp) generate(blocks []*block, codelen uint32) {
 	}
 
 	fcomp.fn.pclinetab = pclinetab
-	fcomp.fn.Code = code
+	fcomp.fn.code = code
+}
+
+// makeInsn returns the instruction word for the given opcode and operand.
+// An operand that does not fit is recorded as a compilation error.
+func (fcomp *fcomp) makeInsn(op Opcode, arg uint32) uint32 {
+	// [Funcode.encode] discards the operand of an opcode that takes none,
+	// and the interpreter assumes it is zero.
+	if op < OpcodeArgMin && arg != 0 {
+		panic(fmt.Sprintf("%s has nonzero operand %d", op, arg))
+	}
+	if arg > maxArg {
+		if fcomp.pcomp.err == nil {
+			fn := fcomp.fn
+			fcomp.pcomp.err = fmt.Errorf("%s: function %s exceeds an implementation limit: %s operand %d > %d",
+				fn.Pos, fn.Name, op, arg, maxArg)
+		}
+		arg = 0
+	}
+	return uint32(op) | arg<<8
 }
 
 // clip returns the value nearest x in the range [min...max],
@@ -831,31 +862,6 @@ func clip(x, min, max int32) (int32, bool) {
 	} else {
 		return x, true
 	}
-}
-
-// addUint32 encodes x as 7-bit little-endian varint.
-// TODO(adonovan): opt: steal top two bits of opcode
-// to encode the number of complete bytes that follow.
-func addUint32(code []byte, x uint32, min int) []byte {
-	end := len(code) + min
-	// Pad the operand to at least min bytes using redundant
-	// continuation bytes (not trailing NOPs, which would be
-	// executed whenever a CJMP or ITERJMP falls through).
-	for x >= 0x80 || len(code)+1 < end {
-		code = append(code, byte(x)|0x80)
-		x >>= 7
-	}
-	code = append(code, byte(x))
-	return code
-}
-
-func argLen(x uint32) int {
-	n := 0
-	for x >= 0x80 {
-		n++
-		x >>= 7
-	}
-	return n + 1
 }
 
 // PrintOp prints an instruction.

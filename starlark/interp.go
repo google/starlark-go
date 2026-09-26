@@ -115,26 +115,15 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	sp := 0
 	var pc uint32
 	var result Value
-	code := f.Code
+	code := f.Code()
 loop:
 	for {
 		fr.pc = pc
 
-		op := compile.Opcode(code[pc])
+		insn := code[pc]
 		pc++
-		var arg uint32
-		if op >= compile.OpcodeArgMin {
-			// TODO(adonovan): opt: profile this.
-			// Perhaps compiling big endian would be less work to decode?
-			for s := uint(0); ; s += 7 {
-				b := code[pc]
-				pc++
-				arg |= uint32(b&0x7f) << s
-				if b < 0x80 {
-					break
-				}
-			}
-		}
+		op := compile.Opcode(insn)
+		arg := insn >> 8 // (zero if op < OpcodeArgMin)
 		if vmdebug {
 			fmt.Fprintln(os.Stderr, stack[:sp]) // very verbose!
 			compile.PrintOp(f, fr.pc, op, arg)
