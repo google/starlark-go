@@ -112,6 +112,63 @@ fmt.Printf("fibonacci(10) = %v\n", v) // fibonacci(10) = [0, 1, 1, 2, 3, 5, 8, 1
 
 See [starlark/example_test.go](starlark/example_test.go) for more examples.
 
+### Bounding time, memory, and other resources
+
+It is trivial for a Starlark program to consume all available time and
+memory. Even without recursion, a program can get the interpreter stuck
+in an endless loop, for example by applying a recursive built-in operator
+to a cyclic value such as a list that contains itself.
+So if you evaluate Starlark code from an untrusted source in the same
+address space as your application, you are trusting the health of your
+application to that source.
+
+The interpreter provides two mechanisms for bounding computation:
+
+- `Thread.SetMaxExecutionSteps` limits the number of abstract computation
+  steps a thread may take. The measure is deterministic and reproducible,
+  but it does not correspond to CPU time: not all steps are equal, and a
+  single step may be a call to a built-in function or operator that is
+  very slow or allocates a lot of memory (e.g. `string * int`).
+  Set `Thread.OnMaxSteps` to change what happens when the limit is reached.
+
+- `Thread.Cancel` asynchronously interrupts a running thread. The
+  interpreter polls an atomic variable rather than a channel or
+  `context.Context`, as this is much faster. To cancel a thread when a
+  context is done, use a goroutine:
+
+  ```go
+  ctx, cancel := context.WithCancel(ctx)
+  defer cancel()
+  go func() {
+      <-ctx.Done()
+      thread.Cancel("context cancelled")
+  }()
+  ... evaluate Starlark in thread ...
+  ```
+
+  Long-running built-in functions can honor cancellation too if you pass
+  the context to them using `thread.SetLocal`.
+
+There is no way to bound the memory used by a Starlark thread. The
+interpreter rejects single allocations that are unreasonably large, but a
+thread can allocate an unbounded amount of memory in smaller steps.
+Accounting for the live memory held by a thread is not even well defined,
+since frozen values may be shared among threads, and it would require the
+mark phase of a garbage collector capable of tracing both the Starlark
+heap and the Go heap. Similarly, the interpreter imposes a limit on stack
+depth to prevent recursion from overflowing the Go stack, but it does not
+promise what that limit is, other than "enough in most cases".
+
+If you need to defend against denial of service, the only reliable
+approach is to let the operating system help you: evaluate Starlark in a
+separate process with a tight limit on memory (e.g. using ulimit,
+setrlimit, or cgroups), terminate it if it takes too much wall or CPU
+time, and handle OOM failures, timeouts, and crashes in the parent. The
+interpreter starts very quickly, so the overhead is usually modest.
+
+For past discussions of this topic, see
+[these issues](https://github.com/google/starlark-go/issues?q=is:issue+(160+OR+236+OR+252+OR+410+OR+470+OR+498+OR+606+OR+617+OR+621+OR+661)+NOT+PEP+NOT+"byte+code").
+
 ### Contributing
 
 We welcome submissions but please let us know what you're working on
