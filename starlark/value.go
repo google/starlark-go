@@ -828,9 +828,10 @@ func (fn *Function) FreeVar(i int) (Binding, Value) {
 
 // A Builtin is a function implemented in Go.
 type Builtin struct {
-	name string
-	fn   func(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)
-	recv Value // for bound methods (e.g. "".startswith)
+	name   string
+	fn     func(thread *Thread, fn *Builtin, args Tuple, kwargs []Tuple) (Value, error)
+	recv   Value // for bound methods (e.g. "".startswith)
+	pooled bool  // from Thread.builtinPool; released by CALL_METHOD after the call
 }
 
 func (b *Builtin) Name() string { return b.name }
@@ -873,7 +874,23 @@ func NewBuiltin(name string, fn func(thread *Thread, fn *Builtin, args Tuple, kw
 //
 //	"abc".index("a")
 func (b *Builtin) BindReceiver(recv Value) *Builtin {
-	return &Builtin{name: b.name, fn: b.fn, recv: recv}
+	bound := new(Builtin)
+	bound.bind(b, recv)
+	return bound
+}
+
+// bind sets b to method fn bound to recv.
+func (b *Builtin) bind(fn *Builtin, recv Value) {
+	b.name = fn.name
+	b.fn = fn.fn
+	b.recv = recv
+}
+
+// unbind clears b's binding so it retains no receiver or method.
+func (b *Builtin) unbind() {
+	b.name = ""
+	b.fn = nil
+	b.recv = nil
 }
 
 // A *Dict represents a Starlark dictionary.

@@ -67,6 +67,30 @@ type Thread struct {
 
 	// proftime holds the accumulated execution time since the last profile event.
 	proftime time.Duration
+
+	// builtinPool is a LIFO free list of *Builtin reused by CALL_ATTR to bind receivers without allocating.
+	builtinPool []*Builtin
+}
+
+// acquireBoundBuiltin returns a *Builtin (pooled if possible) bound to fn and recv.
+// Pair with releaseBoundBuiltin; the *Builtin must not escape the call (as in CALL_METHOD).
+func (thread *Thread) acquireBoundBuiltin(fn *Builtin, recv Value) *Builtin {
+	var b *Builtin
+	if n := len(thread.builtinPool); n > 0 {
+		b = thread.builtinPool[n-1]
+		thread.builtinPool = thread.builtinPool[:n-1]
+	} else {
+		b = new(Builtin)
+	}
+	b.bind(fn, recv)
+	b.pooled = true
+	return b
+}
+
+func (thread *Thread) releaseBoundBuiltin(b *Builtin) {
+	b.unbind() // don't pin the receiver
+	b.pooled = false
+	thread.builtinPool = append(thread.builtinPool, b)
 }
 
 // ExecutionSteps returns the current value of Steps.

@@ -384,6 +384,49 @@ loop:
 			}
 			stack[sp-1] = z
 
+		case compile.ATTR_METHOD:
+			// Resolve x.method at the receiver, before the arguments, so
+			// evaluation order matches the ordinary ATTR+CALL sequence.
+			recv := stack[sp-1]
+			name := f.Prog.Names[arg]
+			if method := builtinMethod(recv, name); method != nil {
+				// Bind recv in a pooled *Builtin to avoid a BindReceiver
+				// alloc; CALL_METHOD releases it after the call.
+				stack[sp-1] = thread.acquireBoundBuiltin(method, recv)
+			} else {
+				// Not a built-in method: ordinary attribute access.
+				y, err2 := getAttr(recv, name)
+				if err2 != nil {
+					err = err2
+					break loop
+				}
+				stack[sp-1] = y
+			}
+
+		case compile.CALL_METHOD:
+			// Call a method resolved by ATTR_METHOD: method then npos args.
+			npos := int(arg)
+			fn := stack[sp-npos-1]
+
+			// Copy args: the callee (a built-in) can't be trusted not to mutate them.
+			var positional Tuple
+			if npos > 0 {
+				positional = slices.Clone(stack[sp-npos : sp])
+			}
+			sp -= npos
+
+			thread.endProfSpan()
+			z, err2 := Call(thread, fn, positional, nil)
+			thread.beginProfSpan()
+			if b, ok := fn.(*Builtin); ok && b.pooled {
+				thread.releaseBoundBuiltin(b)
+			}
+			if err2 != nil {
+				err = err2
+				break loop
+			}
+			stack[sp-1] = z
+
 		case compile.ITERPUSH:
 			x := stack[sp-1]
 			sp--
