@@ -58,6 +58,16 @@ assert.eq(c, 3)
 ---
 [] = [1, 2] ### "too many values to unpack"
 ---
+# A failed unpack must not leave the list locked for iteration.
+load("assert.star", "assert")
+
+x = [1, 2, 3]
+def f():
+    a, b = x
+assert.fails(f, "too many values to unpack")
+x.append(4)
+assert.eq(x, [1, 2, 3, 4])
+---
 # list-tuple assignment
 load("assert.star", "assert")
 

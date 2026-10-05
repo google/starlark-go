@@ -522,12 +522,13 @@ loop:
 				i++
 			}
 			var dummy Value
-			if iter.Next(&dummy) {
+			tooMany := iter.Next(&dummy)
+			iter.Done()
+			if tooMany {
 				// NB: Len may return -1 here in obscure cases.
 				err = fmt.Errorf("too many values to unpack (got %d, want %d)", Len(iterable), n)
 				break loop
 			}
-			iter.Done()
 			if i < n {
 				err = fmt.Errorf("too few values to unpack (got %d, want %d)", i, n)
 				break loop
