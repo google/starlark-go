@@ -24,6 +24,7 @@ func BenchmarkStarlark(b *testing.B) {
 	thread := new(starlark.Thread)
 	for _, file := range []string{
 		"testdata/benchmark.star",
+		"testdata/bazel.star",
 		// ...
 	} {
 
