@@ -18,10 +18,12 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - optimize position table.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
+// CallInternal implements the call fn(*args, **kwargs),
+// where fn is a Starlark function.
+//
+// CallInternal does not retain the args and kwargs arrays, allowing
+// the interpreter to avoid an allocation in Starlark-to-Starlark calls.
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
-	// Postcondition: args is not mutated. This is stricter than required by Callable,
-	// but allows CALL to avoid a copy.
-
 	f := fn.funcode
 	if f.Prog.Recursion {
 		// prevent stack overflow
@@ -115,26 +117,15 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 	sp := 0
 	var pc uint32
 	var result Value
-	code := f.Code
+	code := f.Code()
 loop:
 	for {
 		fr.pc = pc
 
-		op := compile.Opcode(code[pc])
+		insn := code[pc]
 		pc++
-		var arg uint32
-		if op >= compile.OpcodeArgMin {
-			// TODO(adonovan): opt: profile this.
-			// Perhaps compiling big endian would be less work to decode?
-			for s := uint(0); ; s += 7 {
-				b := code[pc]
-				pc++
-				arg |= uint32(b&0x7f) << s
-				if b < 0x80 {
-					break
-				}
-			}
-		}
+		op := compile.Opcode(insn)
+		arg := insn >> 8 // (zero if op < OpcodeArgMin)
 		if vmdebug {
 			fmt.Fprintln(os.Stderr, stack[:sp]) // very verbose!
 			compile.PrintOp(f, fr.pc, op, arg)
@@ -351,7 +342,7 @@ loop:
 
 				// Copy positional arguments into a new array,
 				// unless the callee is another Starlark function,
-				// in which case it can be trusted not to mutate them.
+				// in which case it can be trusted not to retain them.
 				if !is[*Function](stack[sp-1]) || args != nil {
 					positional = slices.Clone(positional)
 				}
