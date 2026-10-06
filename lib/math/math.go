@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package math provides basic constants and mathematical functions.
-package math // import "go.starlark.net/lib/math"
+package math
 
 import (
 	"errors"

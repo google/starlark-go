@@ -346,7 +346,7 @@ func unpackArgNoEscape(v Value, ptr any) error {
 			func() {
 				defer func() { recover() }()
 
-				if v, _ := reflect.Zero(paramVarType).Interface().(Value); v != nil {
+				if v, _ := reflect.TypeAssert[Value](reflect.Zero(paramVarType)); v != nil {
 					paramType = v.Type()
 				}
 			}()

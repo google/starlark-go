@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package syntax provides a Starlark parser and abstract syntax tree.
-package syntax // import "go.starlark.net/syntax"
+package syntax
 
 // A Node is a node in a Starlark syntax tree.
 type Node interface {

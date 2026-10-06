@@ -4,7 +4,7 @@
 
 // Package starlarkstruct defines the Starlark types 'struct' and
 // 'module', both optional language extensions.
-package starlarkstruct // import "go.starlark.net/starlarkstruct"
+package starlarkstruct
 
 // It is tempting to introduce a variant of Struct that is a wrapper
 // around a Go struct value, for stronger typing guarantees and more

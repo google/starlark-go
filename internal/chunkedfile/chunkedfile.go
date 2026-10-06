@@ -22,7 +22,7 @@
 // then calls chunk.GotError for each error that actually occurred.  Any
 // discrepancy between the actual and expected errors is reported using
 // the client's reporter, which is typically a testing.T.
-package chunkedfile // import "go.starlark.net/internal/chunkedfile"
+package chunkedfile
 
 import (
 	"fmt"
