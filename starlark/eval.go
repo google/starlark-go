@@ -50,6 +50,18 @@ type Thread struct {
 	// The default behavior is to call thread.Cancel("too many steps").
 	OnMaxSteps func(thread *Thread)
 
+	// CallDecorator is the client-supplied hook for calls made on this thread.
+	// If non-nil, Call invokes it in place of fn.CallInternal,
+	// so that the client may run logic around each call. To perform the call, the
+	// decorator must invoke fn.CallInternal directly; calling Call would
+	// re-enter the decorator.
+	//
+	// A decorator inherits the contract of CallInternal.
+	// It must not retain args or kwargs once the call has returned,
+	// as they may alias the caller's operand stack.
+	// The frame of fn is already pushed, so CallFrame(0) describes fn.
+	CallDecorator func(thread *Thread, fn Callable, args Tuple, kwargs []Tuple) (Value, error)
+
 	// Steps a count of abstract computation steps executed
 	// by this thread. It is incremented by the interpreter. It may be used
 	// as a measure of the approximate cost of Starlark execution, by
@@ -120,7 +132,7 @@ func (thread *Thread) Local(key string) any {
 }
 
 // CallFrame returns a copy of the specified frame of the callstack.
-// It should only be used in built-ins called from Starlark code.
+// It should only be used in built-ins called from Starlark code, or in a CallDecorator.
 // Depth 0 means the frame of the built-in itself, 1 is its caller, and so on.
 //
 // It is equivalent to CallStack().At(depth), but more efficient.
@@ -1195,6 +1207,7 @@ func stringRepeat(s String, n Int) (String, error) {
 }
 
 // Call calls the function fn with the specified positional and keyword arguments.
+// If thread.CallDecorator is non-nil, it is invoked in place of fn's CallInternal method.
 func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 	c, ok := fn.(Callable)
 	if !ok {
@@ -1239,7 +1252,13 @@ func Call(thread *Thread, fn Value, args Tuple, kwargs []Tuple) (Value, error) {
 		thread.stack = thread.stack[:len(thread.stack)-1] // pop
 	}()
 
-	result, err := c.CallInternal(thread, args, kwargs)
+	var result Value
+	var err error
+	if decorate := thread.CallDecorator; decorate != nil {
+		result, err = decorate(thread, c, args, kwargs)
+	} else {
+		result, err = c.CallInternal(thread, args, kwargs)
+	}
 
 	// Sanity check: nil is not a valid Starlark value.
 	if result == nil && err == nil {
