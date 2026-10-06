@@ -100,7 +100,7 @@ characters are tokens:
 +=   -=   *=   /=   //=  %=   ==   !=
 ^    <    >    <<   >>   &    |
 ^=   <=   >=   <<=  >>=  &=   |=
-.    ,    ;    :    ~    **
+.    ,    ;    :    ~    **   **=
 (    )    [    ]    {    }
 ```
 
@@ -1703,11 +1703,14 @@ There are three unary operators, all appearing before their operand:
 `+`, `-`, `~`, and `not`.
 
 ```grammar {.good}
-UnaryExpr = '+' PrimaryExpr
-          | '-' PrimaryExpr
-          | '~' PrimaryExpr
+UnaryExpr = '+' UnaryExpr
+          | '-' UnaryExpr
+          | '~' UnaryExpr
+          | PowerExpr
           | 'not' Test
           .
+
+PowerExpr = PrimaryExpr ['**' UnaryExpr] .
 ```
 
 ```text
@@ -1716,6 +1719,10 @@ UnaryExpr = '+' PrimaryExpr
 ~ number        unary bitwise inversion (int)
 not x           logical negation        (any type)
 ```
+
+The `+`, `-`, and `~` operators bind less tightly than `**`, so
+`-x ** y` is parsed as `-(x ** y)`. However, they may appear on the
+right side of `**`, so `x ** -y` is parsed as `x ** (-y)`.
 
 The `+` and `-` operators may be applied to any number
 (`int` or `float`) and return the number unchanged.
@@ -1767,11 +1774,13 @@ and
 <<   >>
 -    +
 *    /    //   %
+**
 ```
 
 Comparison operators, `in`, and `not in` are non-associative,
 so the parser will not accept `0 <= i < n`.
-All other binary operators of equal precedence associate to the left.
+The `**` operator is right-associative; all other binary operators of
+equal precedence associate to the left.
 
 ```grammar {.good}
 BinaryExpr = Test {Binop Test} .
@@ -1787,6 +1796,10 @@ Binop = 'or'
       | '<<' | '>>'
       .
 ```
+
+Note: the `**` operator is not listed in `Binop` because it has
+special parsing rules (right-associativity and interaction with unary
+operators); see `PowerExpr` under [Unary operators](#unary-operators).
 
 #### `or` and `and`
 
@@ -1888,6 +1901,7 @@ Arithmetic (int or float; result has type float unless both operands have type i
    number / number              # real division  (result is always a float)
    number // number             # floored division
    number % number              # remainder of floored division
+   number ** number             # exponentiation
    number ^ number              # bitwise XOR
    number << number             # bitwise left shift
    number >> number             # bitwise right shift
@@ -1917,10 +1931,26 @@ Dict
       dict | dict               # ordered union
 ```
 
-The operands of the arithmetic operators `+`, `-`, `*`, `//`, and
-`%` must both be numbers (`int` or `float`) but need not have the same type.
+The operands of the arithmetic operators `+`, `-`, `*`, `//`, `%`,
+and `**` must both be numbers (`int` or `float`) but need not have the same type.
 The type of the result has type `int` only if both operands have that type.
 The result of real division `/` always has type `float`.
+
+The `**` operator computes exponentiation.
+It is right-associative: `2 ** 3 ** 2` is equal to `2 ** 9`, not `8 ** 2`.
+When both operands are integers and the exponent is non-negative, the
+result is an exact integer.
+When the exponent is negative or either operand is a float, the result
+is a float.
+It is an error to raise a negative number to a fractional power (the
+result would be complex) or to raise zero to a negative power.
+
+```python
+2 ** 10                 # 1024
+2 ** -1                 # 0.5
+4.0 ** 0.5              # 2.0
+2 ** 3 ** 2             # 512
+```
 
 The `+` operator may be applied to non-numeric operands of the same
 type, such as two lists, two tuples, or two strings, in which case it
@@ -2510,11 +2540,11 @@ in `for` loops and in comprehensions.
 
 An augmented assignment, which has the form `lhs op= rhs` updates the
 variable `lhs` by applying a binary arithmetic operator `op` (one of
-`+`, `-`, `*`, `/`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`) to the previous
+`+`, `-`, `*`, `/`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`, `**`) to the previous
 value of `lhs` and the value of `rhs`.
 
 ```grammar {.good}
-AssignStmt = Expression ('+=' | '-=' | '*=' | '/=' | '//=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=') Expression .
+AssignStmt = Expression ('+=' | '-=' | '*=' | '/=' | '//=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=' | '**=') Expression .
 ```
 
 The left-hand side must be a simple target:
@@ -3189,6 +3219,28 @@ ord("Й"[1:])				# 0xFFFD (Unicode replacement character)
 See also: `chr`.
 
 <b>Implementation note:</b> `ord` is not provided by the Java implementation.
+
+### pow
+
+`pow(base, exp)` returns `base` raised to the power `exp`.
+It is equivalent to the expression `base ** exp`.
+The arguments must be numbers (`int` or `float`).
+
+With three arguments, `pow(base, exp, mod)` computes modular
+exponentiation: it returns `base**exp mod mod`.
+The three-argument form requires all arguments to be integers and the
+modulus to be nonzero. When `exp` is negative, it computes the modular
+inverse of `base` with respect to `mod`, which requires that `base`
+and `mod` be coprime.
+
+```python
+pow(2, 10)              # 1024
+pow(2, -1)              # 0.5
+pow(2, 10, 1000)        # 24
+pow(3, -1, 7)           # 5 (modular inverse: 3*5 ≡ 1 mod 7)
+```
+
+<b>Implementation note:</b> `pow` is not provided by the Java implementation.
 
 ### print
 

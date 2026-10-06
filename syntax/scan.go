@@ -48,6 +48,7 @@ const (
 	CIRCUMFLEX    // ^
 	LTLT          // <<
 	GTGT          // >>
+	STARSTAR      // **
 	TILDE         // ~
 	DOT           // .
 	COMMA         // ,
@@ -66,7 +67,7 @@ const (
 	LE            // <=
 	EQL           // ==
 	NEQ           // !=
-	PLUS_EQ       // +=    (keep order consistent with PLUS..GTGT)
+	PLUS_EQ       // +=    (keep order consistent with PLUS..STARSTAR)
 	MINUS_EQ      // -=
 	STAR_EQ       // *=
 	SLASH_EQ      // /=
@@ -77,7 +78,7 @@ const (
 	CIRCUMFLEX_EQ // ^=
 	LTLT_EQ       // <<=
 	GTGT_EQ       // >>=
-	STARSTAR      // **
+	STARSTAR_EQ   // **=
 
 	// Keywords
 	AND
@@ -126,7 +127,7 @@ func (tok Token) String() string { return tokenNames[tok] }
 // GoString is like String but quotes punctuation tokens.
 // Use Sprintf("%#v", tok) when constructing error messages.
 func (tok Token) GoString() string {
-	if tok >= PLUS && tok <= STARSTAR {
+	if tok >= PLUS && tok <= STARSTAR_EQ {
 		return "'" + tokenNames[tok] + "'"
 	}
 	return tokenNames[tok]
@@ -183,6 +184,7 @@ var tokenNames = [...]string{
 	LTLT_EQ:       "<<=",
 	GTGT_EQ:       ">>=",
 	STARSTAR:      "**",
+	STARSTAR_EQ:   "**=",
 	AND:           "and",
 	BREAK:         "break",
 	CONTINUE:      "continue",
@@ -849,11 +851,15 @@ start:
 		}
 		panic("unreachable")
 
-	case '*': // possibly followed by '*' or '='
+	case '*': // possibly followed by '*', '**=', or '='
 		sc.readRune()
 		switch sc.peekRune() {
 		case '*':
 			sc.readRune()
+			if sc.peekRune() == '=' {
+				sc.readRune()
+				return STARSTAR_EQ
+			}
 			return STARSTAR
 		case '=':
 			sc.readRune()
