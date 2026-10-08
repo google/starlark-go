@@ -21,6 +21,7 @@ import (
 	"go.starlark.net/lib/json"
 	starlarkmath "go.starlark.net/lib/math"
 	starlarkproto "go.starlark.net/lib/proto"
+	starlarkregexp "go.starlark.net/lib/regexp"
 	"go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -149,6 +150,7 @@ func TestExecFile(t *testing.T) {
 		"testdata/math.star",
 		"testdata/misc.star",
 		"testdata/proto.star",
+		"testdata/regexp.star",
 		"testdata/set.star",
 		"testdata/string.star",
 		"testdata/time.star",
@@ -226,6 +228,9 @@ func load(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 	}
 	if module == "proto.star" {
 		return starlark.StringDict{"proto": starlarkproto.Module}, nil
+	}
+	if module == "regexp.star" {
+		return starlark.StringDict{"regexp": starlarkregexp.Module}, nil
 	}
 
 	// TODO(adonovan): test load() using this execution path.
