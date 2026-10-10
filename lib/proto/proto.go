@@ -94,6 +94,7 @@ package proto
 import (
 	"bytes"
 	"fmt"
+	"iter"
 	"sort"
 	"strings"
 	"unsafe"
@@ -1019,6 +1020,20 @@ func (rf *RepeatedField) Iterate() starlark.Iterator {
 	}
 	return &repeatedFieldIterator{rf, 0}
 }
+
+// Elements returns an iterator over the sequence of elements of a repeated field.
+// For example:
+//
+//	for val := range repeatedField.Elements() { ... }
+func (rf *RepeatedField) Elements() iter.Seq[starlark.Value] {
+	return func(yield func(starlark.Value) bool) {
+		for i := range rf.list.Len() {
+			if !yield(rf.Index(i)) {
+				return
+			}
+		}
+	}
+}
 func (rf *RepeatedField) Len() int { return rf.list.Len() }
 func (rf *RepeatedField) String() string {
 	// We use list [...] notation even though it not exactly a list.
@@ -1159,6 +1174,21 @@ func (mf *MapField) Iterate() starlark.Iterator {
 		return less
 	})
 	return it
+}
+
+// Entries returns an iterator over the sequence of entries of a map field. For
+// example:
+//
+//	for k, v := range mapField.Entries() { ... }
+func (mf *MapField) Entries() iter.Seq2[starlark.Value, starlark.Value] {
+	return func(yield func(k, v starlark.Value) bool) {
+		mf.mp.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
+			return yield(
+				toStarlark1(mf.typ.MapKey(), mk.Value(), mf.frozen),
+				toStarlark1(mf.typ.MapValue(), v, mf.frozen),
+			)
+		})
+	}
 }
 
 // Items returns a slice of key-value pairs, sorted in key order.

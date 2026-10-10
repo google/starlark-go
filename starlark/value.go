@@ -70,6 +70,7 @@ package starlark // import "go.starlark.net/starlark"
 
 import (
 	"fmt"
+	"iter"
 	"math"
 	"math/big"
 	"reflect"
@@ -898,6 +899,7 @@ func (d *Dict) Items() []Tuple                                  { return d.ht.it
 func (d *Dict) Keys() []Value                                   { return d.ht.keys() }
 func (d *Dict) Len() int                                        { return int(d.ht.len) }
 func (d *Dict) Iterate() Iterator                               { return d.ht.iterate() }
+func (d *Dict) Entries() iter.Seq2[Value, Value]                { return d.ht.entries }
 func (d *Dict) SetKey(k, v Value) error                         { return d.ht.insert(k, v) }
 func (d *Dict) String() string                                  { return toString(d) }
 func (d *Dict) Type() string                                    { return "dict" }
@@ -1011,6 +1013,25 @@ func (l *List) Iterate() Iterator {
 	return &listIterator{l: l}
 }
 
+// Elements returns an iterator over the sequence of elements of the list.
+//
+// Example:
+//
+//	for elem := range list.Elements() { ... }
+func (l *List) Elements() iter.Seq[Value] {
+	return func(yield func(Value) bool) {
+		if !l.frozen {
+			l.itercount++
+			defer func() { l.itercount-- }()
+		}
+		for _, x := range l.elems {
+			if !yield(x) {
+				break
+			}
+		}
+	}
+}
+
 func (l *List) Has(y Value) (bool, error) {
 	for _, x := range l.elems {
 		if eq, err := Equal(x, y); err != nil {
@@ -1122,6 +1143,21 @@ func (t Tuple) Slice(start, end, step int) Value {
 
 func (t Tuple) Iterate() Iterator { return &tupleIterator{elems: t} }
 
+// Elements returns an iterator over the sequence of elements of the tuple.
+//
+// (A Tuple is a slice, so it is of course directly iterable. This
+// method exists to provide a fast path for the [Elements] standalone
+// function.)
+func (t Tuple) Elements() iter.Seq[Value] {
+	return func(yield func(Value) bool) {
+		for _, x := range t {
+			if !yield(x) {
+				break
+			}
+		}
+	}
+}
+
 func (t Tuple) Freeze() {
 	for _, elem := range t {
 		elem.Freeze()
@@ -1201,6 +1237,12 @@ func (s *Set) Type() string                           { return "set" }
 func (s *Set) Freeze()                                { s.ht.freeze() }
 func (s *Set) Hash() (uint32, error)                  { return 0, fmt.Errorf("unhashable type: set") }
 func (s *Set) Truth() Bool                            { return s.Len() > 0 }
+
+func (s *Set) Elements() iter.Seq[Value] {
+	return func(yield func(k Value) bool) {
+		s.ht.entries(func(k, _ Value) bool { return yield(k) })
+	}
+}
 
 func (s *Set) Attr(name string) (Value, error) { return builtinAttr(s, name, setMethods) }
 func (s *Set) AttrNames() []string             { return builtinAttrNames(setMethods) }
@@ -1632,6 +1674,70 @@ func Iterate(x Value) Iterator {
 		return x.Iterate()
 	}
 	return nil
+}
+
+// Elements returns an iterator over the sequence of elements of the iterable value.
+//
+// Example:
+//
+//	for elem := range Elements(iterable) { ... }
+//
+// Push iterators are provided as a convenience for Go client code. The
+// core iteration behavior of Starlark for-loops is defined by the
+// [Iterable] interface.
+func Elements(iterable Iterable) iter.Seq[Value] {
+	// Use specialized push iterator if available (*List, Tuple, *Set).
+	type hasElements interface {
+		Elements() iter.Seq[Value]
+	}
+	if iterable, ok := iterable.(hasElements); ok {
+		return iterable.Elements()
+	}
+
+	return func(yield func(Value) bool) {
+		iter := iterable.Iterate()
+		defer iter.Done()
+		var x Value
+		for iter.Next(&x) && yield(x) {
+		}
+	}
+}
+
+// Entries returns an iterator over the sequence of entries (key/value pairs) of
+// the iterable mapping.
+//
+// Example:
+//
+//	for k, v := range Entries(mapping) { ... }
+//
+// Push iterators are provided as a convenience for Go client code. The
+// core iteration behavior of Starlark for-loops is defined by the
+// [Iterable] interface.
+func Entries(mapping IterableMapping) iter.Seq2[Value, Value] {
+	// If available (e.g. *Dict), use specialized push iterator,
+	// as it gets k and v in one shot.
+	type hasEntries interface {
+		Entries() iter.Seq2[Value, Value]
+	}
+	if mapping, ok := mapping.(hasEntries); ok {
+		return mapping.Entries()
+	}
+
+	return func(yield func(k, v Value) bool) {
+		iter := mapping.Iterate()
+		defer iter.Done()
+		var k Value
+		for iter.Next(&k) {
+			v, found, err := mapping.Get(k)
+			if err != nil || !found {
+				panic(fmt.Sprintf("Iterate and Get are inconsistent (mapping=%v, key=%v)",
+					mapping.Type(), k.Type()))
+			}
+			if !yield(k, v) {
+				break
+			}
+		}
+	}
 }
 
 // Bytes is the type of a Starlark binary string.

@@ -8,6 +8,7 @@ package starlark_test
 
 import (
 	"fmt"
+	"iter"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -153,5 +154,63 @@ func TestParamDefault(t *testing.T) {
 				t.Errorf("param defaults got diff (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestElementsIteratorCount(t *testing.T) {
+	d := starlark.NewDict(1)
+	m := &fakeMapping{Dict: d}
+	assertNoElementsFastPath(t, m)
+
+	// Asking for the sequence must not start an iteration.
+	_ = starlark.Elements(m)
+	err := d.SetKey(starlark.String("one"), starlark.MakeInt(1))
+	if err != nil {
+		t.Error("Elements(m) started an iteration")
+	}
+}
+
+func TestEntriesIteratorCount(t *testing.T) {
+	d := starlark.NewDict(1)
+	m := &fakeMapping{Dict: d}
+	assertNoEntriesFastPath(t, m)
+
+	// Asking for the sequence must not start an iteration.
+	_ = starlark.Entries(m)
+	err := d.SetKey(starlark.String("one"), starlark.MakeInt(1))
+	if err != nil {
+		t.Error("Entries(m) started an iteration")
+	}
+}
+
+// A fakeMapping is a starlark.IterableMapping that deliberately does not
+// implement the Elements or Entries fast paths, so that the standalone
+// starlark.Elements and starlark.Entries functions must use the generic
+// Iterate/Done code path.
+type fakeMapping struct {
+	*starlark.Dict
+}
+
+var _ starlark.IterableMapping = (*fakeMapping)(nil)
+
+func (m *fakeMapping) Elements() {}
+
+func (m *fakeMapping) Entries() {}
+
+func assertNoElementsFastPath(t *testing.T, v any) {
+	t.Helper()
+	if _, ok := v.(interface {
+		Elements() iter.Seq[starlark.Value]
+	}); ok {
+		t.Fatalf("%T has an Elements fast path, so this test would not exercise Elements' generic code path", v)
+	}
+}
+
+func assertNoEntriesFastPath(t *testing.T, v any) {
+	t.Helper()
+	if _, ok := v.(interface {
+		Entries() iter.Seq2[starlark.Value, starlark.Value]
+	}); ok {
+		t.Fatalf("%T has an Entries fast path, so this test would not exercise Entries' generic code path", v)
 	}
 }
