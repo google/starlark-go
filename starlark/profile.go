@@ -12,18 +12,24 @@ package starlark
 // indicate the start and end of each "span" or time interval. A leaf
 // function (whether Go or Starlark) has a single span. A function that
 // calls another function has spans for each interval in which it is the
-// top of the stack. (A LOAD instruction also ends a span.)
+// top of the stack: Call ends the caller's span, if it has one, before
+// pushing the callee's frame, and resumes it after popping that frame.
+// The caller may be a Starlark function or a built-in calling back into
+// Starlark. A LOAD instruction ends the current frame's span during the
+// call to Thread.Load; callbacks from Load on the same thread find no
+// span to end, so they do not resume one.
 //
 // At the start of a span, the interpreter records the current time in
-// the thread's topmost frame. At the end of the span, it obtains the
-// time again and subtracts the span start time. The difference is added
-// to an accumulator variable in the thread. If the accumulator exceeds
-// some fixed quantum (10ms, say), the profiler records the current call
-// stack and sends it to the profiler goroutine, along with the number
-// of quanta, which are subtracted. For example, if the accumulator
-// holds 3ms and then a completed span adds 25ms to it, its value is 28ms,
-// which exceeds 10ms. The profiler records a stack with the value 20ms
-// (2 quanta), and the accumulator is left with 8ms.
+// the thread's topmost frame (zero means the frame has no open span).
+// At the end of the span, it obtains the time again and subtracts the
+// span start time. The difference is added to an accumulator variable
+// in the thread. If the accumulator exceeds some fixed quantum (10ms,
+// say), the profiler records the current call stack and sends it to the
+// profiler goroutine, along with the number of quanta, which are
+// subtracted. For example, if the accumulator holds 3ms and then a
+// completed span adds 25ms to it, its value is 28ms, which exceeds 10ms.
+// The profiler records a stack with the value 20ms (2 quanta), and the
+// accumulator is left with 8ms.
 //
 // The profiler goroutine converts the stacks into the pprof format and
 // emits a gzip-compressed protocol message to the designated output
@@ -129,6 +135,9 @@ func (thread *Thread) beginProfSpan() {
 	if profiler.events == nil {
 		return // profiling not enabled
 	}
+	if len(thread.stack) == 0 {
+		return // no caller
+	}
 
 	thread.frameAt(0).spanStart = nanotime()
 }
@@ -137,15 +146,29 @@ func (thread *Thread) beginProfSpan() {
 // which trade space and time for greater precision.
 const quantum = 10 * time.Millisecond
 
-func (thread *Thread) endProfSpan() {
+// endProfSpan ends the span of the topmost frame, if it has one,
+// and reports whether it did.
+func (thread *Thread) endProfSpan() bool {
 	if profiler.events == nil {
-		return // profiling not enabled
+		return false // profiling not enabled
+	}
+	if len(thread.stack) == 0 {
+		return false // no caller
+	}
+
+	// A span that has already ended (for example, by a LOAD whose
+	// Load function calls back into Starlark on the same thread)
+	// must not be counted again.
+	top := thread.frameAt(0)
+	if top.spanStart == 0 {
+		return false
 	}
 
 	// Add the span to the thread's accumulator.
-	thread.proftime += time.Duration(nanotime() - thread.frameAt(0).spanStart)
+	thread.proftime += time.Duration(nanotime() - top.spanStart)
+	top.spanStart = 0
 	if thread.proftime < quantum {
-		return
+		return true
 	}
 
 	// Only record complete quanta.
@@ -169,6 +192,7 @@ func (thread *Thread) endProfSpan() {
 	}
 
 	profiler.events <- ev
+	return true
 }
 
 type profEvent struct {
@@ -387,7 +411,9 @@ func nanotime() int64 {
 	return time.Since(processStart).Nanoseconds()
 }
 
-var processStart = time.Now()
+// processStart is set one nanosecond in the past so that nanotime
+// never returns zero, which frame.spanStart reserves to mean no span.
+var processStart = time.Now().Add(-time.Nanosecond)
 
 // profFuncAddr returns the canonical "address"
 // of a Callable for use by the profiler.

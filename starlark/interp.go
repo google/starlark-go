@@ -372,9 +372,7 @@ loop:
 					function, positional, kvpairs, f.Position(fr.pc))
 			}
 
-			thread.endProfSpan()
 			z, err2 := Call(thread, function, positional, kvpairs)
-			thread.beginProfSpan()
 			if err2 != nil {
 				err = err2
 				break loop
