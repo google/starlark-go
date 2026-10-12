@@ -100,8 +100,8 @@ call(f)
 	checkSamples(t, got, elapsed)
 
 	// The built-in's span resumes after the callback returns.
-	if flat := pprofDuration(t, got, `(?m)^\s*(\S+)\s.*\scall$`); flat < 90*time.Millisecond {
-		t.Errorf("call flat time = %v, want at least 90ms; output=<<%s>>", flat, got)
+	if flat := pprofDuration(t, got, `(?m)^\s*(\S+)\s.*\scall$`); flat < 100*time.Millisecond {
+		t.Errorf("call flat time = %v, want at least 100ms; output=<<%s>>", flat, got)
 	}
 }
 
@@ -144,12 +144,12 @@ func TestProfileLoadCallback(t *testing.T) {
 }
 
 // checkSamples checks that the sleep built-in accounts for at
-// least 90ms of the profile output got, and that the total
+// least 100ms of the profile output got, and that the total
 // samples do not exceed the elapsed time.
 func checkSamples(t *testing.T, got string, elapsed time.Duration) {
 	t.Helper()
-	if flat := pprofDuration(t, got, `(?m)^\s*(\S+)\s.*\ssleep$`); flat < 90*time.Millisecond {
-		t.Errorf("sleep flat time = %v, want at least 90ms; output=<<%s>>", flat, got)
+	if flat := pprofDuration(t, got, `(?m)^\s*(\S+)\s.*\ssleep$`); flat < 100*time.Millisecond {
+		t.Errorf("sleep flat time = %v, want at least 100ms; output=<<%s>>", flat, got)
 	}
 	if total := pprofDuration(t, got, `Total samples = (\S+)`); total > elapsed {
 		t.Errorf("total samples = %v, exceeds elapsed time %v; output=<<%s>>", total, elapsed, got)
@@ -196,7 +196,6 @@ func profile(t *testing.T, run func() error) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prof.Sync()
 	// Use a fixed unit; pprof's automatic units include
 	// "hrs", which time.ParseDuration does not accept.
 	cmd := exec.Command("go", "tool", "pprof", "-top", "-unit=ns", prof.Name())
