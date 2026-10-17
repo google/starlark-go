@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -1245,5 +1246,474 @@ func TestUnpackArgNoEscape(t *testing.T) {
 	})
 	if n > 0 {
 		t.Errorf("AllocsPerRun = %v, want none", n)
+	}
+}
+
+// A decorator is the type of Thread.CallDecorator.
+type decorator = func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
+
+// delegate is a CallDecorator that does nothing but forward to fn.CallInternal.
+func delegate(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return fn.CallInternal(thread, args, kwargs)
+}
+
+// twice is an application-defined Callable, neither *Function nor *Builtin.
+type twice struct{}
+
+func (twice) Name() string          { return "twice" }
+func (twice) String() string        { return "twice" }
+func (twice) Type() string          { return "twice" }
+func (twice) Freeze()               {}
+func (twice) Truth() starlark.Bool  { return true }
+func (twice) Hash() (uint32, error) { return 0, nil }
+func (twice) CallInternal(_ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.Binary(syntax.STAR, args[0], starlark.MakeInt(2))
+}
+
+// TestCallDecorator checks that a delegating decorator observes every
+// call made on the thread, whatever the callee: Starlark functions and
+// lambdas, built-ins, methods of values, application-defined Callables,
+// and the toplevel of each module, including one loaded by load.
+// It sees the actual callee and the raw arguments of each call, and execution is unaffected.
+func TestCallDecorator(t *testing.T) {
+	const loaded = `
+def helper(x): return x + 1
+
+five = helper(4)
+`
+	const src = `
+load("module.star", "five")
+
+def f(a, b = 0): return a + b
+
+square = lambda x: x * x
+
+vals = (
+    f(1, b = 2),
+    square(3),
+    len("abc"),
+    json.encode([1]),
+    {"k": "v"}.get("k"),
+    time.parse_time("1970-01-01T00:00:00Z").format("2006"),
+    twice(4),
+    five,
+)
+`
+	var (
+		names   []string
+		callees = make(map[string]starlark.Callable) // callee of the call of each name
+		kws     = make(map[string]string)            // its kwargs, formatted
+	)
+	thread := new(starlark.Thread)
+	thread.CallDecorator = func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		names = append(names, fn.Name())
+		callees[fn.Name()], kws[fn.Name()] = fn, fmt.Sprint(kwargs)
+		return fn.CallInternal(thread, args, kwargs)
+	}
+	// Execute the loaded module on this thread, so that its
+	// toplevel call is decorated too.
+	thread.Load = func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+		return starlark.ExecFile(thread, module, loaded, nil)
+	}
+	predeclared := starlark.StringDict{
+		"json":  json.Module,
+		"time":  time.Module,
+		"twice": twice{},
+	}
+	globals, err := starlark.ExecFile(thread, "main.star", src, predeclared)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{
+		"<toplevel>", // main.star
+		"<toplevel>", // module.star
+		"helper",
+		"f",
+		"lambda",
+		"len",
+		"json.encode",
+		"get",
+		"parse_time",
+		"format",
+		"twice",
+	}
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("calls = %q, want %q", names, want)
+	}
+	if callees["f"] != globals["f"] || callees["twice"] != predeclared["twice"] {
+		t.Errorf("decorator saw callees %v and %v, want %v and %v",
+			callees["f"], callees["twice"], globals["f"], predeclared["twice"])
+	}
+	// The decorator sees the raw pairs written at the call site,
+	// before they are bound to the callee's parameters.
+	if got := kws["f"]; got != `[("b", 2)]` {
+		t.Errorf(`decorator saw kwargs %s for f, want [("b", 2)]`, got)
+	}
+	if got, want := fmt.Sprint(globals["vals"]), `(3, 9, 3, "[1]", "v", "1970", 8, 5)`; got != want {
+		t.Errorf("vals = %s, want %s", got, want)
+	}
+}
+
+// TestCallDecoratorTransparency checks that a delegating decorator has
+// no effect on execution: the same program leaves the same globals,
+// takes the same number of steps, and reports the same backtrace, with
+// and without one, and its step limit fires at the same point.
+func TestCallDecoratorTransparency(t *testing.T) {
+	const src = `
+def f(x): return 1 // x
+
+def g(x): return f(x)
+
+a = g(2)
+b = min([1, 2, 0], key=g)
+`
+	run := func(decorate decorator, maxSteps uint64) (starlark.StringDict, uint64, error) {
+		thread := &starlark.Thread{CallDecorator: decorate}
+		if maxSteps > 0 {
+			thread.SetMaxExecutionSteps(maxSteps)
+		}
+		globals, err := starlark.ExecFile(thread, "crash.star", src, nil)
+		return globals, thread.ExecutionSteps(), err
+	}
+	plain, steps, plainErr := run(nil, 0)
+	decorated, decoratedSteps, decoratedErr := run(delegate, 0)
+
+	if got, want := fmt.Sprint(decorated), fmt.Sprint(plain); got != want {
+		t.Errorf("globals = %s with a decorator, %s without", got, want)
+	}
+	if decoratedSteps != steps {
+		t.Errorf("execution took %d steps with a decorator, %d without", decoratedSteps, steps)
+	}
+	const want = `Traceback (most recent call last):
+  crash.star:7:8: in <toplevel>
+  <builtin>: in min
+  crash.star:4:19: in g
+  crash.star:2:20: in f
+Error: floored division by zero`
+	if got := backtrace(t, decoratedErr); got != want {
+		t.Errorf("error was %s, want %s", got, want)
+	}
+	if got := backtrace(t, plainErr); got != want {
+		t.Errorf("error was %s, want %s", got, want)
+	}
+
+	// Halved, the step limit interrupts both runs at the same point.
+	_, plainSteps, plainErr := run(nil, steps/2)
+	_, limitedSteps, limitedErr := run(delegate, steps/2)
+	if fmt.Sprint(plainErr) != "Starlark computation cancelled: too many steps" {
+		t.Fatalf("execution returned error %q, want cancellation", plainErr)
+	}
+	if got, want := fmt.Sprint(limitedErr), fmt.Sprint(plainErr); got != want {
+		t.Errorf("execution returned error %q with a decorator, %q without", got, want)
+	}
+	if limitedSteps != plainSteps {
+		t.Errorf("execution took %d steps with a decorator, %d without", limitedSteps, plainSteps)
+	}
+}
+
+// TestCallDecoratorStack checks the decorator's relationship to the call
+// stack: the callee's frame is already pushed when it runs, so
+// CallFrame(0) describes the callee and CallFrame(1), if the stack is
+// deeper than one frame, its caller; and it is entered exactly once per
+// call, whether the call comes from Starlark code, from the embedder, or
+// from the decorator itself.
+func TestCallDecoratorStack(t *testing.T) {
+	tick := starlark.NewBuiltin("tick", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return starlark.None, nil
+	})
+	var frames []string
+	record := func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if got, want := thread.CallFrame(0).Name, fn.Name(); got != want {
+			t.Errorf("CallFrame(0).Name = %s, want %s", got, want)
+		}
+		// A root call has one frame, and no caller to describe;
+		// CallFrame(1) must not be consulted.
+		frame := fmt.Sprintf("%d %s", thread.CallStackDepth(), fn.Name())
+		if thread.CallStackDepth() > 1 {
+			frame += " in " + thread.CallFrame(1).Name
+		}
+		frames = append(frames, frame)
+		// A call the decorator makes itself through Call is decorated
+		// in turn...
+		if fn.Name() == "g" {
+			if _, err := starlark.Call(thread, tick, nil, nil); err != nil {
+				return nil, err
+			}
+		}
+		// ...but fn.CallInternal does not re-enter the decorator.
+		return fn.CallInternal(thread, args, kwargs)
+	}
+
+	thread := &starlark.Thread{CallDecorator: record}
+	globals, err := starlark.ExecFile(thread, "stack.star", `
+def f(): return g()
+def g(): return len("abc")
+f()
+`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"1 <toplevel>", "2 f in <toplevel>", "3 g in f", "4 tick in g", "4 len in g"}
+	if !reflect.DeepEqual(frames, want) {
+		t.Errorf("frames = %q, want %q", frames, want)
+	}
+	if depth := thread.CallStackDepth(); depth != 0 {
+		t.Errorf("CallStackDepth = %d after execution, want 0", depth)
+	}
+
+	// A call initiated by the embedder is decorated too, and on a
+	// fresh thread it is a root call.
+	frames = nil
+	if _, err := starlark.Call(&starlark.Thread{CallDecorator: record}, globals["g"], nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	want = []string{"1 g", "2 tick in g", "2 len in g"}
+	if !reflect.DeepEqual(frames, want) {
+		t.Errorf("frames = %q, want %q", frames, want)
+	}
+}
+
+// TestCallDecoratorSuppression checks that a decorator may suppress
+// itself for the duration of a call by clearing the field and restoring
+// it afterwards.
+func TestCallDecoratorSuppression(t *testing.T) {
+	var log []string
+	var suppress decorator
+	suppress = func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		log = append(log, fn.Name())
+		if fn.Name() == "f" {
+			thread.CallDecorator = nil
+			defer func() { thread.CallDecorator = suppress }()
+		}
+		return fn.CallInternal(thread, args, kwargs)
+	}
+	thread := &starlark.Thread{CallDecorator: suppress}
+	if _, err := starlark.ExecFile(thread, "suppress.star", `
+def f(): return g()
+def g(): return 1
+f()
+g()
+`, nil); err != nil {
+		t.Fatal(err)
+	}
+	// The call of g made by f is not decorated, but the decorator is
+	// restored in time for the toplevel's own call of g.
+	want := []string{"<toplevel>", "f", "g"}
+	if !reflect.DeepEqual(log, want) {
+		t.Errorf("calls = %q, want %q", log, want)
+	}
+}
+
+// TestCallDecoratorOutcomes checks what a decorator may do in place of
+// the call it decorates.
+func TestCallDecoratorOutcomes(t *testing.T) {
+	const src = `
+log = []
+
+def f(x):
+    log.append(x)
+    return x + 1
+
+y = f(1)
+`
+	// Both failures report the same frames, f's among them: the
+	// decorator stands in its callee's stead, not its caller's.
+	const traceback = `Traceback (most recent call last):
+  outcomes.star:8:6: in <toplevel>
+  outcomes.star:5:5: in f
+Error: `
+	for _, test := range []struct {
+		name      string
+		decorate  decorator // stands in for the call of f; other calls are delegated
+		want      string    // "y log", if the program succeeds
+		wantError string    // otherwise, the backtrace
+	}{
+		{
+			name: "canned result", // f is never called
+			decorate: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				return starlark.MakeInt(100), nil
+			},
+			want: "100 []",
+		},
+		{
+			name: "transformed result",
+			decorate: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				v, err := fn.CallInternal(thread, args, kwargs)
+				if err != nil {
+					return nil, err
+				}
+				return starlark.Binary(syntax.STAR, v, starlark.MakeInt(10))
+			},
+			want: "20 [1]",
+		},
+		{
+			name: "substituted arguments",
+			decorate: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				return fn.CallInternal(thread, starlark.Tuple{starlark.MakeInt(41)}, kwargs)
+			},
+			want: "42 [41]",
+		},
+		{
+			name: "error",
+			decorate: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				return nil, errors.New("no can do")
+			},
+			wantError: traceback + "no can do",
+		},
+		{
+			name: "no result", // nil is not a valid Starlark value
+			decorate: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				return nil, nil
+			},
+			wantError: traceback + "internal error: nil (not None) returned from <function f>",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			thread := &starlark.Thread{CallDecorator: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				if fn.Name() == "f" {
+					return test.decorate(thread, fn, args, kwargs)
+				}
+				return fn.CallInternal(thread, args, kwargs)
+			}}
+			globals, err := starlark.ExecFile(thread, "outcomes.star", src, nil)
+			if test.wantError != "" {
+				if got := backtrace(t, err); got != test.wantError {
+					t.Errorf("error was %s, want %s", got, test.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := fmt.Sprintf("%v %v", globals["y"], globals["log"]); got != test.want {
+				t.Errorf("(y, log) = %s, want %s", got, test.want)
+			}
+		})
+	}
+}
+
+// TestCallDecoratorArgs checks the lifetime of the decorator's args:
+// they are valid for the duration of the call, but for a *Function
+// callee they alias the caller's operand stack, so a decorator that
+// retains them without copying will observe them change.
+func TestCallDecoratorArgs(t *testing.T) {
+	var retained, cloned starlark.Tuple
+	var log []string
+	thread := new(starlark.Thread)
+	thread.CallDecorator = func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if fn.Name() == "f" {
+			if retained == nil {
+				retained = args
+				cloned = slices.Clone(args)
+			}
+			log = append(log, fmt.Sprintf("args=%v retained=%v cloned=%v", args, retained, cloned))
+		}
+		return fn.CallInternal(thread, args, kwargs)
+	}
+	globals, err := starlark.ExecFile(thread, "args.star", `
+out = []
+
+def f(x): out.append(x)
+
+def g():
+    f(1)
+    f(2)
+
+g()
+`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Each call saw its own arguments...
+	if got := fmt.Sprint(globals["out"]); got != "[1, 2]" {
+		t.Errorf("out = %s, want [1, 2]", got)
+	}
+	// ...but the tuple retained from the first call now holds the second's.
+	want := []string{
+		"args=(1,) retained=(1,) cloned=(1,)",
+		"args=(2,) retained=(2,) cloned=(1,)",
+	}
+	if !reflect.DeepEqual(log, want) {
+		t.Errorf("log = %q, want %q", log, want)
+	}
+}
+
+// TestCallDecoratorPanic ensures that a panic from a callee, or from
+// the decorator itself, traverses the interpreter safely and leaves
+// the thread usable; see TestPanicSafety and issue #411.
+func TestCallDecoratorPanic(t *testing.T) {
+	predeclared := starlark.StringDict{
+		"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			panic(args[0])
+		}),
+	}
+	const src = `
+def main(): panic(1)
+main()
+`
+	mustPanic := func(thread *starlark.Thread, want string) {
+		defer func() {
+			if got := fmt.Sprint(recover()); got != want {
+				t.Errorf("recover() = %v, want %v", got, want)
+			}
+		}()
+		v, err := starlark.ExecFile(thread, "panic.star", src, predeclared)
+		t.Errorf("ExecFile returned (%v, %v), expected panic", v, err)
+	}
+
+	// The program is executed twice on the same thread. The second
+	// execution would report "function main called recursively" if
+	// the first had failed to pop main's frame during the panic.
+	thread := &starlark.Thread{CallDecorator: delegate}
+	mustPanic(thread, "1")
+	mustPanic(thread, "1")
+	if got := thread.CallStackDepth(); got != 0 {
+		t.Errorf("CallStackDepth = %d after panic, want 0", got)
+	}
+
+	// A panic from the decorator itself is no different: once it is
+	// cleared, the thread may be used again.
+	thread = &starlark.Thread{CallDecorator: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		panic("boom")
+	}}
+	mustPanic(thread, "boom")
+	thread.CallDecorator = nil
+	if got := thread.CallStackDepth(); got != 0 {
+		t.Errorf("CallStackDepth = %d after panic, want 0", got)
+	}
+	globals, err := starlark.ExecFile(thread, "ok.star", "def f(): return 1\nx = f()\n", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(globals["x"]); got != "1" {
+		t.Errorf("x = %s, want 1", got)
+	}
+}
+
+// TestCallDecoratorGuards checks that the recursion and stack overflow
+// guards of Function.CallInternal still fire when a decorator is
+// installed, though the decorator observes the offending calls.
+func TestCallDecoratorGuards(t *testing.T) {
+	const src = `
+def f(): return f()
+f()
+`
+	for _, test := range []struct{ src, want string }{
+		{src, "function f called recursively"},
+		{"# option:recursion\n" + src, "Starlark stack overflow"},
+	} {
+		calls := 0
+		thread := &starlark.Thread{CallDecorator: func(thread *starlark.Thread, fn starlark.Callable, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+			calls++
+			return fn.CallInternal(thread, args, kwargs)
+		}}
+		_, err := starlark.ExecFileOptions(getOptions(test.src), thread, "recursion.star", test.src, nil)
+		if got := fmt.Sprint(err); got != test.want {
+			t.Errorf("ExecFile returned error %q, want %q", got, test.want)
+		}
+		if calls < 3 { // <toplevel>, then f at least twice
+			t.Errorf("decorator observed %d calls, want the recursive ones", calls)
+		}
 	}
 }
