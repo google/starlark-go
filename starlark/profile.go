@@ -275,8 +275,7 @@ func profile(w io.Writer) {
 		if !ok {
 			i = int64(len(stringIndex))
 			enc.string(Profile_string_table, s)
-			// Copy s: it may be part of a larger string,
-			// which the map would otherwise keep in memory.
+			// Clone to avoid retaining a larger string in case s is a substring.
 			stringIndex[strings.Clone(s)] = i
 		}
 		return i
@@ -382,8 +381,9 @@ func profile(w io.Writer) {
 		for _, fr := range e.stack {
 			sampleenc.uint(Sample_location_id, location(fr))
 		}
+		// Leave unnamed threads unlabeled instead of writing thread="",
+		// so profiles without thread names don't mention "thread" at all.
 		if e.name != "" {
-			// Add "thread" to the string table only if a sample uses it.
 			label := new(bytes.Buffer)
 			labelenc := protoEncoder{w: label}
 			labelenc.int(Label_key, str("thread"))
