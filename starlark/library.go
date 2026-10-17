@@ -740,13 +740,21 @@ func minmax(thread *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, erro
 		extremeKey = res
 	}
 
+	// A *Function does not retain its args, so we can reuse the
+	// keyargs tuple; other Callables may retain it (see Callable).
+	_, reuse := keyFunc.(*Function)
+
 	var x Value
 	for iter.Next(&x) {
 		var key Value
 		if keyFunc == nil {
 			key = x
 		} else {
-			keyargs[0] = x
+			if reuse {
+				keyargs[0] = x
+			} else {
+				keyargs = Tuple{x}
+			}
 			res, err := Call(thread, keyFunc, keyargs, nil)
 			if err != nil {
 				return nil, err // to preserve backtrace, don't modify error
