@@ -18,6 +18,7 @@ const vmdebug = false // TODO(adonovan): use a bitfield of specific kinds of err
 // - optimize position table.
 // - opt: record MaxIterStack during compilation and preallocate the stack.
 
+//go:virtualframe fr
 func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error) {
 	// Postcondition: args is not mutated. This is stricter than required by Callable,
 	// but allows CALL to avoid a copy.
@@ -35,16 +36,20 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 		}
 	} else {
 		// detect recursion
-		for _, fr := range thread.stack[:len(thread.stack)-1] {
+		for _, ancestor := range thread.stack[:len(thread.stack)-1] {
 			// We look for the same function code,
 			// not function value, otherwise the user could
 			// defeat the check by writing the Y combinator.
-			if frfn, ok := fr.Callable().(*Function); ok && frfn.funcode == f {
+			if frfn, ok := ancestor.Callable().(*Function); ok && frfn.funcode == f {
 				return nil, fmt.Errorf("function %s called recursively", fn.Name())
 			}
 		}
 	}
 
+	// This variable, named in the virtualframe annotation above,
+	// is compiled specially and used by the runtime stack unwinder
+	// and pprof to generate virtual stack frames for Starlark functions.
+	// See virtualframe.go.
 	fr := thread.frameAt(0)
 
 	// Allocate space for stack and locals.
