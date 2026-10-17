@@ -61,6 +61,46 @@ fibonacci(100000)
 	}
 }
 
+func TestProfileThreadLabel(t *testing.T) {
+	predeclared := starlark.StringDict{"sleep": sleep}
+	got := profile(t, func() error {
+		// Reuse one thread under different names,
+		// like a worker running several tasks.
+		thread := new(starlark.Thread)
+		for _, name := range []string{"a", "b", ""} {
+			thread.Name = name
+			if _, err := starlark.ExecFile(thread, "foo.star", "sleep()", predeclared); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, "-tags", "-unit=ms")
+
+	// Typical output:
+	//
+	//  thread: Total 200ms of 300ms (66.67%)
+	//          100ms (33.33%): a
+	//          100ms (33.33%): b
+	//
+	// A percentage may be padded, as in "(  100%)".
+	// Each run sleeps 100ms, so each name gets at least 100ms.
+	values := make(map[string]time.Duration)
+	for _, m := range regexp.MustCompile(`(?m)^\s+(\S+) \(\s*\S+\): (.*)$`).FindAllStringSubmatch(got, -1) {
+		values[m[2]], _ = time.ParseDuration(m[1])
+	}
+	if len(values) != 2 || values["a"] < 100*time.Millisecond || values["b"] < 100*time.Millisecond {
+		t.Errorf("thread label values = %v, want a and b with at least 100ms each; output=<<%s>>", values, got)
+	}
+
+	// The header shows labeled time out of the total;
+	// the rest comes from the unnamed run.
+	labeled := pprofDuration(t, got, `thread: Total (\S+)`)
+	total := pprofDuration(t, got, `thread: Total \S+ of (\S+)`)
+	if unlabeled := total - labeled; unlabeled < 100*time.Millisecond {
+		t.Errorf("unlabeled time = %v, want at least 100ms; output=<<%s>>", unlabeled, got)
+	}
+}
+
 // sleep is a built-in that takes 100ms.
 var sleep = starlark.NewBuiltin("sleep", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	time.Sleep(100 * time.Millisecond)
@@ -171,9 +211,10 @@ func pprofDuration(t *testing.T, got, pattern string) time.Duration {
 	return d
 }
 
-// profile calls run with the profiler enabled, and returns
-// the output of 'go tool pprof -top' for the resulting profile.
-func profile(t *testing.T, run func() error) string {
+// profile calls run with the profiler enabled, and returns the
+// output of 'go tool pprof' with the given flags (by default,
+// -top -unit=ns) for the resulting profile.
+func profile(t *testing.T, run func() error, flags ...string) string {
 	prof, err := os.CreateTemp(t.TempDir(), "profile_test")
 	if err != nil {
 		t.Fatal(err)
@@ -196,13 +237,16 @@ func profile(t *testing.T, run func() error) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Use a fixed unit; pprof's automatic units include
-	// "hrs", which time.ParseDuration does not accept.
-	cmd := exec.Command("go", "tool", "pprof", "-top", "-unit=ns", prof.Name())
+	if len(flags) == 0 {
+		// Use a fixed unit; pprof's automatic units include
+		// "hrs", which time.ParseDuration does not accept.
+		flags = []string{"-top", "-unit=ns"}
+	}
+	cmd := exec.Command("go", append(append([]string{"tool", "pprof"}, flags...), prof.Name())...)
 	cmd.Stderr = new(bytes.Buffer)
 	cmd.Stdout = new(bytes.Buffer)
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("pprof failed: %v; output=<<%s>>", err, cmd.Stderr)
+		t.Fatalf("pprof %v failed: %v; output=<<%s>>", flags, err, cmd.Stderr)
 	}
 	return fmt.Sprint(cmd.Stdout)
 }
