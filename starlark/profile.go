@@ -37,6 +37,10 @@ package starlark
 // dependencies on pprof and proto, and to avoid the need to
 // materialize the profile data structure in memory.
 //
+// Samples from a named thread get a "thread" label. The name is copied
+// along with the stack, because reading Thread.Name later in the
+// profiler goroutine would race with the thread being renamed.
+//
 // A limitation of this profiler is that it measures wall time, which
 // does not necessarily correspond to CPU time. A CPU profiler requires
 // that only running (not runnable) threads are sampled; this is
@@ -73,6 +77,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -84,6 +89,13 @@ import (
 // and writes a profile in pprof format to w.
 // It must be followed by a call to StopProfiler to stop
 // the profiler and finalize the profile.
+//
+// Samples from a thread with a non-empty [Thread.Name] get a
+// thread=NAME label. The name is read when the sample is taken,
+// so time spent before a rename may be counted under the new name.
+// Names should be valid UTF-8; each distinct name is kept in memory
+// until profiling stops. To filter or group samples by name, use
+// go tool pprof -tagfocus=thread=REGEXP or -tagroot=thread.
 //
 // StartProfile returns an error if profiling was already enabled.
 //
@@ -178,8 +190,8 @@ func (thread *Thread) endProfSpan() bool {
 	// Copy the stack.
 	// (We can't save thread.frame because its pc will change.)
 	ev := &profEvent{
-		thread: thread,
-		time:   n * quantum,
+		name: thread.Name,
+		time: n * quantum,
 	}
 	ev.stack = ev.stackSpace[:0]
 	for i := range thread.stack {
@@ -196,7 +208,7 @@ func (thread *Thread) endProfSpan() bool {
 }
 
 type profEvent struct {
-	thread     *Thread // currently unused
+	name       string // Thread.Name at recording time
 	time       time.Duration
 	stack      []profFrame
 	stackSpace [8]profFrame // initial space for stack
@@ -263,7 +275,9 @@ func profile(w io.Writer) {
 		if !ok {
 			i = int64(len(stringIndex))
 			enc.string(Profile_string_table, s)
-			stringIndex[s] = i
+			// Copy s: it may be part of a larger string,
+			// which the map would otherwise keep in memory.
+			stringIndex[strings.Clone(s)] = i
 		}
 		return i
 	}
@@ -367,6 +381,14 @@ func profile(w io.Writer) {
 		sampleenc.int(Sample_value, e.time.Nanoseconds()) // wall nanoseconds
 		for _, fr := range e.stack {
 			sampleenc.uint(Sample_location_id, location(fr))
+		}
+		if e.name != "" {
+			// Add "thread" to the string table only if a sample uses it.
+			label := new(bytes.Buffer)
+			labelenc := protoEncoder{w: label}
+			labelenc.int(Label_key, str("thread"))
+			labelenc.int(Label_str, str(e.name))
+			sampleenc.bytes(Sample_label, label.Bytes())
 		}
 		enc.bytes(Profile_sample, sample.Bytes())
 	}
