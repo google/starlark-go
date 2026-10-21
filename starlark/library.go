@@ -2228,7 +2228,7 @@ func set_clear(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error)
 func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	// TODO: support multiple others: s.difference(*others)
 	var other Iterable
-	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2244,7 +2244,7 @@ func set_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, e
 func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	// TODO: support multiple others: s.difference(*others)
 	var other Iterable
-	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2259,7 +2259,7 @@ func set_intersection(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value,
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issubset.
 func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
-	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2274,7 +2274,7 @@ func set_issubset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, err
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set_issuperset.
 func set_issuperset(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
-	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()
@@ -2343,7 +2343,7 @@ func set_remove(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#set·symmetric_difference.
 func set_symmetric_difference(_ *Thread, b *Builtin, args Tuple, kwargs []Tuple) (Value, error) {
 	var other Iterable
-	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 0, &other); err != nil {
+	if err := unpackPositionalArgsNoEscape(b.Name(), args, kwargs, 1, &other); err != nil {
 		return nil, err
 	}
 	iter := other.Iterate()

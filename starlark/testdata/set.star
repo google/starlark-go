@@ -299,3 +299,10 @@ assert.true(not set([1,2,3]) <= set([1,2,4]))
 # proper subset: set < set
 assert.true(set([1,2]) < set([1,2,3]))
 assert.true(not set([1,2,3]) < set([1,2,3]))
+
+# methods that take one iterable reject a missing argument
+assert.fails(lambda: set([1]).difference(), "difference: got 0 arguments, want 1")
+assert.fails(lambda: set([1]).intersection(), "intersection: got 0 arguments, want 1")
+assert.fails(lambda: set([1]).issubset(), "issubset: got 0 arguments, want 1")
+assert.fails(lambda: set([1]).issuperset(), "issuperset: got 0 arguments, want 1")
+assert.fails(lambda: set([1]).symmetric_difference(), "symmetric_difference: got 0 arguments, want 1")
