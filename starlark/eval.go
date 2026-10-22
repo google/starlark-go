@@ -28,6 +28,7 @@ import (
 // The Thread is threaded throughout the evaluator.
 type Thread struct {
 	// Name is an optional name that describes the thread, for debugging.
+	// The profiler labels the thread's samples with it; see [StartProfile].
 	Name string
 
 	// stack is the stack of (internal) call frames.
