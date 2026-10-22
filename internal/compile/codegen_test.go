@@ -64,7 +64,12 @@ func TestPlusFolding(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 			continue
 		}
-		got := disassemble(Expr(syntax.LegacyFileOptions(), expr, "<expr>", locals).Toplevel)
+		prog, err := Expr(syntax.LegacyFileOptions(), expr, "<expr>", locals)
+		if err != nil {
+			t.Errorf("#%d: %v", i, err)
+			continue
+		}
+		got := disassemble(prog.Toplevel)
 		if test.want != got {
 			t.Errorf("expression <<%s>> generated <<%s>>, want <<%s>>",
 				test.src, got, test.want)
@@ -75,22 +80,9 @@ func TestPlusFolding(t *testing.T) {
 // disassemble is a trivial disassembler tailored to the accumulator test.
 func disassemble(f *Funcode) string {
 	out := new(bytes.Buffer)
-	code := f.Code
-	for pc := 0; pc < len(code); {
-		op := Opcode(code[pc])
-		pc++
-		// TODO(adonovan): factor in common with interpreter.
-		var arg uint32
-		if op >= OpcodeArgMin {
-			for s := uint(0); ; s += 7 {
-				b := code[pc]
-				pc++
-				arg |= uint32(b&0x7f) << s
-				if b < 0x80 {
-					break
-				}
-			}
-		}
+	for _, insn := range f.Code() {
+		op := Opcode(insn)
+		arg := insn >> 8
 
 		if out.Len() > 0 {
 			out.WriteString("; ")

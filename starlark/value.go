@@ -179,6 +179,13 @@ var (
 // A Callable value f may be the operand of a function call, f(x).
 //
 // Clients should use the Call function, never the CallInternal method.
+//
+// The args and kwargs hold positional and keyword arguments, in order.
+// Implementations should reject duplicate names.
+//
+// args and each key/value pair in kwargs are Tuples, and thus immutable.
+// The callee may retain them. The same rule applies to the kwargs array.
+// (Consequently, the caller must not the arrays after the call.)
 type Callable interface {
 	Value
 	Name() string
@@ -1123,6 +1130,11 @@ func (l *List) Clear() error {
 }
 
 // A Tuple represents a Starlark tuple value.
+//
+// Tuples are immutable to Starlark code.
+// Go code must not modify a Tuple once it has been shared,
+// for example by passing it to a function,
+// storing it in a value, or returning it.
 type Tuple []Value
 
 func (t Tuple) Len() int          { return len(t) }

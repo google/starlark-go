@@ -1247,3 +1247,25 @@ func TestUnpackArgNoEscape(t *testing.T) {
 		t.Errorf("AllocsPerRun = %v, want none", n)
 	}
 }
+
+// TestMinMaxKeyRetainsArgs checks that min and max do not reuse the
+// args tuple of a key function that retains it, as Callable permits.
+func TestMinMaxKeyRetainsArgs(t *testing.T) {
+	retain := starlark.NewBuiltin("retain", func(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+		return args, nil
+	})
+	env := starlark.StringDict{"retain": retain}
+	for expr, want := range map[string]starlark.Value{
+		"max([1, 3, 2], key=retain)": starlark.MakeInt(3),
+		"min([3, 1, 2], key=retain)": starlark.MakeInt(1),
+	} {
+		got, err := starlark.EvalOptions(&syntax.FileOptions{}, new(starlark.Thread), "in.star", expr, env)
+		if err != nil {
+			t.Errorf("%s: %v", expr, err)
+		} else if eq, err := starlark.Equal(got, want); err != nil {
+			t.Errorf("Equa(%v, %v) failed: %v", got, want, err)
+		} else if !eq {
+			t.Errorf("%s = %v, want %v", expr, got, want)
+		}
+	}
+}

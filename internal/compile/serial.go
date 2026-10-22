@@ -31,7 +31,7 @@ package compile
 //
 // Funcode:
 //	id		Ident
-//	code		[]byte
+//	code		[]byte		# see [Funcode.encode]
 //	pclinetablen	varint
 //	pclinetab	[]varint
 //	numlocals	varint
@@ -73,10 +73,9 @@ package compile
 // the entire file sequentially, they are in lock step,
 // so the start offset of each string is implicit.
 //
-// Program.Code is represented as a []byte slice to permit
-// modification when breakpoints are set. All other strings
-// are represented as strings. They all (unsafely) share the
-// same backing byte slice.
+// All strings, and the compact encoding of each function's code,
+// (unsafely) share the same backing byte slice. The code of each
+// function is expanded to instruction words on first use.
 //
 // Aside from the str field, all integers are encoded as varints.
 
@@ -186,7 +185,7 @@ func (e *encoder) bindings(binds []Binding) {
 func (e *encoder) function(fn *Funcode) {
 	e.binding(Binding{fn.Name, fn.Pos})
 	e.string(fn.Doc)
-	e.bytes(fn.Code)
+	e.bytes(fn.encode())
 	e.int(len(fn.pclinetab))
 	for _, x := range fn.pclinetab {
 		e.int64(int64(x))
@@ -361,6 +360,10 @@ func (d *decoder) function() *Funcode {
 	id := d.binding()
 	doc := d.string()
 	code := d.bytes()
+	ninsns, err := countInsns(code)
+	if err != nil {
+		panic(err) // recovered by DecodeProgram
+	}
 	pclinetab := make([]uint16, d.int())
 	for i := range pclinetab {
 		pclinetab[i] = uint16(d.int())
@@ -378,7 +381,8 @@ func (d *decoder) function() *Funcode {
 		Pos:             id.Pos,
 		Name:            id.Name,
 		Doc:             doc,
-		Code:            code,
+		encoded:         code,
+		ninsns:          ninsns,
 		pclinetab:       pclinetab,
 		Locals:          locals,
 		Cells:           cells,
@@ -389,4 +393,63 @@ func (d *decoder) function() *Funcode {
 		HasVarargs:      hasVarargs,
 		HasKwargs:       hasKwargs,
 	}
+}
+
+// encode returns the compact encoding of fn's instructions:
+// each is an opcode byte followed, if the opcode takes an operand,
+// by the operand as a uvarint.
+func (fn *Funcode) encode() []byte {
+	if fn.encoded != nil {
+		return fn.encoded // deserialized; avoid forcing decoding
+	}
+	var code []byte
+	for _, insn := range fn.code {
+		op := Opcode(insn)
+		code = append(code, byte(op))
+		if op >= OpcodeArgMin {
+			code = binary.AppendUvarint(code, uint64(insn>>8))
+		}
+	}
+	return code
+}
+
+// countInsns validates the compact encoding of a function's code
+// and returns the number of instructions.
+func countInsns(code []byte) (int, error) {
+	n := 0
+	for len(code) > 0 {
+		op := Opcode(code[0])
+		code = code[1:]
+		if op >= OpcodeArgMin {
+			arg, len := binary.Uvarint(code)
+			if len <= 0 || arg > uint64(maxArg) {
+				return 0, fmt.Errorf("invalid operand of %s", op)
+			}
+			code = code[len:]
+		}
+		n++
+	}
+	return n, nil
+}
+
+// decodeCode expands the compact encoding of a deserialized
+// function's code, which has already been validated by countInsns.
+// It is called at most once, by Code.
+func (fn *Funcode) decodeCode() {
+	if fn.encoded == nil {
+		return // compiled, not deserialized
+	}
+	code := make([]uint32, 0, fn.ninsns)
+	for p := fn.encoded; len(p) > 0; {
+		op := Opcode(p[0])
+		p = p[1:]
+		var arg uint64
+		if op >= OpcodeArgMin {
+			var len int
+			arg, len = binary.Uvarint(p)
+			p = p[len:]
+		}
+		code = append(code, uint32(op)|uint32(arg)<<8)
+	}
+	fn.code = code
 }
