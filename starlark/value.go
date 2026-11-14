@@ -466,7 +466,11 @@ func (f Float) format(buf *strings.Builder, conv byte) {
 		return
 	}
 
-	// %[eEfF] use 6-digit precision
+	// %[eEfF] use 6-digit precision.
+	// strconv has no 'F' verb; for finite values it is the same as 'f'.
+	if conv == 'F' {
+		conv = 'f'
+	}
 	buf.WriteString(strconv.FormatFloat(ff, conv, 6, 64))
 }
 
