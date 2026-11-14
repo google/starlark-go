@@ -1093,13 +1093,13 @@ func (sc *scanner) scanNumber(val *tokenValue, c rune) Token {
 			val.int, err = strconv.ParseInt(s[2:], 2, 64)
 		} else {
 			val.int, err = strconv.ParseInt(s, 0, 64)
-			if err != nil {
-				num := new(big.Int)
-				var ok bool
-				val.bigInt, ok = num.SetString(s, 0)
-				if ok {
-					err = nil
-				}
+		}
+		if err != nil {
+			num := new(big.Int)
+			var ok bool
+			val.bigInt, ok = num.SetString(s, 0)
+			if ok {
+				err = nil
 			}
 		}
 		if err != nil {
