@@ -75,6 +75,8 @@ assert.eq(d10h + d1s, time.parse_duration("10h01s"))
 assert.eq(d10h + refTime, tenHoursAfterRefTime)
 # duration - duration = duration
 assert.eq(d10h - d1s, time.parse_duration("9h59m59s"))
+# duration - time = error
+assert.fails(lambda: d10h - refTime, "unknown binary op: time.duration - time.time")
 # duration / duration = float
 assert.eq(d10h / time.parse_duration("16m"), 37.5)
 assert.fails(lambda: d10h / time.parse_duration("0"), "division by zero")
@@ -86,6 +88,8 @@ assert.fails(lambda: 20 / d10h, "unsupported operation")
 # duration / float = duration
 assert.eq(d10h / 37.5, time.parse_duration("16m"))
 assert.fails(lambda: d10h / 0.0, "division by zero")
+# float / duration = error
+assert.fails(lambda: 37.5 / d10h, "unsupported operation")
 # duration // duration = int
 assert.eq(d10h // time.parse_duration("16m"), 37)
 assert.fails(lambda: d10h // time.parse_duration("0"), "division by zero")
