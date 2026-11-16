@@ -300,6 +300,9 @@ func (d Duration) Binary(op syntax.Token, y starlark.Value, side starlark.Side) 
 			}
 			return d / Duration(i), nil
 		case starlark.Float:
+			if side == starlark.Right {
+				return nil, fmt.Errorf("unsupported operation")
+			}
 			f := float64(y)
 			if f == 0 {
 				return nil, fmt.Errorf("%s division by zero", d.Type())
@@ -455,6 +458,9 @@ func (t Time) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (sta
 	case syntax.MINUS:
 		switch y := y.(type) {
 		case Duration:
+			if side == starlark.Right {
+				return nil, nil // duration - time is not defined
+			}
 			return Time(x.Add(time.Duration(-y))), nil
 		case Time:
 			// time - time = duration
