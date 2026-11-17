@@ -5,7 +5,6 @@
 package starlark_test
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -465,7 +464,7 @@ print("hello")
 def f(): print("hello", "world", sep=", ")
 f()
 `
-	buf := new(bytes.Buffer)
+	buf := new(strings.Builder)
 	print := func(thread *starlark.Thread, msg string) {
 		caller := thread.CallFrame(1)
 		fmt.Fprintf(buf, "%s: %s: %s\n", caller.Pos, caller.Name, msg)
@@ -887,7 +886,7 @@ func TestFrameLocals(t *testing.T) {
 	// trace prints a nice stack trace including argument
 	// values of calls to Starlark functions.
 	trace := func(thread *starlark.Thread) string {
-		buf := new(bytes.Buffer)
+		buf := new(strings.Builder)
 		for i := 0; i < thread.CallStackDepth(); i++ {
 			fr := thread.DebugFrame(i)
 			fmt.Fprintf(buf, "%s(", fr.Callable().Name())

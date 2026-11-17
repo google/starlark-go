@@ -1,7 +1,6 @@
 package syntax_test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"reflect"
@@ -28,7 +27,7 @@ for x in y:
 		t.Fatal(err)
 	}
 
-	var buf bytes.Buffer
+	var buf strings.Builder
 	var depth int
 	syntax.Walk(f, func(n syntax.Node) bool {
 		if n == nil {

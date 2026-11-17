@@ -6,7 +6,6 @@ package syntax_test
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"go/ast"
 	"go/build"
@@ -255,7 +254,7 @@ pass`,
 			t.Errorf("parse `%s` failed: %v", test.input, stripPos(err))
 			continue
 		}
-		var buf bytes.Buffer
+		var buf strings.Builder
 		for i, stmt := range f.Stmts {
 			if i > 0 {
 				buf.WriteByte('\n')
@@ -347,12 +346,12 @@ func stripPos(err error) string {
 // Structs are printed as (type name=value ...).
 // Only non-empty fields are shown.
 func treeString(n syntax.Node) string {
-	var buf bytes.Buffer
+	var buf strings.Builder
 	writeTree(&buf, reflect.ValueOf(n))
 	return buf.String()
 }
 
-func writeTree(out *bytes.Buffer, x reflect.Value) {
+func writeTree(out *strings.Builder, x reflect.Value) {
 	switch x.Kind() {
 	case reflect.String, reflect.Int, reflect.Bool:
 		fmt.Fprintf(out, "%v", x.Interface())

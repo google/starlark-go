@@ -95,7 +95,7 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 
-	buf := new(bytes.Buffer)
+	buf := new(strings.Builder)
 
 	var quoteSpace [128]byte
 	quote := func(s string) {

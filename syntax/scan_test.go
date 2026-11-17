@@ -5,7 +5,6 @@
 package syntax
 
 import (
-	"bytes"
 	"fmt"
 	"go/build"
 	"os"
@@ -22,7 +21,7 @@ func scan(src any) (tokens string, err error) {
 
 	defer sc.recover(&err)
 
-	var buf bytes.Buffer
+	var buf strings.Builder
 	var val tokenValue
 	for {
 		tok := sc.nextToken(&val)

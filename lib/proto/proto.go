@@ -92,7 +92,6 @@ package proto
 // - Test missing required fields in marshalling.
 
 import (
-	"bytes"
 	"fmt"
 	"iter"
 	"sort"
@@ -720,7 +719,7 @@ func unmarshalData(desc protoreflect.MessageDescriptor, data []byte, binary bool
 }
 
 func (m *Message) String() string {
-	buf := new(bytes.Buffer)
+	buf := new(strings.Builder)
 	buf.WriteString(string(m.desc().FullName()))
 	buf.WriteByte('(')
 
@@ -756,7 +755,7 @@ func (m *Message) String() string {
 			// This rule complicates name logic everywhere.
 			buf.WriteString(string(fdesc.Message().Name()))
 		}
-		buf.WriteString("=")
+		buf.WriteByte('=')
 		writeString(buf, fdesc, m.msg.Get(fdesc))
 	}
 	buf.WriteByte(')')
@@ -1037,7 +1036,7 @@ func (rf *RepeatedField) Elements() iter.Seq[starlark.Value] {
 func (rf *RepeatedField) Len() int { return rf.list.Len() }
 func (rf *RepeatedField) String() string {
 	// We use list [...] notation even though it not exactly a list.
-	buf := new(bytes.Buffer)
+	buf := new(strings.Builder)
 	buf.WriteByte('[')
 	for i := 0; i < rf.list.Len(); i++ {
 		if i > 0 {
@@ -1264,7 +1263,7 @@ func (it *mapFieldIterator) Done() {
 	}
 }
 
-func writeString(buf *bytes.Buffer, fdesc protoreflect.FieldDescriptor, v protoreflect.Value) {
+func writeString(buf *strings.Builder, fdesc protoreflect.FieldDescriptor, v protoreflect.Value) {
 	// TODO(adonovan): opt: don't materialize the Starlark value.
 	// TODO(adonovan): skip message type when printing submessages? {...}?
 	var frozen bool // ignored

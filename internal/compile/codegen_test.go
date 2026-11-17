@@ -1,8 +1,8 @@
 package compile
 
 import (
-	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"go.starlark.net/resolve"
@@ -74,7 +74,7 @@ func TestPlusFolding(t *testing.T) {
 
 // disassemble is a trivial disassembler tailored to the accumulator test.
 func disassemble(f *Funcode) string {
-	out := new(bytes.Buffer)
+	out := new(strings.Builder)
 	code := f.Code
 	for pc := 0; pc < len(code); {
 		op := Opcode(code[pc])
