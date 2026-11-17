@@ -264,7 +264,7 @@ func marshal_text(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 	return starlark.String(text), nil
 }
 
-// unmarshal(msg) decodes a binary protocol message to a Message.
+// unmarshal(desc, msg) decodes a binary protocol message to a Message.
 func unmarshal(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data starlark.Bytes
@@ -274,7 +274,7 @@ func unmarshal(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 	return unmarshalData(desc.Desc, []byte(data), true)
 }
 
-// unmarshal_text(msg) decodes a text protocol message to a Message.
+// unmarshal_text(desc, msg) decodes a text protocol message to a Message.
 func unmarshal_text(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data string
