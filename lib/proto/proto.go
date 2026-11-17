@@ -74,6 +74,12 @@
 // Unmarshal or UnmarshalText.  These two functions are exposed to
 // Starlark programs as proto.unmarshal{,_text}.
 //
+// Decoding resolves extension types, and decoding or encoding text
+// resolves the types of the messages google.protobuf.Any values hold.
+// The Starlark functions resolve them with the thread's TypeResolver
+// (see SetResolver), and the Go functions with protoregistry.GlobalTypes
+// unless called as UnmarshalWithResolver or UnmarshalTextWithResolver.
+//
 // To construct a Message from an existing Go proto.Message instance,
 // you must first encode the Go message to binary, then decode it using
 // Unmarshal. This ensures that messages visible to Starlark are
@@ -142,6 +148,44 @@ const contextKey = "proto.DescriptorPool"
 // FileDescriptorSet messages. See star2proto for example usage.
 type DescriptorPool interface {
 	FindFileByPath(string) (protoreflect.FileDescriptor, error)
+}
+
+// SetResolver associates with the specified Starlark thread the type
+// resolver used by proto.unmarshal, proto.unmarshal_text and
+// proto.marshal_text to find extension types and the types of the
+// messages that google.protobuf.Any values hold in text form.
+// If no resolver is set, or r is nil, protoregistry.GlobalTypes is used.
+//
+// The resolver should be built from the same descriptors as the thread's
+// pool: a dynamic message reports an extension to proto.has and
+// proto.get_field only by the descriptor it was decoded with, and those
+// functions ask by the one proto.file returns. For example, to resolve
+// types only from a pool of files:
+//
+//	SetPool(thread, files)
+//	SetResolver(thread, dynamicpb.NewTypes(files))
+func SetResolver(thread *starlark.Thread, r TypeResolver) {
+	thread.SetLocal(resolverKey, r)
+}
+
+// Resolver returns the type resolver previously associated with this
+// thread, or nil if there is none.
+func Resolver(thread *starlark.Thread) TypeResolver {
+	r, _ := thread.Local(resolverKey).(TypeResolver)
+	return r
+}
+
+const resolverKey = "proto.TypeResolver"
+
+// A TypeResolver finds message and extension types. It is the
+// resolver that proto.UnmarshalOptions, prototext.UnmarshalOptions and
+// prototext.MarshalOptions take. For example,
+// protoregistry.GlobalTypes, which holds the types of all the *.pb.go
+// files linked into the process; and dynamicpb.NewTypes, which holds
+// the types of a set of files.
+type TypeResolver interface {
+	protoregistry.MessageTypeResolver
+	protoregistry.ExtensionTypeResolver
 }
 
 var Module = &starlarkstruct.Module{
@@ -251,37 +295,41 @@ func marshal(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 	return starlark.Bytes(data), nil
 }
 
-// marshal_text(msg) encodes a Message value to text form.
-func marshal_text(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// marshal_text(msg) encodes a Message value to text form, expanding
+// the google.protobuf.Any values whose types the thread's resolver finds.
+func marshal_text(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var m *Message
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &m); err != nil {
 		return nil, err
 	}
-	text, err := prototext.MarshalOptions{Indent: "  "}.Marshal(m.Message())
+	text, err := prototext.MarshalOptions{Indent: "  ", Resolver: Resolver(thread)}.Marshal(m.Message())
 	if err != nil {
 		return nil, fmt.Errorf("%s: %v", fn.Name(), err)
 	}
 	return starlark.String(text), nil
 }
 
-// unmarshal(desc, msg) decodes a binary protocol message to a Message.
+// unmarshal(desc, msg) decodes a binary protocol message to a Message,
+// resolving extensions with the thread's resolver.
 func unmarshal(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data starlark.Bytes
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &desc, &data); err != nil {
 		return nil, err
 	}
-	return unmarshalData(desc.Desc, []byte(data), true)
+	return unmarshalData(desc.Desc, []byte(data), true, Resolver(thread))
 }
 
-// unmarshal_text(desc, msg) decodes a text protocol message to a Message.
+// unmarshal_text(desc, msg) decodes a text protocol message to a Message,
+// resolving extensions and the types of google.protobuf.Any values with
+// the thread's resolver.
 func unmarshal_text(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var desc MessageDescriptor
 	var data string
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &desc, &data); err != nil {
 		return nil, err
 	}
-	return unmarshalData(desc.Desc, []byte(data), false)
+	return unmarshalData(desc.Desc, []byte(data), false, Resolver(thread))
 }
 
 // set_field(msg, field, value) updates the value of a field.
@@ -695,28 +743,44 @@ func (m *Message) desc() protoreflect.MessageDescriptor { return m.msg.Descripto
 var _ starlark.HasSetField = (*Message)(nil)
 
 // Unmarshal parses the data as a binary protocol message of the specified type,
-// and returns it as a new Starlark message value.
+// and returns it as a new Starlark message value. Extensions are resolved
+// with protoregistry.GlobalTypes.
 func Unmarshal(desc protoreflect.MessageDescriptor, data []byte) (*Message, error) {
-	return unmarshalData(desc, data, true)
+	return UnmarshalWithResolver(desc, data, nil)
+}
+
+// UnmarshalWithResolver is like Unmarshal, but resolves extensions with r.
+// A nil r means protoregistry.GlobalTypes.
+func UnmarshalWithResolver(desc protoreflect.MessageDescriptor, data []byte, r TypeResolver) (*Message, error) {
+	return unmarshalData(desc, data, true, r)
 }
 
 // UnmarshalText parses the data as a text protocol message of the specified type,
-// and returns it as a new Starlark message value.
+// and returns it as a new Starlark message value. Extensions and the types
+// of google.protobuf.Any values are resolved with protoregistry.GlobalTypes.
 func UnmarshalText(desc protoreflect.MessageDescriptor, data []byte) (*Message, error) {
-	return unmarshalData(desc, data, false)
+	return UnmarshalTextWithResolver(desc, data, nil)
 }
 
-// unmarshalData constructs a Starlark proto.Message by decoding binary or text data.
-func unmarshalData(desc protoreflect.MessageDescriptor, data []byte, binary bool) (*Message, error) {
+// UnmarshalTextWithResolver is like UnmarshalText, but resolves extensions
+// and the types of google.protobuf.Any values with r. A nil r means
+// protoregistry.GlobalTypes.
+func UnmarshalTextWithResolver(desc protoreflect.MessageDescriptor, data []byte, r TypeResolver) (*Message, error) {
+	return unmarshalData(desc, data, false, r)
+}
+
+// unmarshalData constructs a Starlark proto.Message by decoding binary or text data,
+// resolving types with r, or protoregistry.GlobalTypes if r is nil.
+func unmarshalData(desc protoreflect.MessageDescriptor, data []byte, binary bool, r TypeResolver) (*Message, error) {
 	m := &Message{
 		msg:    newMessage(desc),
 		frozen: new(bool),
 	}
 	var err error
 	if binary {
-		err = proto.Unmarshal(data, m.Message())
+		err = proto.UnmarshalOptions{Resolver: r}.Unmarshal(data, m.Message())
 	} else {
-		err = prototext.Unmarshal(data, m.Message())
+		err = prototext.UnmarshalOptions{Resolver: r}.Unmarshal(data, m.Message())
 	}
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling %s failed: %v", desc.FullName(), err)

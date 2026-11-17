@@ -78,3 +78,17 @@ assert.eq(proto.has(m2, schema.ext_string_field), False)
 proto.set_field(m2, schema.ext_string_field, "B")
 assert.eq(proto.has(m2, schema.ext_string_field), True)
 assert.eq(proto.get_field(m2, schema.ext_string_field), "B")
+
+# Decoding resolves extensions with protoregistry.GlobalTypes, as no
+# resolver is set on the thread (see proto_resolver.star for one that is).
+# It doesn't know ext_string_field, which has no generated Go type.
+
+# unmarshal leaves an extension the resolver does not resolve unknown
+m3 = proto.unmarshal(schema.Test, proto.marshal(m2))
+assert.eq(proto.has(m3, schema.ext_string_field), False)
+assert.eq(proto.get_field(m3, schema.ext_string_field), "")
+assert.eq(m3.string_field, "A")
+
+# unmarshal_text refuses an extension the resolver does not resolve
+assert.fails(lambda: proto.unmarshal_text(schema.Test, '[go.starlark.net.testdata.ext_string_field]: "B"'),
+             "unknown field: \\[go.starlark.net.testdata.ext_string_field\\]")
