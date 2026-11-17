@@ -150,7 +150,7 @@ var Module = &starlarkstruct.Module{
 		"file":           starlark.NewBuiltin("proto.file", file),
 		"has":            starlark.NewBuiltin("proto.has", has),
 		"marshal":        starlark.NewBuiltin("proto.marshal", marshal),
-		"marshal_text":   starlark.NewBuiltin("proto.marshal_text", marshal),
+		"marshal_text":   starlark.NewBuiltin("proto.marshal_text", marshal_text),
 		"set_field":      starlark.NewBuiltin("proto.set_field", setFieldStarlark),
 		"get_field":      starlark.NewBuiltin("proto.get_field", getFieldStarlark),
 		"unmarshal":      starlark.NewBuiltin("proto.unmarshal", unmarshal),
@@ -238,25 +238,30 @@ func has(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 	return starlark.Bool(msg.msg.Has(fdesc)), nil
 }
 
-// marshal{,_text}(msg) encodes a Message value to binary or text form.
+// marshal(msg) encodes a Message value to binary form.
 func marshal(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var m *Message
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &m); err != nil {
 		return nil, err
 	}
-	if fn.Name() == "proto.marshal" {
-		data, err := proto.Marshal(m.Message())
-		if err != nil {
-			return nil, fmt.Errorf("%s: %v", fn.Name(), err)
-		}
-		return starlark.Bytes(data), nil
-	} else {
-		text, err := prototext.MarshalOptions{Indent: "  "}.Marshal(m.Message())
-		if err != nil {
-			return nil, fmt.Errorf("%s: %v", fn.Name(), err)
-		}
-		return starlark.String(text), nil
+	data, err := proto.Marshal(m.Message())
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", fn.Name(), err)
 	}
+	return starlark.Bytes(data), nil
+}
+
+// marshal_text(msg) encodes a Message value to text form.
+func marshal_text(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var m *Message
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &m); err != nil {
+		return nil, err
+	}
+	text, err := prototext.MarshalOptions{Indent: "  "}.Marshal(m.Message())
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", fn.Name(), err)
+	}
+	return starlark.String(text), nil
 }
 
 // unmarshal(msg) decodes a binary protocol message to a Message.
