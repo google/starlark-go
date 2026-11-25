@@ -94,7 +94,14 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &x); err != nil {
 		return nil, err
 	}
+	data, err := encode0(x)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+	return starlark.String(data), nil
+}
 
+func encode0(x starlark.Value) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	var quoteSpace [128]byte
@@ -235,27 +242,31 @@ func encode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	}
 
 	if err := emit(x); err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+		return nil, err
 	}
-	return starlark.String(buf.String()), nil
+	return buf.Bytes(), nil
 }
 
 func encodeIndent(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	prefix, indent := "", "\t" // keyword-only
+	var (
+		x              starlark.Value // positional-only
+		prefix, indent = "", "\t"     // keyword-only
+	)
 	if err := starlark.UnpackArgs(b.Name(), nil, kwargs,
 		"prefix?", &prefix,
 		"indent?", &indent,
 	); err != nil {
 		return nil, err
 	}
-	// Rely on encode() to parse the positional parameter (since the signature matches); use our b so
-	// error messages are attributed to json.encode_indent.
-	str, err := encode(thread, b, args, nil)
-	if err != nil {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &x); err != nil {
 		return nil, err
 	}
+	data, err := encode0(x)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
 	var buf bytes.Buffer
-	if err := json.Indent(&buf, []byte(str.(starlark.String)), prefix, indent); err != nil {
+	if err := json.Indent(&buf, data, prefix, indent); err != nil {
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
@@ -280,7 +291,7 @@ func pathContains(path []unsafe.Pointer, item unsafe.Pointer) bool {
 func isPrintableASCII(s string) bool {
 	for i := 0; i < len(s); i++ {
 		b := s[i]
-		if b < 0x20 || b >= 0x80 {
+		if b < 0x20 || b >= 0x7f {
 			return false
 		}
 	}
@@ -324,7 +335,17 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		// directly express "def decode(x, *, default)"
 		return nil, fmt.Errorf("%s: unexpected keyword argument x", b.Name())
 	}
+	v, err = decode0(s)
+	if err != nil {
+		if d != nil {
+			return d, nil
+		}
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+	return v, nil
+}
 
+func decode0(s string) (v starlark.Value, err error) {
 	// The decoder necessarily makes certain representation choices
 	// such as list vs tuple, struct vs dict, int vs float.
 	// In principle, we could parameterize it to allow the caller to
@@ -389,7 +410,10 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 					closed = true
 					j++ // skip '"'
 					break
-				} else if b >= utf8.RuneSelf {
+				} else if b < 0x20 || b >= utf8.RuneSelf {
+					// Unescaped control characters are not
+					// permitted (RFC 8259 §7); json.Unmarshal
+					// will reject them.
 					safe = false
 				}
 			}
@@ -537,11 +561,7 @@ func decode(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		x := recover()
 		switch x := x.(type) {
 		case failure:
-			if d != nil {
-				v = d
-			} else {
-				err = fmt.Errorf("json.decode: at offset %d, %s", i, x)
-			}
+			err = fmt.Errorf("at offset %d, %s", i, x)
 		case nil:
 			// nop
 		default:
