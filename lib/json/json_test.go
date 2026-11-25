@@ -138,8 +138,8 @@ func TestStringCodec(t *testing.T) {
 			checkDecode(`"\"`, fails) // unclosed
 		case b < 0x20:
 			// Unescaped control characters are not permitted
-			// by RFC 8259, but are currently accepted.
-			checkDecode(`"`+s+`"`, s)
+			// by RFC 8259.
+			checkDecode(`"`+s+`"`, fails)
 		default:
 			checkDecode(`"`+s+`"`, string([]rune(s)))
 		}

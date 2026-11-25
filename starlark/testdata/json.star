@@ -99,6 +99,7 @@ decode_error('truefalse',
 decode_error('"abc', "unclosed string literal")
 decode_error('"ab\\gc"', "invalid.*escape") # json.Unmarshal error changed in go1.27 ("invalid character 'g' in string escape code" -> "invalid escape sequence `\g` in string")
 decode_error("'abc'", "unexpected character '\\\\''")
+decode_error('"a\tb"', "invalid character '\\\\t' in string") # unescaped control character
 
 decode_error("1.2.3", "invalid number: 1.2.3")
 decode_error("+1", "unexpected character '\\+'")

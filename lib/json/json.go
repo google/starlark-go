@@ -410,7 +410,10 @@ func decode0(s string) (v starlark.Value, err error) {
 					closed = true
 					j++ // skip '"'
 					break
-				} else if b >= utf8.RuneSelf {
+				} else if b < 0x20 || b >= utf8.RuneSelf {
+					// Unescaped control characters are not
+					// permitted (RFC 8259 §7); json.Unmarshal
+					// will reject them.
 					safe = false
 				}
 			}
